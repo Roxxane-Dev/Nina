@@ -1,0 +1,16 @@
+.env
+.env.*
+nina_app/env/
+node_modules/
+dist/
+build/
+.dart_tool/
+trace.txt
+package-lock.json
+pubspec.lock
+nina_app/android/
+nina_app/ios/
+nina_app/linux/
+nina_app/macos/
+nina_app/windows/
+nina_app/web/

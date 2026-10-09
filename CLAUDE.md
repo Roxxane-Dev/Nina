@@ -50,7 +50,8 @@ Several users see and categorize expenses of a common fund (rent, groceries, uti
 - Run lint + tests before declaring a task done, and report what you ran and the result.
 - If something is ambiguous or risky (auth, RLS, migrations, LLM data flow), stop and ask.
 - At the end of each week, append a done/pending summary to `docs/weekly-log.md`.
-- Support tools: Graphify (code knowledge graph) is installed only once real code is committed. Ask the user what OmniRoute, The Architect and the Obsidian vault are in their setup before using or assuming them.
+- Graphify: code knowledge graph in `graphify-out/` (git-ignored, local). Built code-only (AST, no LLM, no API key); `.graphifyignore` keeps `.env` and `env/` out. Git hooks refresh it on commit; manual refresh: `graphify update .`. Use `graphify query "…"`, `graphify explain "X"`, `graphify affected "X"` before broad searches. Open `graphify-out/graph.html` to explore.
+- Support tools: Ask the user what OmniRoute, The Architect and the Obsidian vault are in their setup before using or assuming them.
 
 ## Docs
 - `docs/ARCHITECTURE.md` (how Nina works), `docs/EVALUACION.md` (audit + open issues), `docs/weekly-log.md`.
