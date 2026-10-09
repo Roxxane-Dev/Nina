@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_constants.dart';
 
 enum IntelligenceUpdateType {
@@ -30,6 +31,10 @@ class RealtimeIntelligenceService {
 
   Stream<Map<String, dynamic>> get stream => _controller.stream;
 
+  /// Current access token; supabase_flutter refreshes it automatically.
+  String _accessToken() =>
+      Supabase.instance.client.auth.currentSession?.accessToken ?? '';
+
   void connect(String userId) {
     if (_disposed) return;
 
@@ -37,7 +42,8 @@ class RealtimeIntelligenceService {
       '${AppConstants.baseUrl}/intelligence',
       io.OptionBuilder()
           .setTransports(['websocket'])
-          .setQuery({'userId': userId})
+          // The server derives the user from this token, never from a userId.
+          .setAuth({'token': _accessToken()})
           // Disable socket.io auto-reconnect — we manage it manually with backoff
           .disableAutoConnect()
           .disableReconnection()
@@ -84,6 +90,7 @@ class RealtimeIntelligenceService {
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
       if (_disposed) return;
+      _socket?.auth = {'token': _accessToken()};
       _socket?.connect();
     });
   }

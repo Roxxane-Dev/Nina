@@ -1,5 +1,6 @@
 import { Module, Global } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AuthModule } from '../auth/auth.module';
 import { FinancialEventBusService } from '../events/financial-event-bus.service';
 import { IntelligenceGateway } from './intelligence.gateway';
 import { FinancialStateMachineService } from '../intelligence/state-machine/financial-state-machine.service';
@@ -8,6 +9,7 @@ import { NotificationLifecycleService } from '../notifications/notification-life
 @Global()
 @Module({
   imports: [
+    AuthModule,
     EventEmitterModule.forRoot({
       wildcard: true,
       delimiter: '.',
