@@ -39,8 +39,8 @@ Several users see and categorize expenses of a common fund (rent, groceries, uti
 - Currency is PEN (`S/`) by default, USD where explicit. Never hard-code `$`.
 
 ## Commands
-- API: `npm run test`, `npm run build`, `npm run start:dev` (no `lint` script yet; jest roots only cover `src/`, so engine specs in `packages/` do not run yet).
-- App (from `nina_app/`): `flutter analyze`, `flutter test`, `dart format .`
+- API: `npm run lint` (type-check until ESLint is added), `npm run test` (src/ + packages/), `npm run build`, `npm run start:dev`
+- App (from `nina_app/`): `flutter analyze`, `flutter test`, `dart format .`, run with `flutter run --dart-define-from-file=env/dev.json` (env/dev.json is git-ignored)
 - DB: local/dev Supabase project only.
 
 ## Workflow
@@ -51,6 +51,9 @@ Several users see and categorize expenses of a common fund (rent, groceries, uti
 - If something is ambiguous or risky (auth, RLS, migrations, LLM data flow), stop and ask.
 - At the end of each week, append a done/pending summary to `docs/weekly-log.md`.
 - Support tools: Graphify (code knowledge graph) is installed only once real code is committed. Ask the user what OmniRoute, The Architect and the Obsidian vault are in their setup before using or assuming them.
+
+## Docs
+- `docs/ARCHITECTURE.md` (how Nina works), `docs/EVALUACION.md` (audit + open issues), `docs/weekly-log.md`.
 
 ## Safety
 - Never read, print, or commit `.env*` files or keys. Use `.env.example` for names only.
