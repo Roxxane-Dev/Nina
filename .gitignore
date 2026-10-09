@@ -1,0 +1,25 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+nina_app/env/*.json
+!nina_app/env/*.example.json
+
+# Node / NestJS
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+
+# Local artifacts
+trace.txt
+*.log
+
+# Graphify output
+graphify-out/
+
+# Editors / OS
+.idea/
+.DS_Store
+Thumbs.db

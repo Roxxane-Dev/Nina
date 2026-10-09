@@ -1,0 +1,49 @@
+name: nina_app
+description: "Nina — AI Financial Intelligence Operating System"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_bloc: ^8.1.3
+  equatable: ^2.0.5
+
+  # Navigation
+  go_router: ^13.0.0
+
+  # HTTP
+  dio: ^5.4.0
+
+  # Auth & Storage
+  supabase_flutter: ^2.3.4
+  flutter_secure_storage: ^9.0.0
+
+  # Charts
+  fl_chart: ^0.67.0
+
+  # UI
+  google_fonts: ^6.1.0
+
+  # Utils
+  intl: ^0.19.0
+  flutter_animate: ^4.5.2
+  shared_preferences: ^2.5.5
+  socket_io_client: ^3.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Disable automatic Noto font downloading. Google Fonts package handles
+  # font loading at runtime. This prevents the "Noto fonts not found" warning.
+  fonts: []

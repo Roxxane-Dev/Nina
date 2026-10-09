@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Nina app (dev)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "nina_app",
+      "program": "lib/main.dart",
+      "args": ["--dart-define-from-file=env/dev.json"]
+    }
+  ]
+}
