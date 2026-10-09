@@ -9,13 +9,13 @@ import {
 import type { Request as ExpressRequest } from 'express'
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard'
 import type { SupabaseUser } from '../auth/auth.service'
-import { ChatService } from './chat.service'
-import type { ProcessMessageOptions } from '../ai/ai.service'
+import { ChatService, type ChatReply } from './chat.service'
 
 type ChatBody = {
   message: string
-  provider?: string
 }
+
+const MAX_MESSAGE_LENGTH = 1000
 
 /**
  * Minimal HTTP surface for Nina chat.
@@ -30,18 +30,14 @@ export class ChatController {
   async postMessage(
     @Request() req: ExpressRequest & { user: SupabaseUser },
     @Body() body: ChatBody,
-  ) {
-    if (!body?.message?.trim()) {
+  ): Promise<ChatReply> {
+    const message = typeof body?.message === 'string' ? body.message.trim() : ''
+    if (!message) {
       throw new BadRequestException('message is required')
     }
-
-    const userId = req.user.id
-
-    const aiOptions: ProcessMessageOptions | undefined = body.provider
-      ? { provider: body.provider }
-      : undefined
-
-    const reply = await this.chat.handleMessage(userId, body.message, aiOptions)
-    return { reply }
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      throw new BadRequestException(`message must be at most ${MAX_MESSAGE_LENGTH} characters`)
+    }
+    return this.chat.handleMessage(req.user.id, message)
   }
 }

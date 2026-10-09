@@ -24,13 +24,42 @@ function allowedNumbers(facts: FactsPayload): number[] {
   return nums.map((n) => Number(n))
 }
 
-function extractNumbers(text: string): number[] {
+const MONTHS = '(?:ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[a-z]*'
+// Calendar references are not financial figures: '15 de octubre', '15 oct', '15/10', '2026'.
+const DATE_PATTERNS = [
+  new RegExp(`\\b\\d{1,2}\\s+(?:de\\s+)?${MONTHS}\\b`, 'gi'),
+  /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g,
+  /(?<!S\/\s?)\b20\d{2}\b(?![.,]\d)/g,
+]
+
+/** Parses '1,250.50', '1.250,50', '1250.5', '38' into a number. */
+export function parseLocaleNumber(raw: string): number {
+  const lastDot = raw.lastIndexOf('.')
+  const lastComma = raw.lastIndexOf(',')
+  let normalized: string
+  if (lastDot >= 0 && lastComma >= 0) {
+    const decimalSep = lastDot > lastComma ? '.' : ','
+    const thousandSep = decimalSep === '.' ? ',' : '.'
+    normalized = raw.split(thousandSep).join('').replace(decimalSep, '.')
+  } else if (lastDot >= 0 || lastComma >= 0) {
+    const sep = lastDot >= 0 ? '.' : ','
+    const parts = raw.split(sep)
+    const isThousands = parts.length > 2 || (parts.length === 2 && parts[1].length === 3)
+    normalized = isThousands ? parts.join('') : parts.join('.')
+  } else {
+    normalized = raw
+  }
+  return Number(normalized)
+}
+
+export function extractNumbers(text: string): number[] {
+  let cleaned = text
+  for (const re of DATE_PATTERNS) cleaned = cleaned.replace(re, ' ')
   const out: number[] = []
-  const re = /(?:S\/\s*)?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d+)?)%?/g
+  const re = /\d+(?:[.,]\d+)*/g
   let m: RegExpExecArray | null
-  while ((m = re.exec(text))) {
-    const raw = m[1].replace(/\.(?=\d{3}\b)/g, '').replace(',', '.')
-    const n = Number(raw)
+  while ((m = re.exec(cleaned))) {
+    const n = parseLocaleNumber(m[0])
     if (!Number.isNaN(n)) out.push(n)
   }
   return out
@@ -77,7 +106,6 @@ export function validateAnswer(
   }
   const allowed = allowedNumbers(facts)
   for (const n of extractNumbers(blob)) {
-    if (n > 31 && n < 2100) continue
     if (!allowed.some((a) => closeEnough(n, a))) {
       return { ok: false, reason: `ungrounded_number:${n}` }
     }

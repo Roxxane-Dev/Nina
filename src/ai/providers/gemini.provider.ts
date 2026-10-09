@@ -10,13 +10,12 @@ export class GeminiProvider implements AIProvider {
   constructor(private readonly config: ConfigService) { }
 
   async generateResponse(input: AIInput): Promise<string> {
-    const apiKey = this.config.get<string>('GEMINI_API_KEY')
+    const apiKey = this.config.get<string>('GEMINI_API_KEY')?.trim()
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not configured')
     }
 
-    const modelName = this.config.get<string>('GEMINI_MODEL') ?? 'gemini-2.0-flash'
-    console.log('Using Gemini model:', modelName)
+    const modelName = this.config.get<string>('GEMINI_MODEL')?.trim() || 'gemini-flash-latest'
 
     const prompt = buildPrompt(input)
     const genAI = new GoogleGenerativeAI(apiKey)

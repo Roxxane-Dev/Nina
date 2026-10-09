@@ -10,7 +10,7 @@ export class OpenAIProvider implements AIProvider {
   constructor(private readonly config: ConfigService) { }
 
   async generateResponse(input: AIInput): Promise<string> {
-    const apiKey = this.config.get<string>('OPENAI_API_KEY')
+    const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim()
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY is not configured')
     }
@@ -18,7 +18,7 @@ export class OpenAIProvider implements AIProvider {
     const prompt = buildPrompt(input)
     const maxTokens = input.plan === 'premium' ? 800 : 400
 
-    const modelName = this.config.get<string>('OPENAI_CHAT_MODEL') ?? 'gpt-4o-mini'
+    const modelName = this.config.get<string>('OPENAI_CHAT_MODEL')?.trim() || 'gpt-4o-mini'
 
     const client = new OpenAI({ apiKey })
 

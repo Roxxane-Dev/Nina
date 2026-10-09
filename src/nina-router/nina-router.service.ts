@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { createHash } from 'crypto'
 import type { FactsPayload } from '../../packages/finance-engine/src'
 import { AIService } from '../ai/ai.service'
+import { MOCK_UNAVAILABLE_REPLY } from '../ai/providers/mock.provider'
 import { buildGroundedUserPrompt, CHAT_SYSTEM_PROMPT_V1 } from './chat-prompt'
 import { wrapUntrusted } from './redaction'
 import { ROUTER_RULES, taskForFacts, type RouterTask } from './router.rules'
@@ -52,8 +53,10 @@ export class NinaRouterService {
             context: 'query',
             ninaSnapshotPrompt: CHAT_SYSTEM_PROMPT_V1,
           },
-          { userId, persistConversation: false },
+          { userId, persistConversation: false, useMemory: false },
         )
+        // No real LLM answered: fall back to the engine-only template below.
+        if (raw.trim() === MOCK_UNAVAILABLE_REPLY) break
         const parsed = parseLlmAnswer(raw) ?? {
           message: raw,
           figuresUsed: Object.keys(facts.figures),

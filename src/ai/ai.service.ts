@@ -21,6 +21,17 @@ export type ProcessMessageOptions = {
    * Default: true when `userId` is set.
    */
   persistConversation?: boolean
+  /**
+   * When false, past conversation memories are not injected into the prompt.
+   * The grounded chat sets this so only engine facts reach the LLM.
+   */
+  useMemory?: boolean
+}
+
+const PROVIDER_KEYS: Record<Exclude<AIProviderName, 'mock'>, string> = {
+  claude: 'ANTHROPIC_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  openai: 'OPENAI_API_KEY',
 }
 
 /**
@@ -44,7 +55,7 @@ export class AIService {
     const userId = options?.userId
     let enriched: AIInput = { ...input }
 
-    if (userId) {
+    if (userId && options?.useMemory !== false) {
       const retrieved = await this.memoryService.retrieveRelevantMemories(
         userId,
         input.message,
@@ -73,10 +84,7 @@ export class AIService {
       reason = 'env_default'
     }
 
-    this.logger.log(
-      `processMessage → provider=${primary} reason=${reason}` +
-        (userId ? ` userId=${userId}` : ''),
-    )
+    this.logger.log(`processMessage → provider=${primary} reason=${reason}`)
 
     const text = await this.runWithFallback(enriched, primary)
 
@@ -93,7 +101,7 @@ export class AIService {
   }
 
   private async runWithFallback(input: AIInput, start: AIProviderName): Promise<string> {
-    const chain = this.fallbackChain(start)
+    const chain = this.fallbackChain(start).filter((p) => this.isConfigured(p))
     let lastError: unknown
 
     for (const name of chain) {
@@ -110,17 +118,17 @@ export class AIService {
     throw new Error(`All providers failed. Last error: ${final}`)
   }
 
+  /** Start provider first, then every other real provider, then mock. */
   private fallbackChain(start: AIProviderName): AIProviderName[] {
-    switch (start) {
-      case 'claude':
-        return ['claude', 'gemini', 'mock']
-      case 'gemini':
-        return ['gemini', 'openai', 'claude', 'mock']
-      case 'openai':
-        return ['openai', 'mock']
-      default:
-        return ['mock']
-    }
+    const all: AIProviderName[] = ['openai', 'gemini', 'claude']
+    if (start === 'mock') return ['mock']
+    return [start, ...all.filter((p) => p !== start), 'mock']
+  }
+
+  /** Providers without an API key are skipped instead of failing every request. */
+  private isConfigured(name: AIProviderName): boolean {
+    if (name === 'mock') return true
+    return Boolean(this.config.get<string>(PROVIDER_KEYS[name])?.trim())
   }
 
   private decideRouter(message: string, context?: string): { provider: AIProviderName, reason: string } {

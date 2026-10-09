@@ -1,27 +1,28 @@
 import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
 import { AuthModule } from '../auth/auth.module'
-import { AIModule } from '../ai/ai.module'
 import { ExpensesModule } from '../expenses/expenses.module'
 import { MemoryModule } from '../memory/memory.module'
-import { InsightsModule } from '../insights/insights.module'
 import { IncomeModule } from '../income/income.module'
 import { GoalsModule } from '../goals/goals.module'
-import { IntelligenceModule } from '../intelligence/intelligence.module'
+import { FinanceEngineModule } from '../finance-engine/finance-engine.module'
+import { NinaRouterModule } from '../nina-router/nina-router.module'
 import { ChatController } from './chat.controller'
 import { ChatService } from './chat.service'
+import { PendingActionsStore } from './pending-actions.store'
 
 @Module({
   imports: [
+    ConfigModule,
     AuthModule,
-    AIModule,
     ExpensesModule,
     MemoryModule,
-    InsightsModule,
     IncomeModule,
     GoalsModule,
-    IntelligenceModule,
+    FinanceEngineModule,
+    NinaRouterModule,
   ],
   controllers: [ChatController],
-  providers: [ChatService],
+  providers: [ChatService, PendingActionsStore],
 })
 export class ChatModule {}
