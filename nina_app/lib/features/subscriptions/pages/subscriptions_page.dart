@@ -162,7 +162,7 @@ class _SubCard extends StatelessWidget {
                 '${fmt.format(sub.monthlyAmount)}/mes',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: NinaColors.data,
+                      color: NinaColors.primaryLight,
                     ),
               ),
             ],

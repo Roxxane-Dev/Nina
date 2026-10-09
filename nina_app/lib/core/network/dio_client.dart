@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/app_constants.dart';
 
 class DioClient {
@@ -10,7 +10,6 @@ class DioClient {
   static DioClient get instance => _instance ??= DioClient._();
 
   late final Dio _dio;
-  final _storage = const FlutterSecureStorage();
 
   /// Call once in main() before running the app
   void init() {
@@ -24,7 +23,7 @@ class DioClient {
     );
 
     _dio.interceptors.addAll([
-      _AuthInterceptor(_storage),
+      AuthInterceptor(),
       if (kDebugMode) LogInterceptor(requestBody: true, responseBody: true),
     ]);
   }
@@ -32,10 +31,8 @@ class DioClient {
   Dio get dio => _dio;
 }
 
-class _AuthInterceptor extends Interceptor {
-  _AuthInterceptor(this._storage);
-  final FlutterSecureStorage _storage;
-
+/// Adds the current Supabase access token to every API request.
+class AuthInterceptor extends Interceptor {
   // Callback injected by AuthBloc to handle 401 globally
   static void Function()? onUnauthorized;
 
@@ -44,7 +41,8 @@ class _AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    final token = await _storage.read(key: AppConstants.jwtTokenKey);
+    // supabase_flutter refreshes this token before it expires.
+    final token = Supabase.instance.client.auth.currentSession?.accessToken;
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
     }

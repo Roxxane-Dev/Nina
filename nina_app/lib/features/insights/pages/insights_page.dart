@@ -146,7 +146,7 @@ class _InsightsPageState extends State<InsightsPage> {
                     spots: spots,
                     isCurved: true,
                     gradient: const LinearGradient(
-                      colors: [NinaColors.primary, NinaColors.data],
+                      colors: [NinaColors.primary, NinaColors.primaryLight],
                     ),
                     barWidth: 3,
                     isStrokeCapRound: true,
@@ -154,7 +154,7 @@ class _InsightsPageState extends State<InsightsPage> {
                       show: true,
                       getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
                         radius: 4,
-                        color: NinaColors.data,
+                        color: NinaColors.primaryLight,
                         strokeWidth: 0,
                       ),
                     ),

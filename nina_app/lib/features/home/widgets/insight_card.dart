@@ -15,7 +15,7 @@ class InsightCard extends StatelessWidget {
       case InsightSeverity.positive:
         return NinaColors.accent;
       case InsightSeverity.info:
-        return NinaColors.data;
+        return NinaColors.primaryLight;
     }
   }
 

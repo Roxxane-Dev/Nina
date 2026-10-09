@@ -1,13 +1,15 @@
 // Chat BLoC
+import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/network/dio_client.dart';
-import 'dart:convert';
 import 'chat_event.dart';
 import 'chat_state.dart';
 import 'chat_message.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
-  ChatBloc() : super(const ChatInitial()) {
+  ChatBloc({Dio? dio})
+      : _dio = dio ?? DioClient.instance.dio,
+        super(const ChatInitial()) {
     on<ChatMessageSent>(_onMessageSent);
     on<ChatConfirmationAccepted>(_onConfirmAccepted);
     on<ChatConfirmationRejected>(_onConfirmRejected);
@@ -17,7 +19,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     add(const _ChatGreet());
   }
 
-  final _dio = DioClient.instance.dio;
+  final Dio _dio;
 
   void _onGreet(_ChatGreet event, Emitter<ChatState> emit) {
     final greeting = ChatMessage(
@@ -52,25 +54,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/chat',
-        data: {
-          'message': event.message,
-          if (event.snapshotContext != null) 'context': event.snapshotContext,
-        },
+        data: {'message': event.message},
       );
 
-      var reply = response.data?['reply'] as String? ?? '';
-      
-      // If the LLM returned a JSON string that got doubly wrapped, parse it.
-      if (reply.trim().startsWith('{') && reply.contains('"reply"')) {
-        try {
-          final parsed = jsonDecode(reply);
-          if (parsed['reply'] != null) {
-            reply = parsed['reply'] as String;
-          }
-        } catch (_) {}
-      }
-
-      final isConfirmation = _detectsConfirmation(reply);
+      final data = response.data ?? const {};
+      final reply = data['reply'] as String? ?? '';
+      // The backend says explicitly when it is waiting for a Sí / No.
+      final isConfirmation = data['needsConfirmation'] == true;
 
       final messages =
           state.messages.where((m) => m.id != 'loading').toList();
@@ -117,22 +107,24 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     add(const ChatMessageSent(message: 'cancelar'));
   }
 
-  /// Heuristic: reply contains pending expenses to confirm
-  bool _detectsConfirmation(String reply) {
-    return reply.contains('¿Confirmas?') ||
-        reply.contains('confirmas') ||
-        reply.contains('registrar');
-  }
-
   String _friendlyError(Exception e) {
-    final msg = e.toString().toLowerCase();
-    if (msg.contains('connection') || msg.contains('timeout')) {
-      return 'No puedo conectarme ahora mismo 📡 Revisa tu internet';
+    if (e is DioException) {
+      final status = e.response?.statusCode;
+      if (status == 401) return 'Tu sesión expiró. Ingresa de nuevo.';
+      if (status != null && status >= 500) {
+        return 'Tuve un problema procesando tu mensaje. Inténtalo de nuevo.';
+      }
+      switch (e.type) {
+        case DioExceptionType.connectionError:
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.sendTimeout:
+          return 'No puedo conectarme con Nina ahora. Revisa tu conexión o que el servidor esté encendido.';
+        default:
+          break;
+      }
     }
-    if (msg.contains('401')) {
-      return 'Sesión expirada. Ingresa de nuevo 🔒';
-    }
-    return 'Algo salió mal en mi lado 🔍 Inténtalo de nuevo';
+    return 'Algo salió mal en mi lado. Inténtalo de nuevo.';
   }
 }
 
