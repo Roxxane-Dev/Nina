@@ -84,7 +84,8 @@ Mover dinero, dar asesoría de inversión/crédito/legal, inventar cifras.
 | --- | --- | --- |
 | Auth | `src/auth/` | `SupabaseAuthGuard` valida el JWT en cada request. |
 | Chat | `src/chat/` | Orquesta la conversación: registrar gasto/ingreso/meta con confirmación, o responder preguntas. |
-| Pending actions | `src/chat/pending-actions.store.ts` | Guarda la confirmación pendiente ("¿Confirmas?") en la tabla `chat_pending_actions`, 15 min de vida. |
+| Confirmaciones | `src/chat/confirmation-token.ts` | Firma (HMAC) el registro pendiente; la app lo reenvía con "sí". Ligado al usuario del JWT, expira en 15 min. |
+| Tarjeta de respuesta | `src/chat/answer-card.ts` | Tarjeta con cifras del motor, "Cómo lo calculé" y sugerencias por intención. |
 | Finance engine | `src/finance-engine/` | Carga transacciones del usuario y llama al motor puro. Expone `/v1/summary`, `/v1/score`, `/v1/forecast`. |
 | Nina Router | `src/nina-router/` | Redacción de PII, prompt con FACTS, validación de números, respuesta de plantilla si el LLM falla. |
 | AI | `src/ai/ai.service.ts`, `src/ai/providers/` | Llama al proveedor LLM disponible con fallback. El *mock* nunca da cifras. |
@@ -104,16 +105,22 @@ Usuario: "¿En qué gasto más?"
    ▼  POST /chat  (Authorization: Bearer <JWT de Supabase>)
 1. SupabaseAuthGuard valida el token → userId
    │
-2. ¿Hay una confirmación pendiente y el usuario dijo "sí"/"no"? → guardar o cancelar
+2. ¿El usuario dijo "sí"/"no"? → verifica el pendingToken firmado (HMAC, ligado al userId, 15 min)
+   │     que la app reenvía → guardar o cancelar. Sin estado en memoria ni tabla.
    │
 3. ¿Es un registro? ("gasté 20 en comida", "me pagaron 3000", "quiero ahorrar para…")
-   │     → parsear → guardar como pendiente → responder "¿Confirmas…?" (needsConfirmation: true)
+   │     → parsear → responder "¿Confirmas…?" con needsConfirmation: true + pendingToken
    │
 4. Si es una pregunta:
-   a. classifyIntent(mensaje)  → spending_breakdown | forecast | score | subscriptions | goal | whatif | other
-   b. FinanceEngineService.factsForIntent(userId, intent)
-        → lee transactions del usuario → motor puro → FactsPayload
-          { figures: {income, expenses, net…}, items: [{label, amount}], confidence, engineVersion }
+   a. FinanceEngineService.factsForQuestion(userId, mensaje) — todo determinista:
+        - intent: spending_summary | spending_breakdown | category_spend | income | available
+                  | recent | help | forecast | score | subscriptions | goal | whatif | other
+        - periodo: este mes (por defecto), "el mes pasado", "en julio"…
+          Si el mes actual está vacío, usa el último mes con datos y lo dice.
+        - categoría: "¿cuánto gasté en taxis?" → transport (categorías canónicas del motor)
+        → FactsPayload { figures: {income, expenses, available, prev_*, expenses_change,
+                         category_spend…}, items, comparisons, context: {periodLabel…} }
+      help, "sin movimientos" y "últimos movimientos" se responden sin LLM.
    c. NinaRouter.explainFacts:
         - la pregunta se redacta (DNI, teléfono, tarjeta, email) y se envuelve en <untrusted>
         - se manda al LLM SOLO el FactsPayload (sin ids ni transacciones crudas) + reglas
@@ -121,7 +128,10 @@ Usuario: "¿En qué gasto más?"
         - VALIDADOR: cada número del texto debe existir en FACTS (S/ 1,250.50 = 1250.5)
           · si falla → reintenta 1 vez → si vuelve a fallar → respuesta de plantilla con cifras del motor
    │
-5. Respuesta: { reply, needsConfirmation, followUps, grounded: { validationPassed, engineVersion } }
+5. Respuesta: { reply, needsConfirmation, pendingToken?, followUps,
+                card: { title, subtitle, highlight, rows, howCalculated, confidence },
+                grounded: { intent, validationPassed, usedLlm, engineVersion } }
+   La tarjeta se arma con las cifras del motor, nunca con el texto del LLM (FR-11).
 ```
 
 **Regla de oro:** el LLM **explica**, el motor **calcula**. Si el LLM escribe un número que no está en FACTS, la respuesta se descarta.
@@ -200,7 +210,7 @@ Nina/
 ├── src/                          API NestJS
 │   ├── auth/  chat/  nina-router/  finance-engine/  ai/  expenses/  income/  goals/
 │   ├── home/  realtime/  jobs/  memory/  insights/  intelligence/ …
-├── supabase/migrations/          001 … 014 (013 = RLS, 014 = confirmaciones del chat)
+├── supabase/migrations/          001 … 013 (013 = RLS). Ojo: la BD real no coincide 100% con 001–012 (ver EVALUACION)
 ├── supabase/tests/rls_check.sql  auditoría de RLS
 └── nina_app/                     Flutter (lib/core, lib/data, lib/domain, lib/features, lib/shared)
 ```

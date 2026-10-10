@@ -36,7 +36,7 @@ Leyenda: ✅ bien · ⚠️ mejorable · ❌ problema · 🔧 corregido en esta 
 | 10 | **El mock inventaba cifras** ("Llevas $320…") | Violaba la regla #1 | El mock nunca da números; el router responde con la plantilla del motor | `3ef5859` |
 | 11 | El chat no usaba el motor ni el validador (`NinaRouter` estaba desconectado) | Cifras de servicios paralelos, con `$` | Preguntas → `classifyIntent` → `FactsPayload` → `NinaRouter` → validador | `3ef5859` |
 | 12 | Validador ignoraba todo número entre 32 y 2099 y leía mal `S/ 1,250.50` | Cifras inventadas pasaban la validación | Parser es-PE + exclusión explícita de fechas/años; tests | `3ef5859` |
-| 13 | Confirmaciones pendientes en un `Map` en memoria | Se perdían al reiniciar; no escala | Tabla `chat_pending_actions` (migración 014), TTL 15 min | `3ef5859` |
+| 13 | Confirmaciones pendientes en un `Map` en memoria | Se perdían al reiniciar; no escala | Token de confirmación firmado (HMAC) que la app reenvía; sin tabla ni memoria (la migración 014 nunca se aplicó y se retiró) | `72e7726` |
 | 14 | Se mandaban ids de transacciones y memorias antiguas al LLM | Fuga innecesaria de datos | Prompt sin ids; el chat con datos no usa memorias | `3ef5859` |
 | 15 | **App: el JWT se guardaba una vez y nunca se refrescaba** | Tras ~1 hora todo daba 401 ("sesión expirada") aunque la app decía que estabas logueado | Dio y socket leen la sesión viva de `supabase_flutter` | `40a2e12` |
 | 16 | Registro con confirmación de email dejaba al usuario "logueado" sin sesión | Chat y Home fallaban | Mensaje "confirma tu correo" | `40a2e12` |
@@ -51,7 +51,7 @@ Prueba end-to-end hecha: router real contra OpenAI con datos sintéticos → res
 
 ## 2. Acciones que tienes que hacer tú (no las puedo hacer desde aquí)
 
-1. **Aplicar las migraciones 013 y 014** en el SQL editor de Supabase (proyecto DEV) y correr `supabase/tests/rls_check.sql`. Sin la 014 el chat no podrá guardar confirmaciones ("sí" responderá que no hay nada pendiente).
+1. **Aplicar la migración 013** en el SQL editor de Supabase (proyecto DEV) y correr `supabase/tests/rls_check.sql`. (La 014 se retiró: las confirmaciones del chat ya no necesitan tabla.)
 2. **Rotar claves:** durante la auditoría una búsqueda de secretos mostró por error fragmentos del `.env` en la salida de la herramienta. No se copiaron a ningún archivo ni commit, pero por higiene rota la **service role key** de Supabase y la **API key de Gemini**.
 3. **`.env`:** agrega `AI_PROVIDER=openai` (Gemini responde 402 "prepayment credits are depleted" y hoy se intenta primero en cada mensaje, sumando latencia). Si quieres Gemini, activa billing y pon `GEMINI_MODEL`. El `GEMINI_API_KEY` tiene un espacio antes del valor; el código ya lo tolera, pero conviene limpiarlo.
 4. **Repo público:** decide si debe ser privado mientras no haya RLS probado con dos usuarios.
@@ -70,6 +70,8 @@ Prueba end-to-end hecha: router real contra OpenAI con datos sintéticos → res
 | P4 | **Espacios compartidos** no implementados; el modelo actual (`members jsonb`, `space_id text`) no es seguro para compartir. | `supabase/migrations/010` | Diseño en `docs/ARCHITECTURE.md §5`. Requiere tu aprobación. |
 
 ### 🟠 Media
+
+> **Hallazgo 9 oct (tarde): la base de datos real no coincide con las migraciones.** No existen `incomes`, `expenses` ni `pending_expenses`; `categories` y `user_profiles` tienen otras columnas; `transactions` tiene `couple_id` y `receipt_url`. La BD se armó en parte desde el dashboard. Antes de los espacios compartidos hay que generar una migración "baseline" desde el esquema real (`supabase db dump --schema-only`) para que el repo vuelva a ser la fuente de verdad.
 
 | # | Problema | Propuesta |
 | --- | --- | --- |
@@ -104,7 +106,7 @@ Prueba end-to-end hecha: router real contra OpenAI con datos sintéticos → res
 | `userId` del JWT, todo guardado | ❌ gateway y `/home` | ✅ con test que lo vigila |
 | Al LLM solo facts redactados | ❌ chat usaba snapshot + memorias | ✅ en el chat; ⚠️ embeddings (M1) |
 | Sin estado por usuario en memoria | ❌ `pendingByUser` | ✅ |
-| Migraciones solo nuevas | ✅ | ✅ (013, 014) |
+| Migraciones solo nuevas | ✅ | ✅ (013) |
 
 ---
 
