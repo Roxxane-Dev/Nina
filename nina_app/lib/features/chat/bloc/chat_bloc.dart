@@ -128,8 +128,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     if (e is DioException) {
       final status = e.response?.statusCode;
       if (status == 401) return 'Tu sesión expiró. Ingresa de nuevo.';
+      final body = e.response?.data;
+      final serverMessage = body is Map ? body['message'] as String? : null;
+      if (status == 503) {
+        // Infrastructure (database) unavailable — the backend says what happened.
+        return serverMessage ??
+            'No pude consultar tus movimientos ahora. Inténtalo en unos minutos.';
+      }
       if (status != null && status >= 500) {
-        return 'Tuve un problema procesando tu mensaje. Inténtalo de nuevo.';
+        final requestId = body is Map ? body['requestId'] as String? : null;
+        final ref = requestId != null && requestId.length >= 8
+            ? ' (código ${requestId.substring(0, 8)})'
+            : '';
+        return 'Tuve un problema procesando tu mensaje. Inténtalo de nuevo.$ref';
       }
       switch (e.type) {
         case DioExceptionType.connectionError:

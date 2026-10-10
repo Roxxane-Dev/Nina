@@ -24,13 +24,15 @@ class FakeAuthService implements AuthService {
   Stream<sb.AuthState> get authStateChanges => changes.stream;
 
   @override
-  Future<sb.AuthResponse> signIn({required String email, required String password}) async {
+  Future<sb.AuthResponse> signIn(
+      {required String email, required String password}) async {
     session = true;
     return sb.AuthResponse();
   }
 
   @override
-  Future<sb.AuthResponse> signUp({required String email, required String password}) async {
+  Future<sb.AuthResponse> signUp(
+      {required String email, required String password}) async {
     if (signUpError != null) throw signUpError!;
     session = true;
     return sb.AuthResponse();
@@ -56,7 +58,8 @@ void main() {
 
   test('sign in → authenticated', () async {
     final bloc = AuthBloc(auth: FakeAuthService());
-    bloc.add(const AuthSignInRequested(email: 'ana@example.com', password: 'secret1'));
+    bloc.add(const AuthSignInRequested(
+        email: 'ana@example.com', password: 'secret1'));
     await expectLater(
       bloc.stream,
       emitsInOrder([isA<AuthLoading>(), isA<AuthAuthenticated>()]),
@@ -68,12 +71,14 @@ void main() {
     final bloc = AuthBloc(
       auth: FakeAuthService(signUpError: const EmailConfirmationRequired()),
     );
-    bloc.add(const AuthSignUpRequested(email: 'ana@example.com', password: 'secret1'));
+    bloc.add(const AuthSignUpRequested(
+        email: 'ana@example.com', password: 'secret1'));
     await expectLater(
       bloc.stream,
       emitsInOrder([
         isA<AuthLoading>(),
-        isA<AuthError>().having((s) => s.message, 'message', contains('correo')),
+        isA<AuthError>()
+            .having((s) => s.message, 'message', contains('correo')),
       ]),
     );
     await bloc.close();

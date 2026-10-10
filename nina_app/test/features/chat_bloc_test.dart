@@ -15,12 +15,15 @@ class FakeAdapter implements HttpClientAdapter {
   RequestOptions? lastRequest;
 
   @override
-  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? _, Future<void>? __) async {
+  Future<ResponseBody> fetch(
+      RequestOptions options, Stream<Uint8List>? _, Future<void>? __) async {
     lastRequest = options;
     return ResponseBody.fromString(
       jsonEncode(body),
       status,
-      headers: {Headers.contentTypeHeader: [Headers.jsonContentType]},
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType]
+      },
     );
   }
 
@@ -33,6 +36,7 @@ Dio fakeDio(FakeAdapter adapter) =>
 
 void main() {
   moreTests();
+  errorTests();
 
   test('shows Sí / No only when the backend asks for confirmation', () async {
     final adapter = FakeAdapter(200, {
@@ -52,7 +56,8 @@ void main() {
     await bloc.close();
   });
 
-  test('a grounded answer that mentions "registrar" is not a confirmation', () async {
+  test('a grounded answer that mentions "registrar" is not a confirmation',
+      () async {
     final adapter = FakeAdapter(200, {
       'reply': 'Te recomiendo registrar tus gastos de transporte.',
       'needsConfirmation': false,
@@ -67,11 +72,13 @@ void main() {
   });
 
   test('401 shows a session message', () async {
-    final bloc = ChatBloc(dio: fakeDio(FakeAdapter(401, {'message': 'Unauthorized'})));
+    final bloc =
+        ChatBloc(dio: fakeDio(FakeAdapter(401, {'message': 'Unauthorized'})));
     await bloc.stream.firstWhere((s) => s is ChatReady);
 
     bloc.add(const ChatMessageSent(message: 'hola'));
-    final err = await bloc.stream.firstWhere((s) => s is ChatError) as ChatError;
+    final err =
+        await bloc.stream.firstWhere((s) => s is ChatError) as ChatError;
     expect(err.error, contains('sesión'));
     await bloc.close();
   });
@@ -84,12 +91,15 @@ class QueueAdapter implements HttpClientAdapter {
   final sent = <dynamic>[];
 
   @override
-  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? _, Future<void>? __) async {
+  Future<ResponseBody> fetch(
+      RequestOptions options, Stream<Uint8List>? _, Future<void>? __) async {
     sent.add(options.data);
     return ResponseBody.fromString(
       jsonEncode(bodies.removeAt(0)),
       200,
-      headers: {Headers.contentTypeHeader: [Headers.jsonContentType]},
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType]
+      },
     );
   }
 
@@ -98,21 +108,33 @@ class QueueAdapter implements HttpClientAdapter {
 }
 
 void moreTests() {
-  test('sends the pending token back with "confirmar" (screenshot bug)', () async {
+  test('sends the pending token back with "confirmar" (screenshot bug)',
+      () async {
     final adapter = QueueAdapter([
-      {'reply': 'Voy a registrar un sueldo de S/ 4500.00. ¿Confirmas?', 'needsConfirmation': true, 'pendingToken': 'tok-1'},
-      {'reply': 'Ingreso registrado', 'needsConfirmation': false, 'followUps': ['¿Cuánto me queda?']},
+      {
+        'reply': 'Voy a registrar un sueldo de S/ 4500.00. ¿Confirmas?',
+        'needsConfirmation': true,
+        'pendingToken': 'tok-1'
+      },
+      {
+        'reply': 'Ingreso registrado',
+        'needsConfirmation': false,
+        'followUps': ['¿Cuánto me queda?']
+      },
       {'reply': 'ok', 'needsConfirmation': false},
     ]);
     final bloc = ChatBloc(dio: fakeDio2(adapter));
     await bloc.stream.firstWhere((s) => s is ChatReady);
 
-    bloc.add(const ChatMessageSent(message: 'quiero registrar mis ingresos 4500 soles'));
+    bloc.add(const ChatMessageSent(
+        message: 'quiero registrar mis ingresos 4500 soles'));
     await bloc.stream.firstWhere((s) => s is ChatReady);
     bloc.add(const ChatConfirmationAccepted());
-    final saved = await bloc.stream.firstWhere((s) => s is ChatReady && s.messages.last.text == 'Ingreso registrado');
+    final saved = await bloc.stream.firstWhere(
+        (s) => s is ChatReady && s.messages.last.text == 'Ingreso registrado');
     bloc.add(const ChatMessageSent(message: 'hola'));
-    await bloc.stream.firstWhere((s) => s is ChatReady && s.messages.last.text == 'ok');
+    await bloc.stream
+        .firstWhere((s) => s is ChatReady && s.messages.last.text == 'ok');
 
     expect(adapter.sent[1], {'message': 'confirmar', 'pendingToken': 'tok-1'});
     expect(adapter.sent[2], {'message': 'hola'}); // token cleared after use
@@ -129,7 +151,9 @@ void moreTests() {
           'title': 'Tu resumen',
           'subtitle': 'Agosto 2026 · 5 movimientos',
           'highlight': {'label': 'Gastos', 'amount': 1870.3, 'tone': 'neutral'},
-          'rows': [{'label': 'Hogar', 'amount': 1200}],
+          'rows': [
+            {'label': 'Hogar', 'amount': 1200}
+          ],
           'howCalculated': 'Sumé tus movimientos…',
           'confidence': 'medium',
         },
@@ -138,7 +162,8 @@ void moreTests() {
     final bloc = ChatBloc(dio: fakeDio2(adapter));
     await bloc.stream.firstWhere((s) => s is ChatReady);
     bloc.add(const ChatMessageSent(message: '¿cuánto gasté?'));
-    final ready = await bloc.stream.firstWhere((s) => s is ChatReady && s.messages.last.card != null);
+    final ready = await bloc.stream
+        .firstWhere((s) => s is ChatReady && s.messages.last.card != null);
     final card = ready.messages.last.card!;
     expect(card.highlight?.amount, 1870.3);
     expect(card.rows.single.label, 'Hogar');
@@ -148,3 +173,36 @@ void moreTests() {
 
 Dio fakeDio2(HttpClientAdapter adapter) =>
     Dio(BaseOptions(baseUrl: 'http://test'))..httpClientAdapter = adapter;
+
+void errorTests() {
+  test('503 shows the data-unavailable message from the backend', () async {
+    final bloc = ChatBloc(
+      dio: fakeDio(FakeAdapter(503, {
+        'code': 'DATA_UNAVAILABLE',
+        'message':
+            'No pude consultar tus movimientos ahora. Inténtalo en unos minutos.',
+        'requestId': 'abc12345-0000',
+      })),
+    );
+    await bloc.stream.firstWhere((s) => s is ChatReady);
+    bloc.add(const ChatMessageSent(message: '¿cuánto gasté?'));
+    final err =
+        await bloc.stream.firstWhere((s) => s is ChatError) as ChatError;
+    expect(err.error,
+        'No pude consultar tus movimientos ahora. Inténtalo en unos minutos.');
+    await bloc.close();
+  });
+
+  test('500 shows a reference code for support', () async {
+    final bloc = ChatBloc(
+      dio: fakeDio(FakeAdapter(500,
+          {'code': 'INTERNAL', 'message': 'x', 'requestId': 'abc12345-0000'})),
+    );
+    await bloc.stream.firstWhere((s) => s is ChatReady);
+    bloc.add(const ChatMessageSent(message: 'hola'));
+    final err =
+        await bloc.stream.firstWhere((s) => s is ChatError) as ChatError;
+    expect(err.error, contains('(código abc12345)'));
+    await bloc.close();
+  });
+}
