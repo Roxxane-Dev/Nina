@@ -10,7 +10,7 @@ export type RouterTask =
 
 export const ROUTER_RULES = {
   version: 1,
-  promptVersion: 'chat-v1',
+  promptVersion: 'chat-v2',
   tiers: {
     small: { providers: ['gemini', 'openai'], maxTokens: 400, temperature: 0 },
     standard: { providers: ['gemini', 'openai', 'claude'], maxTokens: 800, temperature: 0.2 },

@@ -46,10 +46,6 @@ export class IncomeService implements OnModuleInit {
     const parsed = parseIncome(message)
     if (!parsed) return null
 
-    this.logger.log(
-      `[INCOME DETECTED] userId=${userId} amount=${parsed.amount} category=${parsed.category}`,
-    )
-
     const text = this.buildConfirmationText(parsed)
     return { text, income: parsed }
   }
@@ -89,9 +85,7 @@ export class IncomeService implements OnModuleInit {
       throw txErr
     }
 
-    this.logger.log(
-      `[TRANSACTION CREATED] income userId=${userId} amount=${income.amount} category=${income.category}`,
-    )
+    this.logger.log('[TRANSACTION CREATED] income')
 
     return { result: `¡Ingreso de S/ ${income.amount.toFixed(2)} registrado! 💚` }
   }

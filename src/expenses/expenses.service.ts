@@ -8,12 +8,15 @@ import { ConfigService } from '@nestjs/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '../common/supabase.client'
 import { parseExpenses, type ParsedExpense } from './expense-parser'
+import { normalizeCategorySlug } from '../../packages/finance-engine/src'
 import type { UserInsights } from '../ai/ai.types'
 
 export type ResolvedExpense = {
   amount: number
   category_id: string
   category_name: string
+  /** Canonical engine slug ('food', 'transport', …) stored in transactions.category. */
+  category_slug?: string
   description: string
 }
 
@@ -85,6 +88,7 @@ export class ExpensesService implements OnModuleInit {
         amount: item.amount,
         category_id: category.id,
         category_name: category.name,
+        category_slug: normalizeCategorySlug(item.normalizedCategory),
         description: item.rawCategory,
       })
     }
@@ -101,7 +105,7 @@ export class ExpensesService implements OnModuleInit {
         user_id: userId,
         amount: e.amount,
         type: 'expense',
-        category: e.category_name.toLowerCase(),
+        category: e.category_slug ?? normalizeCategorySlug(e.category_name),
         description: e.description,
         date: today,
         source_table: 'manual',
@@ -114,7 +118,7 @@ export class ExpensesService implements OnModuleInit {
       throw insertError
     }
 
-    this.logger.log(`Inserted ${items.length} expense(s) for userId=${userId}`)
+    this.logger.log(`Inserted ${items.length} expense(s)`)
     return { result: 'Listo, gastos registrados ✅' }
   }
 

@@ -9,7 +9,6 @@ import { FinanceEngineModule } from '../finance-engine/finance-engine.module'
 import { NinaRouterModule } from '../nina-router/nina-router.module'
 import { ChatController } from './chat.controller'
 import { ChatService } from './chat.service'
-import { PendingActionsStore } from './pending-actions.store'
 
 @Module({
   imports: [
@@ -23,6 +22,6 @@ import { PendingActionsStore } from './pending-actions.store'
     NinaRouterModule,
   ],
   controllers: [ChatController],
-  providers: [ChatService, PendingActionsStore],
+  providers: [ChatService],
 })
 export class ChatModule {}

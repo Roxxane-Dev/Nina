@@ -1,67 +1,96 @@
+import { buildFactsPayload } from '../../packages/finance-engine/src'
+import { ANA_TXS } from '../../packages/finance-engine/src/__golden__/user-ana'
 import { ChatService } from './chat.service'
-import type { PendingAction } from './pending-actions.store'
 
-function setup(opts: { pending?: PendingAction | null; expenseConf?: unknown } = {}) {
-  let stored: PendingAction | null = opts.pending ?? null
-  const pending = {
-    get: jest.fn(async () => stored),
-    set: jest.fn(async (_u: string, a: PendingAction) => { stored = a }),
-    clear: jest.fn(async () => { stored = null }),
-  }
+const config = { get: (k: string) => (k === 'SUPABASE_SERVICE_ROLE_KEY' ? 'test-service-key' : undefined) }
+
+function setup(opts: { expenseConf?: unknown; incomeConf?: unknown; txs?: typeof ANA_TXS } = {}) {
   const expenses = {
     buildPendingFromMessage: jest.fn(async () => opts.expenseConf ?? null),
     insertExpenses: jest.fn(async () => ({ result: 'Gasto registrado' })),
     updateUserProfile: jest.fn(async () => null),
   }
-  const income = { buildPendingFromMessage: jest.fn(async () => null), insertIncome: jest.fn() }
+  const income = {
+    buildPendingFromMessage: jest.fn(async () => opts.incomeConf ?? null),
+    insertIncome: jest.fn(async () => ({ result: 'Ingreso registrado' })),
+  }
   const goals = { buildPendingFromMessage: jest.fn(async () => null), insertGoal: jest.fn() }
   const memory = { storeExchange: jest.fn(async () => undefined) }
-  const facts = { intent: 'spending_breakdown', figures: { expenses: 100 }, engineVersion: 'v-test' }
-  const engine = { factsForIntent: jest.fn(async () => facts) }
+  const asOf = new Date(Date.UTC(2026, 9, 9))
+  const engine = {
+    factsForQuestion: jest.fn(async (_u: string, q: string) => {
+      const intent = /últimos/.test(q) ? 'recent' : /puedes/.test(q) ? 'help' : 'spending_summary'
+      const facts = buildFactsPayload({ intent: intent as never, txs: opts.txs ?? ANA_TXS, asOf })
+      return { intent, facts, recent: intent === 'recent' ? [{ date: '2026-08-22', category: 'Comida', amount: 20, isIncome: false }] : undefined }
+    }),
+  }
   const router = {
     explainFacts: jest.fn(async () => ({
-      answer: { message: 'Gastaste S/ 100.00.', figuresUsed: ['expenses'], followUps: ['¿Y el mes pasado?'] },
+      answer: { message: 'En agosto 2026 gastaste S/ 1,870.30.', recommendation: 'Revisa Hogar.', figuresUsed: [], followUps: ['¿Y julio?'] },
       validationPassed: true,
       usedLlm: true,
     })),
   }
   const service = new ChatService(
     expenses as never, memory as never, income as never, goals as never,
-    engine as never, router as never, pending as never,
+    engine as never, router as never, config as never,
   )
-  return { service, pending, expenses, engine, router, getStored: () => stored }
+  return { service, expenses, income, router }
 }
 
 describe('ChatService', () => {
-  it('asks for confirmation and persists the pending expense', async () => {
-    const items = [{ amount: 20, category_name: 'Comida' }]
-    const t = setup({ expenseConf: { text: '¿Confirmas S/ 20 en Comida?', items } })
-    const r = await t.service.handleMessage('u1', 'gasté 20 en comida')
-    expect(r.needsConfirmation).toBe(true)
-    expect(t.getStored()).toEqual({ kind: 'expense', payload: { items } })
+  it('income → confirm with the token saves it (the bug in the screenshot)', async () => {
+    const parsed = { amount: 4500, category: 'salary', description: 'sueldo' }
+    const t = setup({ incomeConf: { text: 'Voy a registrar un sueldo de S/ 4500.00.\n\n¿Confirmas?', income: parsed } })
+
+    const ask = await t.service.handleMessage('u1', 'quiero registrar mis ingresos 4500 soles este mes')
+    expect(ask.needsConfirmation).toBe(true)
+    expect(ask.pendingToken).toEqual(expect.any(String))
+
+    const done = await t.service.handleMessage('u1', 'confirmar', ask.pendingToken)
+    expect(t.income.insertIncome).toHaveBeenCalledWith(parsed, 'u1')
+    expect(done.reply).toBe('Ingreso registrado')
   })
 
-  it('saves the pending expense on confirm and clears it', async () => {
-    const t = setup({ pending: { kind: 'expense', payload: { items: [{ amount: 20 }] } } })
-    const r = await t.service.handleMessage('u1', 'sí')
-    expect(t.expenses.insertExpenses).toHaveBeenCalledWith([{ amount: 20 }], 'u1')
-    expect(r.reply).toBe('Gasto registrado')
-    expect(t.getStored()).toBeNull()
+  it('a token from another user is rejected', async () => {
+    const t = setup({ incomeConf: { text: '¿Confirmas?', income: { amount: 1 } } })
+    const ask = await t.service.handleMessage('u1', 'me pagaron 1')
+    const r = await t.service.handleMessage('u2', 'sí', ask.pendingToken)
+    expect(t.income.insertIncome).not.toHaveBeenCalled()
+    expect(r.reply).toContain('No encontré un registro pendiente')
   })
 
-  it('cancels without saving', async () => {
-    const t = setup({ pending: { kind: 'expense', payload: { items: [] } } })
-    await t.service.handleMessage('u1', 'cancelar')
+  it('cancel never saves', async () => {
+    const t = setup({ expenseConf: { text: '¿Confirmas?', items: [{ amount: 20 }] } })
+    const ask = await t.service.handleMessage('u1', 'gasté 20 en comida')
+    await t.service.handleMessage('u1', 'no', ask.pendingToken)
     expect(t.expenses.insertExpenses).not.toHaveBeenCalled()
-    expect(t.getStored()).toBeNull()
   })
 
-  it('answers questions from engine facts through the router', async () => {
+  it('answers spending with LLM text plus an engine-built card', async () => {
     const t = setup()
-    const r = await t.service.handleMessage('u1', '¿En qué gasto más?')
-    expect(t.engine.factsForIntent).toHaveBeenCalledWith('u1', 'spending_breakdown')
-    expect(t.router.explainFacts).toHaveBeenCalled()
-    expect(r.reply).toBe('Gastaste S/ 100.00.')
-    expect(r.grounded).toEqual(expect.objectContaining({ validationPassed: true, engineVersion: 'v-test' }))
+    const r = await t.service.handleMessage('u1', '¿cuánto gasté?')
+    expect(r.reply.startsWith('En octubre 2026 aún no tienes movimientos; te muestro agosto 2026.')).toBe(true)
+    expect(r.reply).toContain('S/ 1,870.30')
+    expect(r.reply).toContain('💡 Revisa Hogar.')
+    expect(r.card?.title).toBe('Tu resumen')
+    expect(r.card?.highlight?.amount).toBe(1870.3)
+    expect(r.card?.howCalculated).toContain('octubre 2026')
+    expect(r.followUps[0]).toBe('¿Y julio?')
+  })
+
+  it('recent movements skip the LLM', async () => {
+    const t = setup()
+    const r = await t.service.handleMessage('u1', 'muéstrame mis últimos gastos')
+    expect(t.router.explainFacts).not.toHaveBeenCalled()
+    expect(r.card?.rows).toHaveLength(1)
+  })
+
+  it('help and empty history answer without the LLM', async () => {
+    const help = setup()
+    expect((await help.service.handleMessage('u1', '¿qué puedes hacer?')).reply).toContain('agente financiero')
+    const empty = setup({ txs: [] })
+    expect((await empty.service.handleMessage('u1', '¿cuánto gasté?')).reply).toContain('Aún no tienes movimientos')
+    expect(empty.router.explainFacts).not.toHaveBeenCalled()
   })
 })

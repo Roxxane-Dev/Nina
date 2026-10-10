@@ -1,4 +1,5 @@
 import type { FactsPayload } from '../../packages/finance-engine/src'
+import { formatSoles } from '../common/money'
 
 export type LlmAnswer = {
   message: string
@@ -20,7 +21,7 @@ function allowedNumbers(facts: FactsPayload): number[] {
   const nums: number[] = Object.values(facts.figures)
   for (const c of facts.comparisons ?? []) nums.push(c.current, c.baseline)
   for (const i of facts.items ?? []) nums.push(i.amount)
-  nums.push(facts.txnCount)
+  nums.push(facts.txnCount, facts.items?.length ?? 0)
   return nums.map((n) => Number(n))
 }
 
@@ -113,16 +114,37 @@ export function validateAnswer(
   return { ok: true }
 }
 
+/**
+ * Engine-only answer used when no LLM is available or validation fails twice.
+ * Every number comes straight from FACTS.
+ */
 export function templatedAnswer(facts: FactsPayload): LlmAnswer {
-  const exp = facts.figures.expenses
-  const inc = facts.figures.income
-  const message =
-    facts.confidence === 'insufficient'
-      ? 'Aún no tengo datos suficientes para responder con seguridad. Puedo mostrarte tus gastos de este mes.'
-      : `Este periodo registras S/ ${Number(exp ?? 0).toFixed(2)} en gastos y S/ ${Number(inc ?? 0).toFixed(2)} en ingresos.`
-  return {
-    message,
-    figuresUsed: Object.keys(facts.figures),
-    followUps: ['¿En qué gasto más?', '¿Cuánto me sobrará este mes?'],
+  const f = facts.figures
+  const ctx = facts.context
+  const period = ctx?.periodLabel ? `en ${ctx.periodLabel}` : 'este periodo'
+  const prefix = ctx?.requestedPeriodLabel
+    ? `En ${ctx.requestedPeriodLabel} aún no tienes movimientos; te muestro ${ctx.periodLabel}. `
+    : ''
+  const top = facts.items?.[0]
+  let message: string
+
+  if (ctx && !ctx.hasHistory) {
+    message = 'Aún no tienes movimientos registrados. Cuéntame uno, por ejemplo: "gasté 25 en taxi".'
+  } else if (facts.intent === 'income') {
+    message = `${prefix}Tus ingresos ${period} suman ${formatSoles(f.income)}.`
+  } else if (facts.intent === 'available') {
+    message = `${prefix}${cap(period)} ingresaste ${formatSoles(f.income)} y gastaste ${formatSoles(f.expenses)}: te quedan ${formatSoles(f.available)}.`
+  } else if (facts.intent === 'category_spend' && ctx?.categoryLabel) {
+    message = `${prefix}${cap(period)} gastaste ${formatSoles(f.category_spend ?? 0)} en ${ctx.categoryLabel}; el mes anterior fueron ${formatSoles(f.category_prev ?? 0)}.`
+  } else {
+    message =
+      `${prefix}${cap(period)} gastaste ${formatSoles(f.expenses)} e ingresaste ${formatSoles(f.income)}.` +
+      (top ? ` Tu mayor gasto fue ${top.label} con ${formatSoles(top.amount)}.` : '')
   }
+
+  return { message, figuresUsed: Object.keys(f), followUps: [] }
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }

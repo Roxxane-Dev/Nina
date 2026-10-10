@@ -13,6 +13,8 @@ import { ChatService, type ChatReply } from './chat.service'
 
 type ChatBody = {
   message: string
+  /** Signed pending registration returned by the previous reply. */
+  pendingToken?: string
 }
 
 const MAX_MESSAGE_LENGTH = 1000
@@ -38,6 +40,7 @@ export class ChatController {
     if (message.length > MAX_MESSAGE_LENGTH) {
       throw new BadRequestException(`message must be at most ${MAX_MESSAGE_LENGTH} characters`)
     }
-    return this.chat.handleMessage(req.user.id, message)
+    const pendingToken = typeof body.pendingToken === 'string' ? body.pendingToken : undefined
+    return this.chat.handleMessage(req.user.id, message, pendingToken)
   }
 }

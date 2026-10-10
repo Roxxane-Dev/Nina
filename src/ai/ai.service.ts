@@ -28,6 +28,16 @@ export type ProcessMessageOptions = {
   useMemory?: boolean
 }
 
+const PROVIDER_COOLDOWN_MS = 10 * 60 * 1000
+
+/** 401/402/403/404: invalid key, no credit, no access or retired model. */
+export function isPermanentProviderError(err: unknown): boolean {
+  const e = err as { status?: number; message?: string }
+  if (typeof e?.status === "number") return [401, 402, 403, 404].includes(e.status)
+  // Gemini SDK puts the status in the message: "[402 Payment Required]".
+  return /\[(401|402|403|404)[ \]]/.test(String(e?.message ?? ''))
+}
+
 const PROVIDER_KEYS: Record<Exclude<AIProviderName, 'mock'>, string> = {
   claude: 'ANTHROPIC_API_KEY',
   gemini: 'GEMINI_API_KEY',
@@ -41,6 +51,8 @@ const PROVIDER_KEYS: Record<Exclude<AIProviderName, 'mock'>, string> = {
 @Injectable()
 export class AIService {
   private readonly logger = new Logger(AIService.name)
+  /** Provider health (not user state): providers with permanent errors are skipped for a while. */
+  private readonly disabledUntil = new Map<AIProviderName, number>()
 
   constructor(
     private readonly config: ConfigService,
@@ -101,7 +113,10 @@ export class AIService {
   }
 
   private async runWithFallback(input: AIInput, start: AIProviderName): Promise<string> {
-    const chain = this.fallbackChain(start).filter((p) => this.isConfigured(p))
+    const now = Date.now()
+    const chain = this.fallbackChain(start).filter(
+      (p) => this.isConfigured(p) && (this.disabledUntil.get(p) ?? 0) <= now,
+    )
     let lastError: unknown
 
     for (const name of chain) {
@@ -110,7 +125,13 @@ export class AIService {
       } catch (err) {
         lastError = err
         const message = err instanceof Error ? err.message : String(err)
-        this.logger.warn(`Provider ${name} failed (${message}); trying next in chain`)
+        if (name !== 'mock' && isPermanentProviderError(err)) {
+          // Bad key, no credit or retired model: retrying every message only adds latency.
+          this.disabledUntil.set(name, Date.now() + PROVIDER_COOLDOWN_MS)
+          this.logger.warn(`Provider ${name} disabled for 10 min (${message.slice(0, 120)})`)
+        } else {
+          this.logger.warn(`Provider ${name} failed (${message.slice(0, 120)}); trying next in chain`)
+        }
       }
     }
 

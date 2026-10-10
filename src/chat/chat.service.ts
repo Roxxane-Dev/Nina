@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { classifyIntent } from '../../packages/finance-engine/src'
+import { ConfigService } from '@nestjs/config'
 import { MemoryService } from '../memory/memory.service'
 import {
   ExpensesService,
@@ -12,13 +12,29 @@ import { FinanceEngineService } from '../finance-engine/finance-engine.service'
 import { NinaRouterService } from '../nina-router/nina-router.service'
 import type { ParsedIncome } from '../expenses/income-parser'
 import type { ParsedGoal } from '../goals/goal.service'
-import { PendingActionsStore } from './pending-actions.store'
+import {
+  ConfirmationTokens,
+  confirmationSecret,
+  type PendingAction,
+  type PendingKind,
+} from './confirmation-token'
+import {
+  HELP_REPLY,
+  NO_DATA_REPLY,
+  buildCard,
+  suggestedFollowUps,
+  type AnswerCard,
+} from './answer-card'
 
 export type ChatReply = {
   reply: string
   /** True when Nina asks the user to confirm a registration (show Sí / No). */
   needsConfirmation: boolean
+  /** Signed pending registration; the app sends it back with the user's "sí". */
+  pendingToken?: string
   followUps: string[]
+  /** Result card with the exact engine figures (FR-11). */
+  card?: AnswerCard
   /** Present for answers built from engine facts. */
   grounded?: { intent: string; validationPassed: boolean; usedLlm: boolean; engineVersion: string }
 }
@@ -30,19 +46,21 @@ const reply = (text: string, extra: Partial<ChatReply> = {}): ChatReply => ({
   ...extra,
 })
 
+const AFTER_SAVE_FOLLOW_UPS = ['¿Cuánto me queda?', '¿Cuánto gasté este mes?', '¿En qué gasto más?']
+
 /**
  * ChatService — Nina's conversational pipeline.
  *
- *  1. Pending confirmation? → confirm (save) or cancel.
- *  2. Registration message (expense / income / goal)? → parse and ask to confirm.
- *  3. Anything else → grounded answer: the finance engine computes the facts,
- *     NinaRouter asks the LLM to explain them and validates every number.
- *
- * Pending confirmations are persisted (chat_pending_actions), not kept in memory.
+ *  1. "sí" / "no" with a signed pending registration from the app → save or cancel.
+ *  2. Registration message (expense / income / goal) → parse and ask to confirm.
+ *  3. Question → the engine detects intent, period and category and computes the
+ *     facts; NinaRouter asks the LLM to explain them and validates every number.
+ *     The result card is built from the facts, never from LLM text.
  */
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name)
+  private readonly tokens: ConfirmationTokens
 
   constructor(
     private readonly expensesService: ExpensesService,
@@ -51,95 +69,129 @@ export class ChatService {
     private readonly goalService: GoalService,
     private readonly financeEngine: FinanceEngineService,
     private readonly router: NinaRouterService,
-    private readonly pending: PendingActionsStore,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.tokens = new ConfirmationTokens(
+      confirmationSecret({
+        CHAT_CONFIRM_SECRET: config.get<string>('CHAT_CONFIRM_SECRET'),
+        SUPABASE_SERVICE_ROLE_KEY: config.get<string>('SUPABASE_SERVICE_ROLE_KEY'),
+      }),
+    )
+  }
 
-  async handleMessage(userId: string, message: string): Promise<ChatReply> {
-    const result = await this.route(userId, message)
+  async handleMessage(userId: string, message: string, pendingToken?: string): Promise<ChatReply> {
+    const result = await this.route(userId, message, pendingToken)
     this.memoryService
       .storeExchange(userId, message, result.reply)
       .catch((e) => this.logger.warn(`storeExchange failed: ${e instanceof Error ? e.message : e}`))
     return result
   }
 
-  private async route(userId: string, message: string): Promise<ChatReply> {
+  private async route(userId: string, message: string, pendingToken?: string): Promise<ChatReply> {
     // ── 1. Pending confirmation ───────────────────────────────────────────────
-    const pending = await this.pending.get(userId)
     const confirmIntent = detectConfirmIntent(message)
-
-    if (pending) {
-      if (confirmIntent === 'confirm') {
-        await this.pending.clear(userId)
-        return reply(await this.commit(userId, pending.kind, pending.payload))
+    if (confirmIntent) {
+      const pending = this.tokens.verify(pendingToken, userId)
+      if (!pending) {
+        return reply(
+          confirmIntent === 'confirm'
+            ? 'No encontré un registro pendiente (pudo haber expirado). Cuéntamelo de nuevo, por ejemplo: "gasté 25 en taxi".'
+            : 'Listo, no registré nada. ¿En qué más te ayudo?',
+          { followUps: suggestedFollowUps('help') },
+        )
       }
       if (confirmIntent === 'cancel') {
-        await this.pending.clear(userId)
         return reply('Entendido, cancelé el registro. ¿Hay algo más en lo que te pueda ayudar?')
       }
-      // Any other message drops the stale confirmation and is handled normally.
-      await this.pending.clear(userId)
-    } else if (confirmIntent === 'confirm' || confirmIntent === 'cancel') {
-      return reply('No tengo ningún registro pendiente. ¿Qué gasto o ingreso quieres anotar?')
+      return reply(await this.commit(userId, pending), { followUps: AFTER_SAVE_FOLLOW_UPS })
     }
 
     // ── 2. Registrations ──────────────────────────────────────────────────────
     const incomeConf = await this.incomeService.buildPendingFromMessage(message, userId)
-    if (incomeConf) {
-      await this.pending.set(userId, { kind: 'income', payload: { income: incomeConf.income } })
-      return reply(incomeConf.text, { needsConfirmation: true })
-    }
+    if (incomeConf) return this.askToConfirm(userId, incomeConf.text, 'income', { income: incomeConf.income })
 
     const goalConf = await this.goalService.buildPendingFromMessage(message, userId)
-    if (goalConf) {
-      await this.pending.set(userId, { kind: 'goal', payload: { goal: goalConf.goal } })
-      return reply(goalConf.text, { needsConfirmation: true })
-    }
+    if (goalConf) return this.askToConfirm(userId, goalConf.text, 'goal', { goal: goalConf.goal })
 
     const expenseConf = await this.expensesService.buildPendingFromMessage(message, userId)
-    if (expenseConf) {
-      await this.pending.set(userId, { kind: 'expense', payload: { items: expenseConf.items } })
-      return reply(expenseConf.text, { needsConfirmation: true })
-    }
+    if (expenseConf) return this.askToConfirm(userId, expenseConf.text, 'expense', { items: expenseConf.items })
 
     // ── 3. Grounded answer ────────────────────────────────────────────────────
-    const intent = classifyIntent(message)
-    const facts = await this.financeEngine.factsForIntent(userId, intent)
+    const { intent, facts, recent } = await this.financeEngine.factsForQuestion(userId, message)
+
+    if (intent === 'help') {
+      return reply(HELP_REPLY, { followUps: suggestedFollowUps('help') })
+    }
+    if (!facts.context?.hasHistory) {
+      return reply(NO_DATA_REPLY, { followUps: suggestedFollowUps('help') })
+    }
+
+    const card = buildCard(facts, recent)
+    const grounded = { intent, engineVersion: facts.engineVersion }
+
+    if (intent === 'recent') {
+      // A list needs no explanation: no LLM call.
+      return reply('Estos son tus últimos movimientos registrados.', {
+        card,
+        followUps: suggestedFollowUps(intent),
+        grounded: { ...grounded, validationPassed: true, usedLlm: false },
+      })
+    }
+
     const routed = await this.router.explainFacts(userId, message, facts)
     const { answer } = routed
-    const text = answer.recommendation
-      ? `${answer.message}\n\n${answer.recommendation}`
-      : answer.message
+    let text = answer.recommendation ? `${answer.message}\n\n💡 ${answer.recommendation}` : answer.message
+    // Said deterministically: the requested month was empty, so we show the latest month with data.
+    const ctx = facts.context
+    if (routed.usedLlm && ctx?.requestedPeriodLabel) {
+      text = `En ${ctx.requestedPeriodLabel} aún no tienes movimientos; te muestro ${ctx.periodLabel}.\n\n${text}`
+    }
 
     return reply(text, {
-      followUps: answer.followUps,
-      grounded: {
-        intent,
-        validationPassed: routed.validationPassed,
-        usedLlm: routed.usedLlm,
-        engineVersion: facts.engineVersion,
-      },
+      card,
+      followUps: mergeFollowUps(answer.followUps, suggestedFollowUps(intent)),
+      grounded: { ...grounded, validationPassed: routed.validationPassed, usedLlm: routed.usedLlm },
     })
   }
 
-  private async commit(
+  private askToConfirm(
     userId: string,
-    kind: 'expense' | 'income' | 'goal',
+    text: string,
+    kind: PendingKind,
     payload: Record<string, unknown>,
-  ): Promise<string> {
+  ): ChatReply {
+    return reply(text, {
+      needsConfirmation: true,
+      pendingToken: this.tokens.sign(userId, { kind, payload }),
+    })
+  }
+
+  private async commit(userId: string, pending: PendingAction): Promise<string> {
+    const { kind, payload } = pending
     if (kind === 'income') {
       return (await this.incomeService.insertIncome(payload.income as ParsedIncome, userId)).result
     }
     if (kind === 'goal') {
       return (await this.goalService.insertGoal(payload.goal as ParsedGoal, userId)).result
     }
-    const { result } = await this.expensesService.insertExpenses(
-      payload.items as ResolvedExpense[],
-      userId,
-    )
+    const { result } = await this.expensesService.insertExpenses(payload.items as ResolvedExpense[], userId)
     // Keeps user_profiles fresh for the nightly job's user list.
     this.expensesService
       .updateUserProfile(userId)
       .catch((e) => this.logger.warn(`updateUserProfile failed: ${e instanceof Error ? e.message : e}`))
     return result
   }
+}
+
+function mergeFollowUps(fromLlm: string[], defaults: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const s of [...fromLlm, ...defaults]) {
+    const t = s.trim()
+    if (t && t.length <= 60 && !seen.has(t.toLowerCase())) {
+      seen.add(t.toLowerCase())
+      out.push(t)
+    }
+  }
+  return out.slice(0, 3)
 }

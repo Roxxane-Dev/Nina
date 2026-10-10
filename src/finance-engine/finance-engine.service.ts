@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   buildFactsPayload,
+  classifyIntent,
   computeForecast,
+  detectCategoryInText,
+  recentTransactions,
+  resolvePeriod,
   computeHealthScore,
   detectAnomalies,
   detectRecurrence,
@@ -69,6 +73,30 @@ export class FinanceEngineService implements OnModuleInit {
       forecast: bundle.forecast,
       recurring: bundle.recurring,
     })
+  }
+
+  /**
+   * Turns a chat question into engine facts: intent, period ('el mes pasado',
+   * 'en julio') and category are detected deterministically here.
+   */
+  async factsForQuestion(userId: string, question: string, asOf = new Date()) {
+    const period = resolvePeriod(question, asOf)
+    const classified = classifyIntent(question)
+    // "¿y el mes pasado?" / "¿y en julio?": a bare period means a spending summary.
+    const intent = classified === 'other' && period.explicit ? 'spending_summary' : classified
+    const bundle = await this.computeBundle(userId, asOf)
+    const facts = buildFactsPayload({
+      intent,
+      txs: bundle.txs,
+      asOf,
+      period,
+      category: intent === 'category_spend' ? detectCategoryInText(question) : null,
+      score: bundle.score,
+      forecast: bundle.forecast,
+      recurring: bundle.recurring,
+    })
+    const recent = intent === 'recent' ? recentTransactions(bundle.txs, 8) : undefined
+    return { intent, facts, recent }
   }
 
   getSnapshot(userId: string) {
