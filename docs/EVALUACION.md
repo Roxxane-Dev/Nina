@@ -49,6 +49,12 @@ Prueba end-to-end hecha: router real contra OpenAI con datos sintéticos → res
 
 ---
 
+### Incidente 10 oct — "Tuve un problema procesando tu mensaje"
+- **Causa raíz:** `transactions.date` es `timestamptz` en la BD real; `map-transactions.ts` le concatenaba `T00:00:00.000Z` → 100% de fechas `Invalid Date` → `RangeError` en `buildFactsPayload` → HTTP 500. Además score/forecast/recurrencias/anomalías calculaban sobre fechas NaN sin avisar.
+- **Antes → después en DEV:** fechas inválidas 4/4 → 0/4; score 45 ("En construcción") → 75 ("Estable"); forecast "insufficient" → "medium"; ingresos del mes S/ 0 → S/ 4,500; 3 "tendencias" falsas → 0 (bug aparte en `detectAnomalies`: `0 ≥ 1.2 × 0`).
+- **Arreglos:** `timezone.ts` (convención única America/Lima), mapeo tolerante y filas inválidas descartadas, error de BD = 503 (ya no "sin datos"), `periods.ts` (hoy/semana/mes/año), handlers por intención, mensajes diferenciados, log `chat_turn`, fecha de registro en día de Lima (1 fila de DEV corregida: 10-10 → 09-10).
+- **Prevención:** `chat.regression.spec.ts` usa el formato real de Supabase; se comprobó que falla (4 tests) con el código anterior.
+
 ## 2. Acciones que tienes que hacer tú (no las puedo hacer desde aquí)
 
 1. **Aplicar la migración 013** en el SQL editor de Supabase (proyecto DEV) y correr `supabase/tests/rls_check.sql`. (La 014 se retiró: las confirmaciones del chat ya no necesitan tabla.)

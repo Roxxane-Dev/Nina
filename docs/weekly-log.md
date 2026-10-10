@@ -18,8 +18,16 @@
 - Proveedores LLM con error permanente (Gemini sin crédito) se saltan 10 min: menos latencia.
 - Pruebas: 82 API, 12 app; e2e con LLM real y datos sintéticos: todas las respuestas validadas.
 
+### Hecho (10 oct) — incidente del chat ("Tuve un problema…")
+- Causa raíz: fechas `timestamptz` mal parseadas → `Invalid Date` → 500. Arreglada con `timezone.ts` (America/Lima) y mapeo robusto; score/forecast verificados antes/después en DEV.
+- Motor v1.2: rangos en español (hoy, semana, mes, último mes, año), saldo histórico, bug de tendencias falsas.
+- Chat reestructurado: un handler por intención, errores diferenciados (no_data / unrecognized / 503 / 500 con código), logs `chat_turn` sin datos sensibles.
+- Registro usa el día de Lima; 1 fila de DEV corregida con tu autorización.
+- Migración 015 (reconciliar `transactions.date`) escrita, **sin aplicar**.
+- Tests: 144 API (incluye regresión con formato real), 14 app.
+
 ### Pendiente
-- Aplicar migración 013 en Supabase DEV y correr `supabase/tests/rls_check.sql`.
+- Aplicar migraciones 013 y 015 en Supabase DEV y correr `supabase/tests/rls_check.sql`.
 - Rotar service role key y Gemini key; `AI_PROVIDER=openai` en `.env`.
 - Migración baseline desde el esquema real de Supabase (la BD no coincide con 001–012).
 - Probar signup/login end-to-end en dispositivo/emulador.

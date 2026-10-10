@@ -83,7 +83,7 @@ Mover dinero, dar asesoría de inversión/crédito/legal, inventar cifras.
 | Módulo | Archivos clave | Rol |
 | --- | --- | --- |
 | Auth | `src/auth/` | `SupabaseAuthGuard` valida el JWT en cada request. |
-| Chat | `src/chat/` | Orquesta la conversación: registrar gasto/ingreso/meta con confirmación, o responder preguntas. |
+| Chat | `src/chat/` | `ChatService` orquesta; un handler por intención en `src/chat/intents/`; `ChatTelemetry` y `ChatExceptionFilter`. |
 | Confirmaciones | `src/chat/confirmation-token.ts` | Firma (HMAC) el registro pendiente; la app lo reenvía con "sí". Ligado al usuario del JWT, expira en 15 min. |
 | Tarjeta de respuesta | `src/chat/answer-card.ts` | Tarjeta con cifras del motor, "Cómo lo calculé" y sugerencias por intención. |
 | Finance engine | `src/finance-engine/` | Carga transacciones del usuario y llama al motor puro. Expone `/v1/summary`, `/v1/score`, `/v1/forecast`. |
@@ -100,46 +100,51 @@ Hay muchos módulos más en `src/ai/` (behavioral, emotion, streaks, prevention,
 ## 4. Cómo funciona el chat de Nina (el flujo más importante)
 
 ```
-Usuario: "¿En qué gasto más?"
+Usuario: "dime cuánto he gastado en el año"
    │
-   ▼  POST /chat  (Authorization: Bearer <JWT de Supabase>)
+   ▼  POST /chat  (Authorization: Bearer <JWT>)  → requestId nuevo
 1. SupabaseAuthGuard valida el token → userId
-   │
-2. ¿El usuario dijo "sí"/"no"? → verifica el pendingToken firmado (HMAC, ligado al userId, 15 min)
-   │     que la app reenvía → guardar o cancelar. Sin estado en memoria ni tabla.
-   │
-3. ¿Es un registro? ("gasté 20 en comida", "me pagaron 3000", "quiero ahorrar para…")
-   │     → parsear → responder "¿Confirmas…?" con needsConfirmation: true + pendingToken
-   │
-4. Si es una pregunta:
-   a. FinanceEngineService.factsForQuestion(userId, mensaje) — todo determinista:
-        - intent: spending_summary | spending_breakdown | category_spend | income | available
-                  | recent | help | forecast | score | subscriptions | goal | whatif | other
-        - periodo: este mes (por defecto), "el mes pasado", "en julio"…
-          Si el mes actual está vacío, usa el último mes con datos y lo dice.
-        - categoría: "¿cuánto gasté en taxis?" → transport (categorías canónicas del motor)
-        → FactsPayload { figures: {income, expenses, available, prev_*, expenses_change,
-                         category_spend…}, items, comparisons, context: {periodLabel…} }
-      help, "sin movimientos" y "últimos movimientos" se responden sin LLM.
-   c. NinaRouter.explainFacts:
-        - la pregunta se redacta (DNI, teléfono, tarjeta, email) y se envuelve en <untrusted>
-        - se manda al LLM SOLO el FactsPayload (sin ids ni transacciones crudas) + reglas
-        - el LLM responde JSON { message, recommendation, follow_ups }
-        - VALIDADOR: cada número del texto debe existir en FACTS (S/ 1,250.50 = 1250.5)
-          · si falla → reintenta 1 vez → si vuelve a fallar → respuesta de plantilla con cifras del motor
-   │
-5. Respuesta: { reply, needsConfirmation, pendingToken?, followUps,
-                card: { title, subtitle, highlight, rows, howCalculated, confidence },
-                grounded: { intent, validationPassed, usedLlm, engineVersion } }
-   La tarjeta se arma con las cifras del motor, nunca con el texto del LLM (FR-11).
+2. resolveQuestion(mensaje, hoyEnLima)  — motor, determinista, sin LLM:
+     intent  (spending_summary, balance, category_spend, income, …, unknown_finance, other)
+     periodo (periods.ts: hoy, ayer, esta semana, la semana pasada, este mes, el mes pasado /
+              el último mes, este año / el año, el año pasado, "en julio")
+     categoría ("¿cuánto gasté en taxis?" → transport)
+3. Handlers en orden (src/chat/intents/) — el primero que responde gana:
+     confirmation      "sí"/"no" + pendingToken firmado (HMAC, 15 min)
+     register_income   "me pagaron 3500"          → "¿Confirmas?"
+     register_goal     "quiero ahorrar 2000 para…" → "¿Confirmas?"
+     register_expense  "gasté 25 en taxi"          → "¿Confirmas?"
+     balance_query     "¿cuál es mi saldo?"        → saldo histórico
+     spending_query    gasto/ingreso/disponible por periodo, por categoría, desglose, últimos
+     general           ayuda, fuera de alcance, "no entendí" (sin LLM, sin cifras)
+4. Consultas (QueryResponder):
+     motor → FactsPayload → NinaRouter (LLM solo redacta) → VALIDADOR de cifras
+     → si el LLM falla o inventa un número: respuesta de plantilla armada desde el motor
+5. Respuesta { reply, needsConfirmation, pendingToken?, followUps, card, grounded }
+6. Log estructurado: una línea JSON chat_turn por turno (sin texto ni montos)
 ```
 
 **Regla de oro:** el LLM **explica**, el motor **calcula**. Si el LLM escribe un número que no está en FACTS, la respuesta se descarta.
 
-### Proveedores LLM
+### Fechas: una sola convención
+`packages/finance-engine/src/timezone.ts` es el único lugar que conoce la zona horaria (`America/Lima`). Un día calendario se guarda como medianoche UTC (`transactions.date` es `timestamptz` en la BD real) y se lee como ese día; un instante con hora se convierte al día de Lima. El registro de gastos/ingresos, los rangos del chat y el `asOf` de score/forecast usan esa misma utilidad.
 
-`AIService` prueba solo los proveedores con clave configurada en `.env` (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`), en orden de preferencia, y como último recurso el *mock* (que dice "no puedo generar una explicación" y el router responde con la plantilla del motor).
-Fija el proveedor principal con `AI_PROVIDER=openai|gemini|claude`.
+### Saldo
+"¿Cuál es mi saldo?" = todos los ingresos − todos los gastos registrados en Nina (no es el saldo del banco; aún no hay cuentas con saldo inicial).
+
+### Errores (sin mensaje genérico para todo)
+| Caso | Respuesta | HTTP | `outcome` en logs |
+|---|---|---|---|
+| Periodo sin movimientos | "No tengo movimientos registrados en … todavía." | 200 | `no_data` |
+| Pregunta financiera no entendida | "No entendí bien esa pregunta, ¿puedes reformularla?" | 200 | `unrecognized` |
+| LLM caído o cifra no validada | Respuesta de plantilla con cifras del motor | 200 | `template_fallback` |
+| BD caída | "No pude consultar tus movimientos ahora…" | 503 `DATA_UNAVAILABLE` | `error` |
+| Bug | Genérico + código de referencia (requestId) | 500 `INTERNAL` | `error` + stack |
+
+Para depurar: busca en la consola del backend `"event":"chat_turn"` y el `requestId` que muestra la app.
+
+### Proveedores LLM
+`AIService` prueba solo los proveedores con clave en `.env`, salta 10 min los que dan error permanente (401/402/403/404) y como último recurso usa el *mock* (sin cifras), con lo que el router responde con la plantilla del motor. Fija el principal con `AI_PROVIDER=openai|gemini|claude`.
 
 ---
 
