@@ -1,0 +1,5 @@
+{
+  // Every Flutter run/debug in this workspace loads the dev config
+  // (path is relative to nina_app/, where flutter runs).
+  "dart.flutterRunAdditionalArgs": ["--dart-define-from-file=env/dev.json"]
+}

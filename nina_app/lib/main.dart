@@ -12,10 +12,9 @@ Future<void> main() async {
   await initializeDateFormatting('es', null);
 
   if (AppConstants.supabaseUrl.isEmpty || AppConstants.supabaseAnonKey.isEmpty) {
-    throw StateError(
-      'Missing Supabase config. Run with --dart-define-from-file=env/dev.json '
-      '(copy env/dev.example.json).',
-    );
+    // Show the fix on screen instead of a blank page.
+    runApp(const MissingConfigApp());
+    return;
   }
 
   // Initialize Supabase
@@ -28,4 +27,31 @@ Future<void> main() async {
   DioClient.instance.init();
 
   runApp(const NinaApp());
+}
+
+/// Shown when the app was started without env/dev.json.
+class MissingConfigApp extends StatelessWidget {
+  const MissingConfigApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: SelectableText(
+              'Falta la configuración de Supabase.\n\n'
+              'Ejecuta la app desde nina_app/ con:\n'
+              'flutter run --dart-define-from-file=env/dev.json\n\n'
+              'Si env/dev.json no existe, cópialo de env/dev.example.json '
+              'y completa SUPABASE_URL y SUPABASE_ANON_KEY.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
