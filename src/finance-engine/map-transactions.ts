@@ -1,4 +1,4 @@
-import type { EngineTransaction } from '../../packages/finance-engine/src'
+import { normalizeCategorySlug, type EngineTransaction } from '../../packages/finance-engine/src'
 import type { FinanceTransaction } from '../intelligence/nina-finance.types'
 
 export function toEngineTransaction(row: {
@@ -22,7 +22,7 @@ export function toEngineTransaction(row: {
     postedAt: new Date(`${posted}T00:00:00.000Z`),
     amount: signed,
     currency: 'PEN',
-    categorySlug: (row.category ?? 'other').toLowerCase(),
+    categorySlug: normalizeCategorySlug(row.category),
     merchantNormalized: (row.description ?? '').trim().toUpperCase(),
     isTransfer,
     accountId: row.account_id,

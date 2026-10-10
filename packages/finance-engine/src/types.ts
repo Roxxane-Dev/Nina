@@ -143,7 +143,13 @@ export type SimulationResult = {
 }
 
 export type FactsIntent =
+  | 'spending_summary'
   | 'spending_breakdown'
+  | 'category_spend'
+  | 'income'
+  | 'available'
+  | 'recent'
+  | 'help'
   | 'forecast'
   | 'score'
   | 'whatif'
@@ -162,6 +168,16 @@ export type FactsPayload = {
   confidence: Confidence
   evidenceTxnIds: string[]
   engineVersion: string
+  /** Labels only (no numbers) that tell the LLM and the UI what the figures refer to. */
+  context?: FactsContext
+}
+
+export type FactsContext = {
+  periodLabel: string
+  /** Set when the requested period was empty and the latest month with data was used. */
+  requestedPeriodLabel?: string
+  categoryLabel?: string
+  hasHistory: boolean
 }
 
 export type ScoreWeights = {
