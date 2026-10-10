@@ -72,6 +72,8 @@ Prueba end-to-end hecha: router real contra OpenAI con datos sintéticos → res
 ### 🟠 Media
 
 > **Hallazgo 9 oct (tarde): la base de datos real no coincide con las migraciones.** No existen `incomes`, `expenses` ni `pending_expenses`; `categories` y `user_profiles` tienen otras columnas; `transactions` tiene `couple_id` y `receipt_url`. La BD se armó en parte desde el dashboard. Antes de los espacios compartidos hay que generar una migración "baseline" desde el esquema real (`supabase db dump --schema-only`) para que el repo vuelva a ser la fuente de verdad.
+>
+> **`transactions.date` (10 oct):** la 010 dice `date`, DEV tiene `timestamptz`. Esto causó el 500 del chat (fechas inválidas). Decisión: mantener `timestamptz`; la convención es "día calendario = medianoche UTC" (lo que escribe la API) y `packages/finance-engine/src/timezone.ts` lo interpreta en hora de Lima. `015_reconcile_transactions_date.sql` alinea entornos nuevos y es no-op en DEV. **Pendiente de aplicar por ti.**
 
 | # | Problema | Propuesta |
 | --- | --- | --- |
