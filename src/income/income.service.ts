@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '../common/supabase.client'
 import { parseIncome, type ParsedIncome } from '../expenses/income-parser'
+import { isoDate, localToday } from '../../packages/finance-engine/src'
 
 export type PendingIncomePayload = {
   text: string
@@ -67,7 +68,8 @@ export class IncomeService implements OnModuleInit {
   async insertIncome(income: ParsedIncome, userId: string): Promise<{ result: string }> {
     if (!this.db) return { result: '¡Ingreso registrado! ✅' }
 
-    const today = new Date().toISOString().split('T')[0]
+    // Calendar day in Lima (finance-engine/timezone.ts), not UTC: after 7 p.m. UTC is already tomorrow.
+    const today = isoDate(localToday(new Date()))
 
     const { error: txErr } = await this.db.from('transactions').insert({
       user_id: userId,

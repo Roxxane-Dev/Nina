@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '../common/supabase.client'
 import { parseExpenses, type ParsedExpense } from './expense-parser'
-import { normalizeCategorySlug } from '../../packages/finance-engine/src'
+import { isoDate, localToday, normalizeCategorySlug } from '../../packages/finance-engine/src'
 import type { UserInsights } from '../ai/ai.types'
 
 export type ResolvedExpense = {
@@ -99,7 +99,8 @@ export class ExpensesService implements OnModuleInit {
   async insertExpenses(items: ResolvedExpense[], userId: string): Promise<{ result: string }> {
     if (!this.db) return { result: 'Listo, gastos registrados ✅' }
 
-    const today = new Date().toISOString().split('T')[0]
+    // Calendar day in Lima (finance-engine/timezone.ts), not UTC: after 7 p.m. UTC is already tomorrow.
+    const today = isoDate(localToday(new Date()))
     const { error: insertError } = await this.db.from('transactions').insert(
       items.map((e) => ({
         user_id: userId,
