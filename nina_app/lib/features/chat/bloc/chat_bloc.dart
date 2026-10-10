@@ -21,12 +21,23 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   final Dio _dio;
 
+  /// Signed pending registration from the last reply; sent back with "sí"/"no".
+  String? _pendingToken;
+
+  static const defaultFollowUps = [
+    '¿Cuánto gasté este mes?',
+    '¿En qué gasto más?',
+    '¿Qué puedes hacer?',
+  ];
+
   void _onGreet(_ChatGreet event, Emitter<ChatState> emit) {
     final greeting = ChatMessage(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       text:
-          'Hola 👋 Soy Nina, tu asistente financiera. ¿En qué te ayudo hoy?',
+          'Hola 👋 Soy Nina, tu agente financiero. Puedo registrar tus gastos '
+          'e ingresos y decirte en qué se va tu plata. ¿En qué te ayudo?',
       isUser: false,
+      followUps: defaultFollowUps,
     );
     emit(ChatReady(messages: [greeting]));
   }
@@ -54,28 +65,34 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/chat',
-        data: {'message': event.message},
+        data: {
+          'message': event.message,
+          if (_pendingToken != null) 'pendingToken': _pendingToken,
+        },
       );
 
       final data = response.data ?? const {};
       final reply = data['reply'] as String? ?? '';
       // The backend says explicitly when it is waiting for a Sí / No.
       final isConfirmation = data['needsConfirmation'] == true;
+      _pendingToken = isConfirmation ? data['pendingToken'] as String? : null;
+      final followUps =
+          (data['followUps'] as List? ?? const []).whereType<String>().toList();
 
-      final messages =
-          state.messages.where((m) => m.id != 'loading').toList();
+      final messages = state.messages.where((m) => m.id != 'loading').toList();
 
       final ninaMsg = ChatMessage(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         text: reply,
         isUser: false,
         isConfirmation: isConfirmation,
+        card: ChatCard.fromJson(data['card']),
+        followUps: followUps,
       );
 
       emit(ChatReady(messages: [...messages, ninaMsg]));
     } on Exception catch (e) {
-      final messages =
-          state.messages.where((m) => m.id != 'loading').toList();
+      final messages = state.messages.where((m) => m.id != 'loading').toList();
       final errMsg = ChatMessage(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         text: _friendlyError(e),

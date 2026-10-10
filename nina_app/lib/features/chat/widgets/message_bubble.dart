@@ -5,6 +5,7 @@ import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_message.dart';
 import '../../../core/theme/design_system.dart';
+import 'answer_card.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({super.key, required this.message});
@@ -27,6 +28,7 @@ class MessageBubble extends StatelessWidget {
                   : CrossAxisAlignment.start,
               children: [
                 _buildBubble(context),
+                if (message.card != null) AnswerCardView(card: message.card!),
                 if (message.isConfirmation)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -37,7 +39,10 @@ class MessageBubble extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().fade(duration: 300.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOut);
+    )
+        .animate()
+        .fade(duration: 300.ms)
+        .slideY(begin: 0.1, end: 0, curve: Curves.easeOut);
   }
 
   Widget _buildBubble(BuildContext context) {
@@ -105,13 +110,12 @@ class _ConfirmationButtons extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'He detectado estos gastos:',
+            '¿Lo registro?',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+                  fontWeight: FontWeight.w600,
+                ),
           ),
           const SizedBox(height: 12),
-          // We will mock the detected expenses here for now, or adapt from state
           Row(
             children: [
               Expanded(

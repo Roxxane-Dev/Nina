@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
@@ -51,44 +50,16 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  List<String> _dynamicChips() {
-    final snap = _snapshot;
-    final chips = <String>[];
-
-    if (snap != null) {
-      if (snap.anomalias.isNotEmpty) {
-        chips.add('¿Por qué me alertaste en ${snap.anomalias.first.categoria}?');
-      }
-
-      final metasBajas = snap.metasProgreso.where((m) => m.pct < 50).toList()
-        ..sort((a, b) => a.pct.compareTo(b.pct));
-      if (metasBajas.isNotEmpty) {
-        chips.add('¿Cómo voy con mi meta de ${metasBajas.first.nombre}?');
-      }
-
-      if (snap.gastosHormiga.count >= 3) {
-        chips.add('¿Cuánto gasté en hormiga esta semana?');
-      }
+  /// Suggestions from Nina's latest answer (built by the backend from the
+  /// engine intent); hidden while Nina waits for a Sí / No.
+  List<String> _dynamicChips(ChatState state) {
+    for (final m in state.messages.reversed) {
+      if (m.isUser || m.isPending) continue;
+      if (m.isConfirmation) return const [];
+      if (m.followUps.isNotEmpty) return m.followUps;
+      break;
     }
-
-    if (chips.isEmpty) {
-      return [
-        '¿Puedo gastar S/200 este finde?',
-        '¿En qué gasto más?',
-      ];
-    }
-    return chips.take(2).toList();
-  }
-
-  Color _scorePillColor(String status) {
-    switch (status) {
-      case 'green':
-        return const Color(0xFFADFF2F).withAlpha(51);
-      case 'orange':
-        return const Color(0xFFFFB347).withAlpha(51);
-      default:
-        return const Color(0xFFFF6B6B).withAlpha(51);
-    }
+    return ChatBloc.defaultFollowUps;
   }
 
   @override
@@ -143,8 +114,10 @@ class _ChatPageState extends State<ChatPage> {
           Container(
             width: 36,
             height: 36,
-            decoration: const BoxDecoration(shape: BoxShape.circle, color: NinaColors.accent),
-            child: const Icon(Icons.auto_awesome_rounded, size: 18, color: NinaColors.background),
+            decoration: const BoxDecoration(
+                shape: BoxShape.circle, color: NinaColors.accent),
+            child: const Icon(Icons.auto_awesome_rounded,
+                size: 18, color: NinaColors.background),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -166,14 +139,16 @@ class _ChatPageState extends State<ChatPage> {
               ],
             ),
           ),
-          const Icon(Icons.more_horiz_rounded, size: 18, color: NinaColors.textTertiary),
+          const Icon(Icons.more_horiz_rounded,
+              size: 18, color: NinaColors.textTertiary),
         ],
       ),
     );
   }
 
   Widget _buildChipsRow(BuildContext context) {
-    final chips = _dynamicChips();
+    final chips = _dynamicChips(context.watch<ChatBloc>().state);
+    if (chips.isEmpty) return const SizedBox(height: 8);
     return SizedBox(
       height: 40,
       child: ListView.separated(

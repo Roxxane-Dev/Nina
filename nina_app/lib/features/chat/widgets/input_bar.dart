@@ -71,10 +71,12 @@ class _InputBarState extends State<InputBar> {
               maxLines: 1,
               textCapitalization: TextCapitalization.sentences,
               textInputAction: TextInputAction.send,
-              style: const TextStyle(fontSize: 13, color: NinaColors.textPrimary),
+              style:
+                  const TextStyle(fontSize: 13, color: NinaColors.textPrimary),
               decoration: const InputDecoration.collapsed(
                 hintText: 'Cuéntale a Nina...',
-                hintStyle: TextStyle(fontSize: 13, color: NinaColors.textTertiary),
+                hintStyle:
+                    TextStyle(fontSize: 13, color: NinaColors.textTertiary),
               ),
               onSubmitted: (_) => _send(),
             ),
