@@ -26,3 +26,21 @@ describe('detectAnomalies', () => {
     expect(result.engineVersion).toMatch(/^engine-v/)
   })
 })
+
+describe('detectAnomalies trends', () => {
+  const asOf = new Date(Date.UTC(2026, 9, 9))
+
+  it('does not report a trend for a category with no recent spend (regression)', () => {
+    const txs = [spend('old', 2026, 4, 30, 50, 'food')]
+    expect(detectAnomalies(txs, asOf).trends).toEqual([])
+  })
+
+  it('still reports a real sequential increase', () => {
+    const txs = [
+      spend('a', 2026, 7, 5, 100, 'food'),
+      spend('b', 2026, 8, 5, 130, 'food'),
+      spend('c', 2026, 9, 5, 170, 'food'),
+    ]
+    expect(detectAnomalies(txs, asOf).trends.map((t) => t.categorySlug)).toEqual(['food'])
+  })
+})

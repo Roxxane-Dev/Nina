@@ -122,6 +122,8 @@ export function detectAnomalies(
     const prev3 = months.slice(0, 3)
     const sequential =
       last3.length === 3 &&
+      // A trend needs real spend: 0 ≥ 1.2 × 0 used to flag every idle category.
+      last3[0] > 0 &&
       last3[1] >= 1.2 * last3[0] &&
       last3[2] >= 1.2 * last3[1]
     const avgLast = last3.reduce((s, x) => s + x, 0) / 3
