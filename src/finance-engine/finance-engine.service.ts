@@ -7,7 +7,8 @@ import {
   computeForecast,
   detectCategoryInText,
   recentTransactions,
-  resolvePeriod,
+  resolvePeriodRange,
+  buildBalanceFacts,
   computeHealthScore,
   detectAnomalies,
   detectRecurrence,
@@ -86,11 +87,14 @@ export class FinanceEngineService implements OnModuleInit {
    * 'en julio') and category are detected deterministically here.
    */
   async factsForQuestion(userId: string, question: string, asOf = localToday(new Date())) {
-    const period = resolvePeriod(question, asOf)
+    const period = resolvePeriodRange(question, asOf)
     const classified = classifyIntent(question)
     // "¿y el mes pasado?" / "¿y en julio?": a bare period means a spending summary.
     const intent = classified === 'other' && period.explicit ? 'spending_summary' : classified
     const bundle = await this.computeBundle(userId, asOf)
+    if (intent === 'balance') {
+      return { intent, facts: buildBalanceFacts({ txs: bundle.txs, asOf }), recent: undefined }
+    }
     const facts = buildFactsPayload({
       intent,
       txs: bundle.txs,

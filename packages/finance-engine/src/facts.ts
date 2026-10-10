@@ -1,7 +1,7 @@
-import { monthlyTotals, signedFlows } from './aggregates'
+import { periodTotals, signedFlows } from './aggregates'
 import { categoryLabel } from './categories'
-import { monthLabelEs } from './intent'
-import { endOfMonth, inPeriod, isoDate } from './period'
+import { isoDate } from './period'
+import { monthLabelEs, monthRange, previousRange, type PeriodRange } from './periods'
 import { ENGINE_VERSION } from './version'
 import type {
   Confidence,
@@ -11,18 +11,16 @@ import type {
   FactsPayload,
   ForecastResult,
   HealthScoreResult,
-  MonthlyTotals,
+  PeriodTotals,
 } from './types'
-
-type Month = { year: number; month: number }
 
 export function buildFactsPayload(input: {
   intent: FactsIntent
   txs: EngineTransaction[]
   asOf: Date
   currency?: FactsPayload['currency']
-  /** Month asked about; defaults to the month of `asOf`. */
-  period?: Month & { explicit?: boolean }
+  /** Range asked about (periods.ts); defaults to the current month, not explicit. */
+  period?: PeriodRange
   /** Canonical category slug for 'category_spend'. */
   category?: string | null
   score?: HealthScoreResult
@@ -31,30 +29,30 @@ export function buildFactsPayload(input: {
 }): FactsPayload {
   const { intent, asOf } = input
   const txs = signedFlows(input.txs)
-  const requested: Month = input.period ?? { year: asOf.getUTCFullYear(), month: asOf.getUTCMonth() }
+  const requested = input.period ?? monthRange(asOf.getUTCFullYear(), asOf.getUTCMonth(), asOf, false)
 
-  // An empty current month says nothing useful: use the latest month with data
-  // and tell the user. An explicitly requested month is respected as-is.
-  let month = requested
+  // An empty *implicit* current month says nothing useful: use the latest month
+  // with data and tell the user. A period the user named is respected as-is.
+  let range = requested
   let requestedPeriodLabel: string | undefined
-  if (!input.period?.explicit && countInMonth(txs, requested) === 0) {
+  if (!requested.explicit && periodTotals(txs, requested.from, requested.to).count === 0) {
     const latest = latestMonthWithData(txs)
     if (latest) {
-      requestedPeriodLabel = monthLabelEs(requested.year, requested.month)
-      month = latest
+      requestedPeriodLabel = requested.label
+      range = monthRange(latest.year, latest.month, asOf)
     }
   }
 
-  const current = monthlyTotals(txs, month.year, month.month)
-  const prevMonth = previous(month)
-  const prev = monthlyTotals(txs, prevMonth.year, prevMonth.month)
-  const inMonth = txsInMonth(txs, month)
+  const prevRange = previousRange(range)
+  const current = periodTotals(txs, range.from, range.to)
+  const prev = periodTotals(txs, prevRange.from, prevRange.to)
+  const inRange = txs.filter((t) => t.postedAt >= range.from && t.postedAt <= range.to)
 
   const figures: Record<string, number> = {
     income: round(current.income),
     expenses: round(current.expenses),
     available: round(current.income - current.expenses),
-    txn_count: inMonth.length,
+    txn_count: current.count,
     prev_income: round(prev.income),
     prev_expenses: round(prev.expenses),
     // Differences are computed here so the LLM never has to subtract.
@@ -66,7 +64,7 @@ export function buildFactsPayload(input: {
 
   const items = categoryItems(current)
   const comparisons: NonNullable<FactsPayload['comparisons']> = [
-    { label: 'Gastos vs. mes anterior', current: figures.expenses, baseline: figures.prev_expenses },
+    { label: `Gastos vs. ${prevRange.label}`, current: figures.expenses, baseline: figures.prev_expenses },
   ]
 
   let categoryLabelText: string | undefined
@@ -79,14 +77,14 @@ export function buildFactsPayload(input: {
       figures.category_share_pct = Math.round((figures.category_spend / current.expenses) * 100)
     }
     comparisons.push({
-      label: `${categoryLabelText} vs. mes anterior`,
+      label: `${categoryLabelText} vs. ${prevRange.label}`,
       current: figures.category_spend,
       baseline: figures.category_prev,
     })
   }
 
   if (intent === 'income') {
-    const incomeItems = incomeByCategory(inMonth)
+    const incomeItems = incomeByCategory(inRange)
     if (incomeItems.length) items.splice(0, items.length, ...incomeItems)
   }
 
@@ -105,26 +103,59 @@ export function buildFactsPayload(input: {
     figures.recurring_total = round(input.recurring.reduce((s, r) => s + r.typicalAmount, 0))
   }
 
-  const lastDay = endOfMonth(new Date(Date.UTC(month.year, month.month, 1)))
   return {
     intent,
-    period: {
-      from: isoDate(new Date(Date.UTC(month.year, month.month, 1))),
-      to: isoDate(lastDay.getTime() < asOf.getTime() ? lastDay : asOf),
-    },
+    period: { from: isoDate(range.from), to: isoDate(range.to) },
     currency: input.currency ?? 'PEN',
     figures,
     items,
     comparisons,
-    txnCount: inMonth.length,
-    confidence: intent === 'forecast' && input.forecast ? input.forecast.confidence : dataConfidence(inMonth.length),
-    evidenceTxnIds: inMonth.slice(0, 30).map((t) => t.id),
+    txnCount: current.count,
+    confidence: intent === 'forecast' && input.forecast ? input.forecast.confidence : dataConfidence(current.count),
+    evidenceTxnIds: inRange.slice(0, 30).map((t) => t.id),
     engineVersion: ENGINE_VERSION,
     context: {
-      periodLabel: monthLabelEs(month.year, month.month),
+      periodLabel: range.label,
       requestedPeriodLabel,
       categoryLabel: categoryLabelText,
       hasHistory: txs.length > 0,
+      granularity: range.granularity,
+    },
+  }
+}
+
+/**
+ * "¿Cuál es mi saldo?" — there is no bank balance yet, so the balance is the
+ * historical net of everything registered: all incomes − all expenses.
+ */
+export function buildBalanceFacts(input: { txs: EngineTransaction[]; asOf: Date }): FactsPayload {
+  const txs = signedFlows(input.txs)
+  const first = txs.reduce<Date | null>(
+    (min, t) => (min == null || t.postedAt.getTime() < min.getTime() ? t.postedAt : min),
+    null,
+  )
+  const from = first ?? input.asOf
+  const all = periodTotals(txs, from, input.asOf)
+  return {
+    intent: 'balance',
+    period: { from: isoDate(from), to: isoDate(input.asOf) },
+    currency: 'PEN',
+    figures: {
+      balance: round(all.income - all.expenses),
+      total_income: round(all.income),
+      total_expenses: round(all.expenses),
+      txn_count: all.count,
+    },
+    items: [],
+    comparisons: [],
+    txnCount: all.count,
+    confidence: dataConfidence(all.count),
+    evidenceTxnIds: txs.slice(0, 30).map((t) => t.id),
+    engineVersion: ENGINE_VERSION,
+    context: {
+      periodLabel: first ? `desde ${monthLabelEs(first.getUTCFullYear(), first.getUTCMonth())}` : 'sin movimientos',
+      hasHistory: txs.length > 0,
+      granularity: 'all',
     },
   }
 }
@@ -154,7 +185,7 @@ function dataConfidence(count: number): Confidence {
   return 'insufficient'
 }
 
-function categoryItems(totals: MonthlyTotals): Array<{ label: string; amount: number }> {
+function categoryItems(totals: PeriodTotals): Array<{ label: string; amount: number }> {
   return Object.entries(totals.byCategory)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
@@ -169,24 +200,10 @@ function incomeByCategory(rows: EngineTransaction[]): Array<{ label: string; amo
     .map(([slug, amount]) => ({ label: categoryLabel(slug), amount: round(amount) }))
 }
 
-function txsInMonth(txs: EngineTransaction[], m: Month): EngineTransaction[] {
-  const from = new Date(Date.UTC(m.year, m.month, 1))
-  const to = endOfMonth(from)
-  return txs.filter((t) => inPeriod(t.postedAt, from, to))
-}
-
-function countInMonth(txs: EngineTransaction[], m: Month): number {
-  return txsInMonth(txs, m).length
-}
-
-function latestMonthWithData(txs: EngineTransaction[]): Month | null {
+function latestMonthWithData(txs: EngineTransaction[]): { year: number; month: number } | null {
   if (!txs.length) return null
   const latest = txs.reduce((a, b) => (a.postedAt.getTime() >= b.postedAt.getTime() ? a : b))
   return { year: latest.postedAt.getUTCFullYear(), month: latest.postedAt.getUTCMonth() }
-}
-
-function previous(m: Month): Month {
-  return m.month === 0 ? { year: m.year - 1, month: 11 } : { year: m.year, month: m.month - 1 }
 }
 
 function round(n: number): number {

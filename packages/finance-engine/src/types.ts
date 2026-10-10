@@ -41,12 +41,16 @@ export type GoalInput = {
   savedAmount: number
 }
 
-export type MonthlyTotals = {
-  year: number
-  month: number
+export type PeriodTotals = {
   income: number
   expenses: number
   byCategory: Record<string, number>
+  count: number
+}
+
+export type MonthlyTotals = PeriodTotals & {
+  year: number
+  month: number
 }
 
 export type ScoreComponent = {
@@ -149,7 +153,9 @@ export type FactsIntent =
   | 'income'
   | 'available'
   | 'recent'
+  | 'balance'
   | 'help'
+  | 'unknown_finance'
   | 'forecast'
   | 'score'
   | 'whatif'
@@ -178,6 +184,8 @@ export type FactsContext = {
   requestedPeriodLabel?: string
   categoryLabel?: string
   hasHistory: boolean
+  /** day | week | month | year — or 'all' for the historical balance. */
+  granularity?: 'day' | 'week' | 'month' | 'year' | 'all'
 }
 
 export type ScoreWeights = {

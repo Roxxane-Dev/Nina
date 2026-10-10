@@ -1,6 +1,6 @@
 import { endOfMonth, inPeriod, isoDate, startOfMonth } from './period'
 import { isValidDate } from './timezone'
-import type { EngineTransaction, MonthlyTotals } from './types'
+import type { EngineTransaction, MonthlyTotals, PeriodTotals } from './types'
 
 /** Defense in depth: rows with an invalid date or amount never reach a calculation. */
 export function usableTransactions(txs: EngineTransaction[]): EngineTransaction[] {
@@ -17,7 +17,11 @@ export function monthlyTotals(
   month: number,
 ): MonthlyTotals {
   const from = startOfMonth(new Date(Date.UTC(year, month, 1)))
-  const to = endOfMonth(from)
+  return { year, month, ...periodTotals(txs, from, endOfMonth(from)) }
+}
+
+/** Income, expenses and spend by category for any inclusive day range. */
+export function periodTotals(txs: EngineTransaction[], from: Date, to: Date): PeriodTotals {
   const rows = signedFlows(txs).filter((t) => inPeriod(t.postedAt, from, to))
   const byCategory: Record<string, number> = {}
   let income = 0
@@ -30,7 +34,7 @@ export function monthlyTotals(
       byCategory[t.categorySlug] = (byCategory[t.categorySlug] ?? 0) + spend
     }
   }
-  return { year, month, income, expenses, byCategory }
+  return { income, expenses, byCategory, count: rows.length }
 }
 
 export function trailingFullMonths(

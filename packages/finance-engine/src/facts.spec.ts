@@ -1,7 +1,8 @@
 import { ANA_TXS } from './__golden__/user-ana'
 import { normalizeCategorySlug, detectCategoryInText } from './categories'
-import { buildFactsPayload, recentTransactions } from './facts'
-import { classifyIntent, resolvePeriod } from './intent'
+import { buildBalanceFacts, buildFactsPayload, recentTransactions } from './facts'
+import { classifyIntent } from './intent'
+import { monthRange, resolvePeriodRange } from './periods'
 import { ENGINE_VERSION } from './version'
 
 const OCT_9 = new Date(Date.UTC(2026, 9, 9))
@@ -12,7 +13,7 @@ describe('golden: user Ana', () => {
       intent: 'spending_summary',
       txs: ANA_TXS,
       asOf: OCT_9,
-      period: { year: 2026, month: 7, explicit: true },
+      period: monthRange(2026, 7, OCT_9),
     })
     expect(f.engineVersion).toBe(ENGINE_VERSION)
     expect(f.figures).toEqual({
@@ -30,7 +31,7 @@ describe('golden: user Ana', () => {
       { label: 'Comida', amount: 410.3 },
       { label: 'Transporte', amount: 260 },
     ])
-    expect(f.context).toEqual({ periodLabel: 'agosto 2026', hasHistory: true })
+    expect(f.context).toEqual({ periodLabel: 'agosto 2026', hasHistory: true, granularity: 'month' })
     expect(f.confidence).toBe('medium')
   })
 
@@ -46,7 +47,7 @@ describe('golden: user Ana', () => {
       intent: 'spending_summary',
       txs: ANA_TXS,
       asOf: OCT_9,
-      period: { year: 2026, month: 8, explicit: true },
+      period: monthRange(2026, 8, OCT_9),
     })
     expect(f.figures.expenses).toBe(0)
     expect(f.confidence).toBe('insufficient')
@@ -57,7 +58,7 @@ describe('golden: user Ana', () => {
       intent: 'category_spend',
       txs: ANA_TXS,
       asOf: OCT_9,
-      period: { year: 2026, month: 7, explicit: true },
+      period: monthRange(2026, 7, OCT_9),
       category: 'food',
     })
     expect(f.figures.category_spend).toBe(410.3)
@@ -72,7 +73,7 @@ describe('golden: user Ana', () => {
       intent: 'income',
       txs: ANA_TXS,
       asOf: OCT_9,
-      period: { year: 2026, month: 7, explicit: true },
+      period: monthRange(2026, 7, OCT_9),
     })
     expect(f.items).toEqual([
       { label: 'Sueldo', amount: 4500 },
@@ -108,21 +109,13 @@ describe('classifyIntent', () => {
     ['¿cómo voy?', 'score'],
     ['¿qué pasa si compro un celular en cuotas?', 'whatif'],
     ['cuéntame un chiste', 'other'],
+    ['dime cuanto he gastado en el año', 'spending_summary'],
+    ['dime cuanto he gastado el ultimo mes', 'spending_summary'],
+    ['¿cuál es mi saldo?', 'balance'],
+    ['¿cuánto dinero tengo?', 'balance'],
+    ['mi plata está rara', 'unknown_finance'],
   ])('%s → %s', (q, intent) => {
     expect(classifyIntent(q)).toBe(intent)
-  })
-})
-
-describe('resolvePeriod', () => {
-  it('defaults to the current month', () => {
-    expect(resolvePeriod('¿cuánto gasté?', OCT_9)).toEqual({ year: 2026, month: 9, explicit: false })
-  })
-  it('understands "el mes pasado"', () => {
-    expect(resolvePeriod('¿y el mes pasado?', OCT_9)).toEqual({ year: 2026, month: 8, explicit: true })
-  })
-  it('understands a month name, never in the future', () => {
-    expect(resolvePeriod('gastos de julio', OCT_9)).toEqual({ year: 2026, month: 6, explicit: true })
-    expect(resolvePeriod('gastos de diciembre', OCT_9)).toEqual({ year: 2025, month: 11, explicit: true })
   })
 })
 
@@ -146,9 +139,57 @@ describe('invalid dates (regression: RangeError Invalid time value)', () => {
       intent: 'spending_summary',
       txs: [...ANA_TXS, broken],
       asOf: OCT_9,
-      period: { year: 2026, month: 7, explicit: true },
+      period: monthRange(2026, 7, OCT_9),
     })
     expect(f.figures.income).toBe(5100)
     expect(() => buildFactsPayload({ intent: 'spending_summary', txs: [broken], asOf: OCT_9 })).not.toThrow()
+  })
+})
+
+describe('golden: ranges (engine-v1.2.0)', () => {
+  it('year to date: "dime cuanto he gastado en el año" (regression)', () => {
+    const f = buildFactsPayload({
+      intent: 'spending_summary',
+      txs: ANA_TXS,
+      asOf: OCT_9,
+      period: resolvePeriodRange('dime cuanto he gastado en el año', OCT_9),
+    })
+    expect(f.period).toEqual({ from: '2026-01-01', to: '2026-10-09' })
+    expect(f.figures).toEqual(expect.objectContaining({ income: 9600, expenses: 3630.7, available: 5969.3, txn_count: 10, prev_expenses: 0 }))
+    expect(f.context).toEqual(expect.objectContaining({ periodLabel: 'el año 2026', granularity: 'year' }))
+    expect(f.context?.requestedPeriodLabel).toBeUndefined()
+  })
+
+  it('previous month: "el ultimo mes" respects an empty month (no fallback)', () => {
+    const f = buildFactsPayload({
+      intent: 'spending_summary',
+      txs: ANA_TXS,
+      asOf: OCT_9,
+      period: resolvePeriodRange('dime cuanto he gastado el ultimo mes', OCT_9),
+    })
+    expect(f.context?.periodLabel).toBe('setiembre 2026')
+    expect(f.figures.expenses).toBe(0)
+    expect(f.figures.prev_expenses).toBe(1870.3)
+    expect(f.confidence).toBe('insufficient')
+  })
+
+  it('this week compares against last week', () => {
+    const aug7 = new Date(Date.UTC(2026, 7, 7))
+    const f = buildFactsPayload({ intent: 'spending_summary', txs: ANA_TXS, asOf: aug7, period: resolvePeriodRange('esta semana', aug7) })
+    expect(f.period).toEqual({ from: '2026-08-03', to: '2026-08-07' })
+    expect(f.figures.expenses).toBe(1610.3)
+    expect(f.figures.prev_expenses).toBe(0)
+  })
+
+  it('historical balance = all incomes − all expenses, transfers excluded', () => {
+    const f = buildBalanceFacts({ txs: ANA_TXS, asOf: OCT_9 })
+    expect(f.figures).toEqual({ balance: 5969.3, total_income: 9600, total_expenses: 3630.7, txn_count: 10 })
+    expect(f.context).toEqual({ periodLabel: 'desde julio 2026', hasHistory: true, granularity: 'all' })
+  })
+
+  it('balance with no data', () => {
+    const f = buildBalanceFacts({ txs: [], asOf: OCT_9 })
+    expect(f.context?.hasHistory).toBe(false)
+    expect(f.figures.balance).toBe(0)
   })
 })
