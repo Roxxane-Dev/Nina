@@ -1,197 +1,98 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
+import { localToday, resolveQuestion } from '../../packages/finance-engine/src'
 import { MemoryService } from '../memory/memory.service'
+import { ChatTelemetry, hashUserId } from './chat-telemetry'
+import type { ChatReply } from './chat-reply'
+import { ConfirmationHandler } from './intents/confirmation.handler'
+import { GeneralHandler } from './intents/general.handler'
+import type { ChatContext, ChatIntentHandler } from './intents/handler'
+import { BalanceQueryHandler, SpendingQueryHandler } from './intents/query.handlers'
 import {
-  ExpensesService,
-  detectConfirmIntent,
-  type ResolvedExpense,
-} from '../expenses/expenses.service'
-import { IncomeService } from '../income/income.service'
-import { GoalService } from '../goals/goal.service'
-import { FinanceEngineService } from '../finance-engine/finance-engine.service'
-import { NinaRouterService } from '../nina-router/nina-router.service'
-import type { ParsedIncome } from '../expenses/income-parser'
-import type { ParsedGoal } from '../goals/goal.service'
-import {
-  ConfirmationTokens,
-  confirmationSecret,
-  type PendingAction,
-  type PendingKind,
-} from './confirmation-token'
-import {
-  HELP_REPLY,
-  NO_DATA_REPLY,
-  buildCard,
-  suggestedFollowUps,
-  type AnswerCard,
-} from './answer-card'
+  RegisterExpenseHandler,
+  RegisterGoalHandler,
+  RegisterIncomeHandler,
+} from './intents/registration.handlers'
 
-export type ChatReply = {
-  reply: string
-  /** True when Nina asks the user to confirm a registration (show Sí / No). */
-  needsConfirmation: boolean
-  /** Signed pending registration; the app sends it back with the user's "sí". */
-  pendingToken?: string
-  followUps: string[]
-  /** Result card with the exact engine figures (FR-11). */
-  card?: AnswerCard
-  /** Present for answers built from engine facts. */
-  grounded?: { intent: string; validationPassed: boolean; usedLlm: boolean; engineVersion: string }
-}
-
-const reply = (text: string, extra: Partial<ChatReply> = {}): ChatReply => ({
-  reply: text,
-  needsConfirmation: false,
-  followUps: [],
-  ...extra,
-})
-
-const AFTER_SAVE_FOLLOW_UPS = ['¿Cuánto me queda?', '¿Cuánto gasté este mes?', '¿En qué gasto más?']
+export type { ChatReply } from './chat-reply'
 
 /**
- * ChatService — Nina's conversational pipeline.
+ * ChatService — orchestrates one chat turn.
  *
- *  1. "sí" / "no" with a signed pending registration from the app → save or cancel.
- *  2. Registration message (expense / income / goal) → parse and ask to confirm.
- *  3. Question → the engine detects intent, period and category and computes the
- *     facts; NinaRouter asks the LLM to explain them and validates every number.
- *     The result card is built from the facts, never from LLM text.
+ * 1. Resolve the question deterministically (intent, period, category).
+ * 2. Try the intent handlers in order; the first that answers wins:
+ *    confirmation → register income → register goal → register expense
+ *    → balance query → spending query → general (always answers).
+ * 3. Log one structured `chat_turn` line. Errors are logged with their stack
+ *    and rethrown; ChatExceptionFilter turns them into 503/500 with requestId.
  */
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name)
-  private readonly tokens: ConfirmationTokens
+  private readonly handlers: ChatIntentHandler[]
 
   constructor(
-    private readonly expensesService: ExpensesService,
+    confirmation: ConfirmationHandler,
+    registerIncome: RegisterIncomeHandler,
+    registerGoal: RegisterGoalHandler,
+    registerExpense: RegisterExpenseHandler,
+    balanceQuery: BalanceQueryHandler,
+    spendingQuery: SpendingQueryHandler,
+    private readonly general: GeneralHandler,
     private readonly memoryService: MemoryService,
-    private readonly incomeService: IncomeService,
-    private readonly goalService: GoalService,
-    private readonly financeEngine: FinanceEngineService,
-    private readonly router: NinaRouterService,
-    config: ConfigService,
+    private readonly telemetry: ChatTelemetry,
   ) {
-    this.tokens = new ConfirmationTokens(
-      confirmationSecret({
-        CHAT_CONFIRM_SECRET: config.get<string>('CHAT_CONFIRM_SECRET'),
-        SUPABASE_SERVICE_ROLE_KEY: config.get<string>('SUPABASE_SERVICE_ROLE_KEY'),
-      }),
-    )
+    this.handlers = [confirmation, registerIncome, registerGoal, registerExpense, balanceQuery, spendingQuery, general]
   }
 
-  async handleMessage(userId: string, message: string, pendingToken?: string): Promise<ChatReply> {
-    const result = await this.route(userId, message, pendingToken)
-    this.memoryService
-      .storeExchange(userId, message, result.reply)
-      .catch((e) => this.logger.warn(`storeExchange failed: ${e instanceof Error ? e.message : e}`))
-    return result
-  }
-
-  private async route(userId: string, message: string, pendingToken?: string): Promise<ChatReply> {
-    // ── 1. Pending confirmation ───────────────────────────────────────────────
-    const confirmIntent = detectConfirmIntent(message)
-    if (confirmIntent) {
-      const pending = this.tokens.verify(pendingToken, userId)
-      if (!pending) {
-        return reply(
-          confirmIntent === 'confirm'
-            ? 'No encontré un registro pendiente (pudo haber expirado). Cuéntamelo de nuevo, por ejemplo: "gasté 25 en taxi".'
-            : 'Listo, no registré nada. ¿En qué más te ayudo?',
-          { followUps: suggestedFollowUps('help') },
-        )
-      }
-      if (confirmIntent === 'cancel') {
-        return reply('Entendido, cancelé el registro. ¿Hay algo más en lo que te pueda ayudar?')
-      }
-      return reply(await this.commit(userId, pending), { followUps: AFTER_SAVE_FOLLOW_UPS })
-    }
-
-    // ── 2. Registrations ──────────────────────────────────────────────────────
-    const incomeConf = await this.incomeService.buildPendingFromMessage(message, userId)
-    if (incomeConf) return this.askToConfirm(userId, incomeConf.text, 'income', { income: incomeConf.income })
-
-    const goalConf = await this.goalService.buildPendingFromMessage(message, userId)
-    if (goalConf) return this.askToConfirm(userId, goalConf.text, 'goal', { goal: goalConf.goal })
-
-    const expenseConf = await this.expensesService.buildPendingFromMessage(message, userId)
-    if (expenseConf) return this.askToConfirm(userId, expenseConf.text, 'expense', { items: expenseConf.items })
-
-    // ── 3. Grounded answer ────────────────────────────────────────────────────
-    const { intent, facts, recent } = await this.financeEngine.factsForQuestion(userId, message)
-
-    if (intent === 'help') {
-      return reply(HELP_REPLY, { followUps: suggestedFollowUps('help') })
-    }
-    if (!facts.context?.hasHistory) {
-      return reply(NO_DATA_REPLY, { followUps: suggestedFollowUps('help') })
-    }
-
-    const card = buildCard(facts, recent)
-    const grounded = { intent, engineVersion: facts.engineVersion }
-
-    if (intent === 'recent') {
-      // A list needs no explanation: no LLM call.
-      return reply('Estos son tus últimos movimientos registrados.', {
-        card,
-        followUps: suggestedFollowUps(intent),
-        grounded: { ...grounded, validationPassed: true, usedLlm: false },
-      })
-    }
-
-    const routed = await this.router.explainFacts(userId, message, facts)
-    const { answer } = routed
-    let text = answer.recommendation ? `${answer.message}\n\n💡 ${answer.recommendation}` : answer.message
-    // Said deterministically: the requested month was empty, so we show the latest month with data.
-    const ctx = facts.context
-    if (routed.usedLlm && ctx?.requestedPeriodLabel) {
-      text = `En ${ctx.requestedPeriodLabel} aún no tienes movimientos; te muestro ${ctx.periodLabel}.\n\n${text}`
-    }
-
-    return reply(text, {
-      card,
-      followUps: mergeFollowUps(answer.followUps, suggestedFollowUps(intent)),
-      grounded: { ...grounded, validationPassed: routed.validationPassed, usedLlm: routed.usedLlm },
-    })
-  }
-
-  private askToConfirm(
+  async handleMessage(
     userId: string,
-    text: string,
-    kind: PendingKind,
-    payload: Record<string, unknown>,
-  ): ChatReply {
-    return reply(text, {
-      needsConfirmation: true,
-      pendingToken: this.tokens.sign(userId, { kind, payload }),
-    })
-  }
+    message: string,
+    pendingToken?: string,
+    requestId = 'local',
+  ): Promise<ChatReply> {
+    const started = Date.now()
+    const asOf = localToday(new Date())
+    const ctx: ChatContext = { userId, message, pendingToken, asOf, question: resolveQuestion(message, asOf) }
+    const turn = {
+      requestId,
+      userHash: hashUserId(userId),
+      intent: ctx.question.intent,
+      period: ctx.question.period.explicit ? ctx.question.period.granularity : 'default',
+    }
 
-  private async commit(userId: string, pending: PendingAction): Promise<string> {
-    const { kind, payload } = pending
-    if (kind === 'income') {
-      return (await this.incomeService.insertIncome(payload.income as ParsedIncome, userId)).result
+    let handlerName = 'none'
+    try {
+      for (const handler of this.handlers) {
+        handlerName = handler.name
+        const result = await handler.handle(ctx)
+        if (!result) continue
+        this.telemetry.record({
+          ...turn,
+          handler: handler.name,
+          outcome: result.outcome,
+          llmUsed: result.llmUsed,
+          validationPassed: result.validationPassed,
+          engineVersion: result.engineVersion,
+          latencyMs: Date.now() - started,
+        })
+        this.memoryService
+          .storeExchange(userId, message, result.reply.reply)
+          .catch((e) => this.logger.warn(`storeExchange failed: ${e instanceof Error ? e.name : 'error'}`))
+        return result.reply
+      }
+      // GeneralHandler always answers; reaching here is a wiring bug.
+      throw new Error('No chat handler answered')
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err))
+      this.telemetry.record({
+        ...turn,
+        handler: handlerName,
+        outcome: 'error',
+        errorType: e.name,
+        latencyMs: Date.now() - started,
+        stack: e.stack,
+      })
+      throw err
     }
-    if (kind === 'goal') {
-      return (await this.goalService.insertGoal(payload.goal as ParsedGoal, userId)).result
-    }
-    const { result } = await this.expensesService.insertExpenses(payload.items as ResolvedExpense[], userId)
-    // Keeps user_profiles fresh for the nightly job's user list.
-    this.expensesService
-      .updateUserProfile(userId)
-      .catch((e) => this.logger.warn(`updateUserProfile failed: ${e instanceof Error ? e.message : e}`))
-    return result
   }
-}
-
-function mergeFollowUps(fromLlm: string[], defaults: string[]): string[] {
-  const seen = new Set<string>()
-  const out: string[] = []
-  for (const s of [...fromLlm, ...defaults]) {
-    const t = s.trim()
-    if (t && t.length <= 60 && !seen.has(t.toLowerCase())) {
-      seen.add(t.toLowerCase())
-      out.push(t)
-    }
-  }
-  return out.slice(0, 3)
 }

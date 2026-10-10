@@ -3,11 +3,10 @@ import { ConfigService } from '@nestjs/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   buildFactsPayload,
-  classifyIntent,
   computeForecast,
-  detectCategoryInText,
   recentTransactions,
-  resolvePeriodRange,
+  resolveQuestion,
+  type ResolvedQuestion,
   buildBalanceFacts,
   computeHealthScore,
   detectAnomalies,
@@ -83,30 +82,32 @@ export class FinanceEngineService implements OnModuleInit {
   }
 
   /**
-   * Turns a chat question into engine facts: intent, period ('el mes pasado',
-   * 'en julio') and category are detected deterministically here.
+   * Engine facts for an already-resolved question (packages/finance-engine
+   * question.ts): the intent, period and category are decided before any I/O.
    */
-  async factsForQuestion(userId: string, question: string, asOf = localToday(new Date())) {
-    const period = resolvePeriodRange(question, asOf)
-    const classified = classifyIntent(question)
-    // "¿y el mes pasado?" / "¿y en julio?": a bare period means a spending summary.
-    const intent = classified === 'other' && period.explicit ? 'spending_summary' : classified
+  async factsForResolved(userId: string, q: ResolvedQuestion, asOf = localToday(new Date())) {
     const bundle = await this.computeBundle(userId, asOf)
-    if (intent === 'balance') {
-      return { intent, facts: buildBalanceFacts({ txs: bundle.txs, asOf }), recent: undefined }
+    if (q.intent === 'balance') {
+      return { facts: buildBalanceFacts({ txs: bundle.txs, asOf }), recent: undefined }
     }
     const facts = buildFactsPayload({
-      intent,
+      intent: q.intent,
       txs: bundle.txs,
       asOf,
-      period,
-      category: intent === 'category_spend' ? detectCategoryInText(question) : null,
+      period: q.period,
+      category: q.category,
       score: bundle.score,
       forecast: bundle.forecast,
       recurring: bundle.recurring,
     })
-    const recent = intent === 'recent' ? recentTransactions(bundle.txs, 8) : undefined
-    return { intent, facts, recent }
+    const recent = q.intent === 'recent' ? recentTransactions(bundle.txs, 8) : undefined
+    return { facts, recent }
+  }
+
+  /** Convenience: resolve + compute in one call. */
+  async factsForQuestion(userId: string, question: string, asOf = localToday(new Date())) {
+    const q = resolveQuestion(question, asOf)
+    return { intent: q.intent, ...(await this.factsForResolved(userId, q, asOf)) }
   }
 
   getSnapshot(userId: string) {

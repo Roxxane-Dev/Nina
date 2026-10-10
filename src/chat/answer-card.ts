@@ -41,6 +41,20 @@ export function buildCard(facts: FactsPayload, recent?: RecentItem[]): AnswerCar
         })),
         howCalculated: 'Movimientos más recientes que registraste, del más nuevo al más antiguo.',
       }
+    case 'balance':
+      return {
+        ...base,
+        title: 'Tu saldo',
+        subtitle: `Según tus movimientos registrados, ${period}`,
+        highlight: { label: 'Saldo (ingresos − gastos)', amount: f.balance, tone: f.balance >= 0 ? 'positive' : 'negative' },
+        rows: [
+          { label: 'Total de ingresos', amount: f.total_income, tone: 'positive' },
+          { label: 'Total de gastos', amount: -f.total_expenses, tone: 'negative' },
+        ],
+        howCalculated:
+          `Sumé todos tus ingresos y les resté todos tus gastos registrados ${period} (${facts.txnCount} movimientos). ` +
+          `No es el saldo de tu banco: solo incluye lo que registraste en Nina. Motor ${facts.engineVersion}.`,
+      }
     case 'income':
       return {
         ...base,
@@ -91,6 +105,7 @@ const FOLLOW_UPS: Partial<Record<FactsIntent, string[]>> = {
   spending_breakdown: ['¿Cuánto gasté en comida?', '¿Cuánto me queda?', 'Muéstrame mis últimos gastos'],
   category_spend: ['¿En qué gasto más?', '¿Cómo puedo ahorrar más?', '¿Cuánto me queda?'],
   income: ['¿Cuánto me queda?', '¿En qué gasto más?', '¿Cuánto gasté este mes?'],
+  balance: ['¿Cuánto gasté este mes?', '¿En qué gasto más?', 'Muéstrame mis últimos gastos'],
   available: ['¿En qué gasto más?', 'Muéstrame mis últimos gastos', '¿Cómo puedo ahorrar más?'],
   recent: ['¿Cuánto gasté este mes?', '¿En qué gasto más?', '¿Cuánto me queda?'],
   help: ['¿Cuánto gasté este mes?', 'Gasté 25 en taxi', 'Me pagaron 3500 de sueldo'],

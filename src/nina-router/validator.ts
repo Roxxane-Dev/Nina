@@ -130,6 +130,10 @@ export function templatedAnswer(facts: FactsPayload): LlmAnswer {
 
   if (ctx && !ctx.hasHistory) {
     message = 'Aún no tienes movimientos registrados. Cuéntame uno, por ejemplo: "gasté 25 en taxi".'
+  } else if (facts.intent === 'balance') {
+    message =
+      `Según tus movimientos registrados (${ctx?.periodLabel ?? 'desde el inicio'}), tu saldo es ${formatSoles(f.balance)}: ` +
+      `ingresos por ${formatSoles(f.total_income)} menos gastos por ${formatSoles(f.total_expenses)}.`
   } else if (facts.intent === 'income') {
     message = `${prefix}Tus ingresos ${period} suman ${formatSoles(f.income)}.`
   } else if (facts.intent === 'available') {

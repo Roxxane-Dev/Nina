@@ -13,3 +13,4 @@ export { normalizeCategorySlug, categoryLabel, detectCategoryInText, CATEGORY_LA
 export { isoDate, startOfMonth, endOfMonth } from './period'
 export { round2, clamp, median, mean } from './stats'
 export { APP_TIME_ZONE, toLocalDay, localDayOf, localToday, isValidDate } from './timezone'
+export { resolveQuestion, type ResolvedQuestion } from './question'
