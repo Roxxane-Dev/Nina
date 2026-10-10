@@ -1,25 +1,39 @@
-import { normalizeCategorySlug, type EngineTransaction } from '../../packages/finance-engine/src'
+import {
+  normalizeCategorySlug,
+  toLocalDay,
+  type EngineTransaction,
+} from '../../packages/finance-engine/src'
 import type { FinanceTransaction } from '../intelligence/nina-finance.types'
 
-export function toEngineTransaction(row: {
+export type TransactionRow = {
   id: string
   type?: string
   amount: number | string
   category?: string | null
   description?: string | null
-  date?: string
-  posted_at?: string
+  /** 'YYYY-MM-DD' or, as the real timestamptz column returns it, '2026-10-10T00:00:00+00:00'. */
+  date?: string | null
+  posted_at?: string | null
   is_transfer?: boolean
   account_id?: string
-}): EngineTransaction {
+}
+
+/**
+ * Maps a stored transaction to the engine shape, or null when the row cannot be
+ * trusted (unparseable date or non-finite amount). Dates go through the single
+ * Lima convention in finance-engine/timezone.ts.
+ */
+export function toEngineTransaction(row: TransactionRow): EngineTransaction | null {
   const amount = Number(row.amount)
+  const postedAt = toLocalDay(row.posted_at ?? row.date ?? null)
+  if (!postedAt || !Number.isFinite(amount)) return null
+
   const type = row.type ?? 'expense'
   const isTransfer = row.is_transfer === true || type === 'transfer'
   const signed = isTransfer ? amount : type === 'income' ? Math.abs(amount) : -Math.abs(amount)
-  const posted = row.posted_at ?? row.date ?? new Date().toISOString().slice(0, 10)
   return {
     id: String(row.id),
-    postedAt: new Date(`${posted}T00:00:00.000Z`),
+    postedAt,
     amount: signed,
     currency: 'PEN',
     categorySlug: normalizeCategorySlug(row.category),
@@ -29,15 +43,28 @@ export function toEngineTransaction(row: {
   }
 }
 
+/** Maps many rows, dropping the invalid ones; `dropped` lets callers log the count. */
+export function toEngineTransactions(rows: TransactionRow[]): {
+  txs: EngineTransaction[]
+  dropped: number
+} {
+  const txs: EngineTransaction[] = []
+  for (const row of rows) {
+    const tx = toEngineTransaction(row)
+    if (tx) txs.push(tx)
+  }
+  return { txs, dropped: rows.length - txs.length }
+}
+
 export function fromFinanceTransactions(rows: FinanceTransaction[]): EngineTransaction[] {
-  return rows.map((r) =>
-    toEngineTransaction({
+  return toEngineTransactions(
+    rows.map((r) => ({
       id: r.id,
       type: r.type,
       amount: r.amount,
       category: r.category,
       description: r.description,
       date: r.date,
-    }),
-  )
+    })),
+  ).txs
 }

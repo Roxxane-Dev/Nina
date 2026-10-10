@@ -11,13 +11,15 @@ import {
   computeHealthScore,
   detectAnomalies,
   detectRecurrence,
+  localToday,
   type EngineTransaction,
   type FactsIntent,
   type FactsPayload,
 } from '../../packages/finance-engine/src'
 import { createAdminClient } from '../common/supabase.client'
 import { NinaFinanceEngine } from '../intelligence/nina-finance.engine'
-import { toEngineTransaction } from './map-transactions'
+import { FinanceDataUnavailableError } from './errors'
+import { toEngineTransactions, type TransactionRow } from './map-transactions'
 
 @Injectable()
 export class FinanceEngineService implements OnModuleInit {
@@ -48,13 +50,17 @@ export class FinanceEngineService implements OnModuleInit {
       .order('date', { ascending: false })
       .limit(2000)
     if (error) {
-      this.logger.warn(`loadTransactions: ${error.message}`)
-      return []
+      // A failed read is an infrastructure problem, never "the user has no data".
+      this.logger.error(`loadTransactions failed: ${error.code ?? 'unknown'}`)
+      throw new FinanceDataUnavailableError(error.code)
     }
-    return (data ?? []).map((row) => toEngineTransaction(row as never))
+    const { txs, dropped } = toEngineTransactions((data ?? []) as TransactionRow[])
+    if (dropped > 0) this.logger.warn(`loadTransactions: dropped ${dropped} row(s) with invalid date or amount`)
+    return txs
   }
 
-  async computeBundle(userId: string, asOf = new Date()) {
+  /** asOf defaults to today's calendar day in Lima (finance-engine/timezone.ts). */
+  async computeBundle(userId: string, asOf = localToday(new Date())) {
     const txs = await this.loadTransactions(userId)
     const recurring = detectRecurrence(txs, asOf)
     const score = computeHealthScore(txs, asOf, { recurring })
@@ -63,7 +69,7 @@ export class FinanceEngineService implements OnModuleInit {
     return { txs, recurring, score, forecast, anomalies, asOf }
   }
 
-  async factsForIntent(userId: string, intent: FactsIntent, asOf = new Date()): Promise<FactsPayload> {
+  async factsForIntent(userId: string, intent: FactsIntent, asOf = localToday(new Date())): Promise<FactsPayload> {
     const bundle = await this.computeBundle(userId, asOf)
     return buildFactsPayload({
       intent,
@@ -79,7 +85,7 @@ export class FinanceEngineService implements OnModuleInit {
    * Turns a chat question into engine facts: intent, period ('el mes pasado',
    * 'en julio') and category are detected deterministically here.
    */
-  async factsForQuestion(userId: string, question: string, asOf = new Date()) {
+  async factsForQuestion(userId: string, question: string, asOf = localToday(new Date())) {
     const period = resolvePeriod(question, asOf)
     const classified = classifyIntent(question)
     // "¿y el mes pasado?" / "¿y en julio?": a bare period means a spending summary.

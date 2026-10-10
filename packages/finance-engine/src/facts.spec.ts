@@ -138,3 +138,17 @@ describe('categories', () => {
     expect(detectCategoryInText('¿cuánto gasté?')).toBeNull()
   })
 })
+
+describe('invalid dates (regression: RangeError Invalid time value)', () => {
+  it('rows with an invalid date are ignored instead of breaking the facts', () => {
+    const broken = { ...ANA_TXS[0], id: 'bad', postedAt: new Date('x') }
+    const f = buildFactsPayload({
+      intent: 'spending_summary',
+      txs: [...ANA_TXS, broken],
+      asOf: OCT_9,
+      period: { year: 2026, month: 7, explicit: true },
+    })
+    expect(f.figures.income).toBe(5100)
+    expect(() => buildFactsPayload({ intent: 'spending_summary', txs: [broken], asOf: OCT_9 })).not.toThrow()
+  })
+})

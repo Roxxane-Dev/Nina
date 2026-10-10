@@ -1,8 +1,14 @@
 import { endOfMonth, inPeriod, isoDate, startOfMonth } from './period'
+import { isValidDate } from './timezone'
 import type { EngineTransaction, MonthlyTotals } from './types'
 
+/** Defense in depth: rows with an invalid date or amount never reach a calculation. */
+export function usableTransactions(txs: EngineTransaction[]): EngineTransaction[] {
+  return txs.filter((t) => isValidDate(t.postedAt) && Number.isFinite(t.amount))
+}
+
 export function signedFlows(txs: EngineTransaction[]): EngineTransaction[] {
-  return txs.filter((t) => !t.isTransfer)
+  return usableTransactions(txs).filter((t) => !t.isTransfer)
 }
 
 export function monthlyTotals(

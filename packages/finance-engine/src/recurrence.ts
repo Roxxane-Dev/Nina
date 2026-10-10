@@ -1,5 +1,6 @@
 import { median, stdev } from './stats'
 import { daysBetween } from './period'
+import { signedFlows } from './aggregates'
 import { SUBSCRIPTION_SLUGS, type DetectedRecurring, type EngineTransaction } from './types'
 
 function classifyInterval(days: number): DetectedRecurring['frequency'] | null {
@@ -12,7 +13,7 @@ function classifyInterval(days: number): DetectedRecurring['frequency'] | null {
 
 export function detectRecurrence(txs: EngineTransaction[], asOf: Date): DetectedRecurring[] {
   const groups = new Map<string, EngineTransaction[]>()
-  for (const t of txs.filter((t) => !t.isTransfer && t.amount < 0)) {
+  for (const t of signedFlows(txs).filter((t) => t.amount < 0)) {
     const key = t.merchantNormalized || t.categorySlug
     if (!key) continue
     const list = groups.get(key) ?? []
