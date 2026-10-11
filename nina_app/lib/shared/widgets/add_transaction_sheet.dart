@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/design_system.dart';
+import '../../data/services/accounts_api_service.dart';
 import '../../data/services/finance_api_service.dart';
 
 /// Canonical engine categories (packages/finance-engine/src/categories.ts).
@@ -46,13 +47,21 @@ Future<bool> showAddTransactionSheet(BuildContext context,
 
 class AddTransactionSheet extends StatefulWidget {
   const AddTransactionSheet(
-      {super.key, required this.api, this.spaceId, this.spaceName});
+      {super.key,
+      required this.api,
+      this.spaceId,
+      this.spaceName,
+      this.loadAccounts});
 
   final FinanceApiService api;
 
   /// When set, the movement goes to this shared space (US-35/36).
   final String? spaceId;
   final String? spaceName;
+
+  /// US-41 account options; injectable for tests. Errors (e.g. accounts not
+  /// enabled yet) simply hide the field.
+  final Future<List<Account>> Function()? loadAccounts;
 
   @override
   State<AddTransactionSheet> createState() => _AddTransactionSheetState();
@@ -66,6 +75,18 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   DateTime _date = DateTime.now();
   bool _saving = false;
   String? _error;
+  List<Account> _accounts = const [];
+  String? _accountId;
+
+  @override
+  void initState() {
+    super.initState();
+    final load = widget.loadAccounts ?? AccountsApiService.instance.list;
+    load().then((list) {
+      if (mounted)
+        setState(() => _accounts = list.where((a) => !a.archived).toList());
+    }).catchError((_) {});
+  }
 
   Map<String, String> get _categories =>
       _type == 'expense' ? expenseCategories : incomeCategories;
@@ -112,6 +133,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
         date: DateFormat('yyyy-MM-dd').format(_date),
         note: _note.text,
         spaceId: widget.spaceId,
+        accountId: _accountId,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -186,6 +208,21 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             ),
           ),
           const SizedBox(height: 12),
+          if (_accounts.isNotEmpty) ...[
+            DropdownButtonFormField<String?>(
+              key: const Key('account'),
+              initialValue: _accountId,
+              decoration: const InputDecoration(labelText: 'Cuenta (opcional)'),
+              items: [
+                const DropdownMenuItem<String?>(
+                    value: null, child: Text('Sin cuenta')),
+                for (final a in _accounts)
+                  DropdownMenuItem<String?>(value: a.id, child: Text(a.name)),
+              ],
+              onChanged: (v) => setState(() => _accountId = v),
+            ),
+            const SizedBox(height: 12),
+          ],
           TextField(
             controller: _note,
             maxLength: 140,

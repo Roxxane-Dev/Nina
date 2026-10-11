@@ -68,6 +68,7 @@ class FakeApi extends FinanceApiService {
     required String date,
     String? note,
     String? spaceId,
+    String? accountId,
   }) async {
     created.add({
       'type': type,
@@ -75,7 +76,8 @@ class FakeApi extends FinanceApiService {
       'category': category,
       'date': date,
       'note': note,
-      'spaceId': spaceId
+      'spaceId': spaceId,
+      'accountId': accountId
     });
   }
 

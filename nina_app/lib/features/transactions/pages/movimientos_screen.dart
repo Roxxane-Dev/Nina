@@ -7,6 +7,7 @@ import '../../../core/utils/category_utils.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/utils/transaction_display.dart';
 import '../../../data/repositories/supabase_finance_repository.dart';
+import '../../../data/services/accounts_api_service.dart';
 import '../../../data/services/finance_api_service.dart';
 import '../../../domain/models/overview.dart';
 import '../../../shared/widgets/add_transaction_sheet.dart';
@@ -20,11 +21,16 @@ enum _TypeFilter { all, income, expense }
 /// engine (GET /v1/overview), never from summing rows here.
 class MovimientosScreen extends StatefulWidget {
   const MovimientosScreen(
-      {super.key, this.api, this.loadTransactions, this.watchChanges});
+      {super.key,
+      this.api,
+      this.loadTransactions,
+      this.watchChanges,
+      this.loadAccounts});
 
   final FinanceApiService? api;
   final Future<List<Map<String, dynamic>>> Function()? loadTransactions;
   final Stream<Object?> Function()? watchChanges;
+  final Future<List<Account>> Function()? loadAccounts;
 
   @override
   State<MovimientosScreen> createState() => _MovimientosScreenState();
@@ -42,6 +48,8 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
   _PeriodFilter _period = _PeriodFilter.current;
   _TypeFilter _type = _TypeFilter.all;
   String? _category; // display label, null = all
+  String? _accountId; // US-41 filter, null = all
+  List<Account> _accounts = const [];
 
   @override
   void initState() {
@@ -51,6 +59,12 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     final watch = widget.watchChanges ??
         SupabaseFinanceRepository.instance.watchTransactions;
     _changes = watch().listen((_) => _load());
+    final loadAccounts =
+        widget.loadAccounts ?? AccountsApiService.instance.list;
+    // Accounts are optional (and not enabled before migration 019): ignore errors.
+    loadAccounts().then((list) {
+      if (mounted) setState(() => _accounts = list);
+    }).catchError((_) {});
   }
 
   @override
@@ -99,6 +113,7 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     return (_rows ?? const []).where((r) {
       if (_type == _TypeFilter.income && r['type'] != 'income') return false;
       if (_type == _TypeFilter.expense && r['type'] != 'expense') return false;
+      if (_accountId != null && r['account_id'] != _accountId) return false;
       if (_category != null &&
           categoryLabel(r['category'] as String?) != _category) {
         return false;
@@ -261,6 +276,15 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
               _type,
               (v) => setState(() => _type = v),
             ),
+            if (_accounts.isNotEmpty)
+              _buildChips<String?>(
+                {
+                  null: 'Todas las cuentas',
+                  for (final a in _accounts) a.id: a.name
+                },
+                _accountId,
+                (v) => setState(() => _accountId = v),
+              ),
             if (_categoryOptions.length > 1)
               _buildChips<String?>(
                 {

@@ -112,6 +112,14 @@ class _ProfilePageState extends State<ProfilePage> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/spaces'),
             ),
+            ListTile(
+              key: const Key('more-accounts'),
+              leading: const Icon(Icons.account_balance_wallet_outlined),
+              title: const Text('Cuentas'),
+              subtitle: const Text('Banco, efectivo, tarjeta, billetera'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/accounts'),
+            ),
             _header('PRIVACIDAD'),
             ListTile(
               key: const Key('more-privacy'),
