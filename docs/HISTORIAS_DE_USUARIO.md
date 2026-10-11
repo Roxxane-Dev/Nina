@@ -17,6 +17,15 @@ Leyenda de estado real: ✅ hecho y probado · ⚠️ existe pero incompleto o c
 
 → La base de las épicas 3–5 es un endpoint de resumen del motor (`GET /v1/summary?period=`) que Inicio, Movimientos y Análisis consumen. Las listas de movimientos siguen leyéndose de Supabase con RLS.
 
+## Progreso
+| Sprint | Estado | Commits |
+|---|---|---|
+| A — Una sola fuente de cifras | ✅ 11 oct | `0b09743` (API), `c464a5f` (app) |
+| B — Corrección de categorías | Plan pendiente de aprobación | — |
+| C — Espacios compartidos | Plan pendiente de aprobación | — |
+| D — Confianza y cuenta | Pendiente | — |
+| E — Cuentas | Pendiente | — |
+
 ## Trazabilidad
 
 ### Épica 1 — Onboarding y cuenta
@@ -25,7 +34,7 @@ Leyenda de estado real: ✅ hecho y probado · ⚠️ existe pero incompleto o c
 | US-01 | Registro con email o Google | P0 | ⚠️ email ✅ | Google pasa a noviembre (decisión 11 oct) |
 | US-02 | Iniciar sesión | P0 | ✅ | Verificar "entro directo a Inicio con datos" cuando Inicio esté arreglado |
 | US-03 | Consentimiento explícito (datos, IA, analítica) | P0 | ❌ | Tabla `consents` + RLS, pantalla en onboarding, guard que bloquea IA sin consentimiento |
-| US-04 | Guía al primer movimiento | P1 | ❌ | Estado vacío de Inicio con CTA al chat / formulario |
+| US-04 | Guía al primer movimiento | P1 | ✅ Sprint A | — |
 | US-05 | Cerrar sesión | P0 | ✅ | Ya en Más; añadir test |
 
 ### Épica 2 — Chat con Nina
@@ -47,25 +56,25 @@ Leyenda de estado real: ✅ hecho y probado · ⚠️ existe pero incompleto o c
 ### Épica 3 — Inicio
 | ID | Historia | Prio | Estado real | Qué falta |
 |---|---|---|---|---|
-| US-18 | Resumen del mes al abrir | P0 | ⚠️ cifras en cero (hallazgo 1) | Inicio desde `GET /v1/summary` |
-| US-19 | Gasto por categoría | P0 | ⚠️ | Desglose desde el motor |
-| US-20 | Selector de periodo | P1 | ❌ | Selector (mes actual / anterior) → `?period=` |
-| US-21 | Estado vacío claro | P1 | ❌ | Junto con US-04 |
+| US-18 | Resumen del mes al abrir | P0 | ✅ Sprint A | — |
+| US-19 | Gasto por categoría | P0 | ✅ Sprint A | — |
+| US-20 | Selector de periodo | P1 | ✅ Sprint A | — |
+| US-21 | Estado vacío claro | P1 | ✅ Sprint A | — |
 
 ### Épica 4 — Movimientos
 | ID | Historia | Prio | Estado real | Qué falta |
 |---|---|---|---|---|
-| US-22 | Historial completo | P0 | ✅ | Totales del encabezado desde el motor |
-| US-23 | Filtros (categoría, tipo, fecha) | P1 | ⚠️ solo chips | Tipo y rango de fecha |
+| US-22 | Historial completo | P0 | ✅ Sprint A | — |
+| US-23 | Filtros (categoría, tipo, fecha) | P1 | ✅ Sprint A | — |
 | US-24 | Corregir categoría y recordar | P0 | ❌ | Edición + tabla `merchant_rules` (RLS) usada por el parser |
-| US-25 | Eliminar movimiento | P0 | ⚠️ método sin UI | Botón con confirmación (RLS delete ya en migración 013) |
-| US-26 | Formulario de alta | P1 | ❌ | Hoja con monto, tipo, categoría, fecha, nota |
+| US-25 | Eliminar movimiento | P0 | ✅ Sprint A | — |
+| US-26 | Formulario de alta | P1 | ✅ Sprint A | — |
 
 ### Épica 5 — Análisis
 | ID | Historia | Prio | Estado real | Qué falta |
 |---|---|---|---|---|
-| US-27 | Gráfico por categoría | P0 | ⚠️ calculado en Dart | Datos del motor |
-| US-28 | Tendencia mes a mes | P1 | ⚠️ calculado en Dart | Serie mensual del motor |
+| US-27 | Gráfico por categoría | P0 | ✅ Sprint A | — |
+| US-28 | Tendencia mes a mes | P1 | ✅ Sprint A | — |
 | US-29–32 | Insights, score, forecast, simulador | P1–P2 | Fase 2 | — |
 
 ### Épica 6 — Espacios compartidos
