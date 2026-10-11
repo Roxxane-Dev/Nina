@@ -11,7 +11,7 @@ import { randomUUID } from 'crypto'
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard'
 import type { SupabaseUser } from '../auth/auth.service'
 import { ChatService, type ChatReply } from './chat.service'
-import { ChatExceptionFilter, type ChatRequest } from './chat-exception.filter'
+import { ApiExceptionFilter, type ChatRequest } from '../common/api-exception.filter'
 
 type ChatBody = {
   message: string
@@ -24,10 +24,10 @@ const MAX_MESSAGE_LENGTH = 1000
 /**
  * Minimal HTTP surface for Nina chat.
  * userId is always extracted from the verified JWT — never trusted from the body.
- * Errors leave through ChatExceptionFilter with a code and requestId.
+ * Errors leave through ApiExceptionFilter with a code and requestId.
  */
 @UseGuards(SupabaseAuthGuard)
-@UseFilters(ChatExceptionFilter)
+@UseFilters(ApiExceptionFilter)
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chat: ChatService) {}

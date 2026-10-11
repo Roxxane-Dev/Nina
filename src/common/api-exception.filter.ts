@@ -10,19 +10,20 @@ import type { Request, Response } from 'express'
 import { FinanceDataUnavailableError } from '../finance-engine/errors'
 
 export type ChatRequest = Request & { chatRequestId?: string }
+export type ApiRequest = ChatRequest
 
 export const DATA_UNAVAILABLE_REPLY = 'No pude consultar tus movimientos ahora. Inténtalo en unos minutos.'
 export const INTERNAL_REPLY = 'Tuve un problema procesando tu mensaje. Inténtalo de nuevo.'
 
 /**
- * Last line of defence for /chat: no error leaves without a requestId and a
+ * Last line of defence for /chat and /v1: no error leaves without a requestId and a
  * specific code. Infrastructure → 503 DATA_UNAVAILABLE; bugs → 500 INTERNAL.
  * Validation errors (4xx) keep their status. The turn itself is already logged
  * by ChatService with the stack; this only shapes the response.
  */
 @Catch()
-export class ChatExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(ChatExceptionFilter.name)
+export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ApiExceptionFilter.name)
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp()

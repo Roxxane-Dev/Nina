@@ -14,7 +14,7 @@ import { ExpensesService } from '../expenses/expenses.service'
 import { GoalService } from '../goals/goal.service'
 import { ChatService } from './chat.service'
 import { ChatTelemetry } from './chat-telemetry'
-import { ChatExceptionFilter, DATA_UNAVAILABLE_REPLY } from './chat-exception.filter'
+import { ApiExceptionFilter, DATA_UNAVAILABLE_REPLY } from '../common/api-exception.filter'
 import { ConfirmationTokens } from './confirmation-token'
 import { ConfirmationHandler } from './intents/confirmation.handler'
 import { GeneralHandler, UNRECOGNIZED_REPLY } from './intents/general.handler'
@@ -159,7 +159,7 @@ describe('chat regression (real Supabase date format)', () => {
   })
 })
 
-describe('ChatExceptionFilter', () => {
+describe('ApiExceptionFilter', () => {
   function host(requestId?: string) {
     const json = jest.fn()
     const status = jest.fn(() => ({ json }))
@@ -171,14 +171,14 @@ describe('ChatExceptionFilter', () => {
 
   it('maps data outages to 503 DATA_UNAVAILABLE with the requestId', () => {
     const { h, status, json } = host('req-1')
-    new ChatExceptionFilter().catch(new FinanceDataUnavailableError('PGRST301'), h)
+    new ApiExceptionFilter().catch(new FinanceDataUnavailableError('PGRST301'), h)
     expect(status).toHaveBeenCalledWith(503)
     expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: 'DATA_UNAVAILABLE', message: DATA_UNAVAILABLE_REPLY, requestId: 'req-1' }))
   })
 
   it('maps unexpected errors to 500 INTERNAL with the requestId', () => {
     const { h, status, json } = host('req-2')
-    new ChatExceptionFilter().catch(new RangeError('Invalid time value'), h)
+    new ApiExceptionFilter().catch(new RangeError('Invalid time value'), h)
     expect(status).toHaveBeenCalledWith(500)
     expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INTERNAL', requestId: 'req-2' }))
   })

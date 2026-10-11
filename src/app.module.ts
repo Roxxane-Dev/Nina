@@ -10,6 +10,7 @@ import { RealtimeModule } from './realtime/realtime.module'
 import { ConnectivityModule } from './financial-connectivity/connectivity.module'
 import { IntelligenceModule } from './intelligence/intelligence.module'
 import { FinanceEngineModule } from './finance-engine/finance-engine.module'
+import { TransactionsModule } from './transactions/transactions.module'
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { FinanceEngineModule } from './finance-engine/finance-engine.module'
     ConnectivityModule,
     IntelligenceModule,
     FinanceEngineModule,
+    TransactionsModule,
   ],
 })
 export class AppModule { }

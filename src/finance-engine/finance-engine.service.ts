@@ -6,6 +6,11 @@ import {
   computeForecast,
   recentTransactions,
   resolveQuestion,
+  buildOverview,
+  monthlyTrend,
+  parsePeriodParam,
+  type Overview,
+  type TrendPoint,
   type ResolvedQuestion,
   buildBalanceFacts,
   computeHealthScore,
@@ -108,6 +113,17 @@ export class FinanceEngineService implements OnModuleInit {
   async factsForQuestion(userId: string, question: string, asOf = localToday(new Date())) {
     const q = resolveQuestion(question, asOf)
     return { intent: q.intent, ...(await this.factsForResolved(userId, q, asOf)) }
+  }
+
+  /** Overview for a period param ('current' | 'previous' | 'YYYY-MM'); null when the param is invalid. */
+  async overview(userId: string, period?: string, asOf = localToday(new Date())): Promise<Overview | null> {
+    const range = parsePeriodParam(period, asOf)
+    if (!range) return null
+    return buildOverview(await this.loadTransactions(userId), range, asOf)
+  }
+
+  async trends(userId: string, months: number, asOf = localToday(new Date())): Promise<TrendPoint[]> {
+    return monthlyTrend(await this.loadTransactions(userId), asOf, months)
   }
 
   getSnapshot(userId: string) {

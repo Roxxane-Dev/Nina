@@ -23,7 +23,7 @@ export type { ChatReply } from './chat-reply'
  *    confirmation → register income → register goal → register expense
  *    → balance query → spending query → general (always answers).
  * 3. Log one structured `chat_turn` line. Errors are logged with their stack
- *    and rethrown; ChatExceptionFilter turns them into 503/500 with requestId.
+ *    and rethrown; ApiExceptionFilter turns them into 503/500 with requestId.
  */
 @Injectable()
 export class ChatService {
