@@ -5,6 +5,15 @@ import { createAdminClient } from '../common/supabase.client'
 import { FinanceDataUnavailableError } from '../finance-engine/errors'
 import { isMissingSchema } from '../spaces/spaces.errors'
 
+/** Migration 018 pending: consents cannot be stored yet (503 CONSENTS_NOT_READY). */
+export class ConsentsNotReadyError extends Error {
+  readonly code = 'CONSENTS_NOT_READY'
+  constructor() {
+    super('Consents are not enabled (migration 018 pending)')
+    this.name = 'ConsentsNotReadyError'
+  }
+}
+
 export const CONSENT_PURPOSES = ['data_processing', 'ai_processing', 'analytics'] as const
 export type ConsentPurpose = (typeof CONSENT_PURPOSES)[number]
 /** Bump when the privacy text changes: users are asked again. */
@@ -14,6 +23,8 @@ export type ConsentState = {
   policyVersion: string
   /** True once the user answered the current policy version. */
   answered: boolean
+  /** False while migration 018 is pending: consents cannot be stored yet. */
+  available: boolean
   consents: Record<ConsentPurpose, boolean>
 }
 
@@ -45,8 +56,11 @@ export class ConsentsService implements OnModuleInit {
       .order('created_at', { ascending: false })
       .limit(100)
     if (error) {
-      // Before migration 018 nobody has consented to anything: AI stays off.
-      if (isMissingSchema(error.code)) return { policyVersion: POLICY_VERSION, answered: false, consents: { ...NONE } }
+      // Before migration 018 the app keeps working as before (data), but AI stays
+      // off (fail closed) and the app is told consents are not available yet.
+      if (isMissingSchema(error.code)) {
+        return { policyVersion: POLICY_VERSION, answered: true, available: false, consents: { ...NONE, data_processing: true } }
+      }
       this.logger.error(`current failed: ${error.code ?? 'unknown'}`)
       throw new FinanceDataUnavailableError(error.code)
     }
@@ -59,13 +73,14 @@ export class ConsentsService implements OnModuleInit {
       consents[row.purpose as ConsentPurpose] = row.granted === true
       if (row.policy_version === POLICY_VERSION) answered = true
     }
-    return { policyVersion: POLICY_VERSION, answered, consents }
+    return { policyVersion: POLICY_VERSION, answered, available: true, consents }
   }
 
   /** Records only the purposes whose value changed (or all, the first time). */
   async record(userId: string, choices: Partial<Record<ConsentPurpose, boolean>>): Promise<ConsentState> {
     if (!this.db) throw new FinanceDataUnavailableError('no_client')
     const before = await this.current(userId)
+    if (!before.available) throw new ConsentsNotReadyError()
     const rows = CONSENT_PURPOSES.filter((p) => typeof choices[p] === 'boolean')
       .filter((p) => !before.answered || before.consents[p] !== choices[p])
       .map((p) => ({ user_id: userId, purpose: p, granted: choices[p], policy_version: POLICY_VERSION }))

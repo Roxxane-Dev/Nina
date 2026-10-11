@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common'
 import { FakeSupabase } from '../testing/fake-supabase'
 import { ConsentsController } from './consents.controller'
-import { ConsentsService, POLICY_VERSION } from './consents.service'
+import { ConsentsNotReadyError, ConsentsService, POLICY_VERSION } from './consents.service'
 import { validateFullName } from '../me/me.controller'
 
 function setup(missing: string[] = []) {
@@ -29,6 +29,7 @@ describe('Consents (US-03 / US-42)', () => {
     expect(await svc.current('u1')).toEqual({
       policyVersion: POLICY_VERSION,
       answered: false,
+      available: true,
       consents: { data_processing: false, ai_processing: false, analytics: false },
     })
     expect(await svc.allowsAi('u1')).toBe(false)
@@ -55,10 +56,13 @@ describe('Consents (US-03 / US-42)', () => {
     expect(await svc.allowsAi('u1')).toBe(false)
   })
 
-  it('before migration 018, nobody has consented (AI stays off, no error)', async () => {
+  it('before migration 018 the app stays usable but AI is off and nothing can be stored', async () => {
     const { svc } = setup(['consents'])
-    expect((await svc.current('u1')).answered).toBe(false)
+    const s = await svc.current('u1')
+    expect(s).toEqual(expect.objectContaining({ answered: true, available: false }))
+    expect(s.consents.data_processing).toBe(true)
     expect(await svc.allowsAi('u1')).toBe(false)
+    await expect(svc.record('u1', { ai_processing: true })).rejects.toBeInstanceOf(ConsentsNotReadyError)
   })
 
   it('rejects unknown purposes and non-boolean values', async () => {

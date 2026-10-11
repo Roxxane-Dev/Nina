@@ -9,6 +9,7 @@ import {
 import type { Request, Response } from 'express'
 import { FinanceDataUnavailableError } from '../finance-engine/errors'
 import { SpacesNotReadyError } from '../spaces/spaces.errors'
+import { ConsentsNotReadyError } from '../consents/consents.service'
 
 export type ChatRequest = Request & { chatRequestId?: string }
 export type ApiRequest = ChatRequest
@@ -32,6 +33,16 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const res = http.getResponse<Response>()
     const req = http.getRequest<ChatRequest>()
     const requestId = req.chatRequestId
+
+    if (exception instanceof ConsentsNotReadyError) {
+      res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+        code: exception.code,
+        message: 'Los permisos todavía no se pueden guardar. Inténtalo más tarde.',
+        requestId,
+      })
+      return
+    }
 
     if (exception instanceof SpacesNotReadyError) {
       res.status(HttpStatus.SERVICE_UNAVAILABLE).json({

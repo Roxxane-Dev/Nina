@@ -8,6 +8,8 @@ import '../../features/chat/pages/chat_page.dart';
 import '../../features/chat/bloc/chat_bloc.dart';
 import '../../features/spaces/pages/space_detail_page.dart';
 import '../../features/spaces/pages/spaces_page.dart';
+import '../../features/privacy/consent_gate.dart';
+import '../../features/privacy/privacy_page.dart';
 
 // NEW SCREENS
 import '../../features/home/pages/home_screen.dart';
@@ -49,6 +51,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
       // Full-screen modal routes (outside shell)
       GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
       GoRoute(path: '/spaces', builder: (_, __) => const SpacesPage()),
+      GoRoute(path: '/privacy', builder: (_, __) => const PrivacyPage()),
       GoRoute(
         path: '/spaces/:id',
         builder: (_, state) =>
@@ -57,7 +60,9 @@ GoRouter buildRouter(AuthBloc authBloc) {
 
       // Shell with bottom nav
       ShellRoute(
-        builder: (context, state, child) => _ScaffoldWithNav(child: child),
+        // US-03: nothing behind the bottom nav is reachable before consenting.
+        builder: (context, state, child) =>
+            ConsentGate(child: _ScaffoldWithNav(child: child)),
         routes: [
           GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
           GoRoute(
