@@ -26,8 +26,17 @@
 - Migración 015 (reconciliar `transactions.date`) escrita, **sin aplicar**.
 - Tests: 144 API (incluye regresión con formato real), 14 app.
 
+### Hecho (11 oct) — historias de usuario, Sprints A–E
+- A: Inicio, Movimientos y Análisis con cifras del motor (`/v1/overview`, `/v1/trends`), selector de periodo, estado vacío, alta manual y borrado.
+- B: corregir categoría y que Nina la recuerde (migración 016).
+- C: espacios compartidos completos: crear, invitar por código, unirse, salir, saldo propio, quién aportó qué, registrar por chat ("es de la casa") (migración 017 + test RLS de 3 usuarios).
+- D: consentimiento antes de usar la app, Más → Privacidad, IA apagada sin consentimiento, perfil editable, Más sin opciones falsas (migración 018).
+- E: cuentas (migración 019 + test RLS).
+- Bugs encontrados en el camino: `setState` que devolvía un Future (recarga rota en 4 pantallas), confirmación de gasto con "$", tendencias falsas.
+- Tests: 212 API, 37 app.
+
 ### Pendiente
-- Aplicar migraciones 013 y 015 en Supabase DEV y correr `supabase/tests/rls_check.sql`.
+- Aplicar migraciones 013, 015, 016, 017, 018 y 019 en Supabase DEV (en ese orden) y correr los 3 tests SQL y correr `supabase/tests/rls_check.sql`.
 - Rotar service role key y Gemini key; `AI_PROVIDER=openai` en `.env`.
 - Migración baseline desde el esquema real de Supabase (la BD no coincide con 001–012).
 - Probar signup/login end-to-end en dispositivo/emulador.

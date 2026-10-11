@@ -91,6 +91,12 @@ Mover dinero, dar asesoría de inversión/crédito/legal, inventar cifras.
 | AI | `src/ai/ai.service.ts`, `src/ai/providers/` | Llama al proveedor LLM disponible con fallback. El *mock* nunca da cifras. |
 | Expenses / Income / Goals | `src/expenses/`, `src/income/`, `src/goals/` | Parsers en español ("gasté 20 en taxi y 15 en café") e inserción en `transactions`. |
 | Home | `src/home/` | Payload del Home (cache → snapshot → cálculo en el momento). |
+| Overview / trends | `src/finance-engine/` (`/v1/overview`, `/v1/trends`) | Cifras de Inicio, Movimientos y Análisis, calculadas por el motor. |
+| Transactions | `src/transactions/` | Alta manual, cambio de categoría (recuerda la regla) y borrado; siempre filtrado por el usuario del JWT. |
+| Category rules | `src/category-rules/` | Correcciones de categoría que Nina recuerda (US-24). |
+| Spaces | `src/spaces/` | Espacios compartidos: crear, invitar por código, unirse, salir, resumen y aportes por miembro. Comprueba membresía en cada llamada. |
+| Consents | `src/consents/` | Registro de consentimientos (solo agrega). Sin consentimiento de IA no se llama al LLM. |
+| Me / Accounts | `src/me/`, `src/accounts/` | Perfil (nombre) y cuentas (banco, efectivo, tarjeta, billetera). |
 | Realtime | `src/realtime/` | WebSocket `/intelligence`: empuja eventos solo a la sala `user:<id>` del token validado. |
 
 Hay muchos módulos más en `src/ai/` (behavioral, emotion, streaks, prevention, proactive, household…). **Están fuera del alcance del MVP**: no se extienden y deben quedar detrás de feature flags.
@@ -148,7 +154,9 @@ Para depurar: busca en la consola del backend `"event":"chat_turn"` y el `reques
 
 ---
 
-## 5. Espacios compartidos (pareja / familia) — diseño propuesto, pendiente de aprobación
+## 5. Espacios compartidos (pareja / familia) — implementado (migración 017)
+
+> Implementado el 11 oct con `space_members`, `space_invites` (código de 8 caracteres, 7 días) y `transactions.shared_space_id`. Lo que yo pagué en un espacio cuenta en mi vista personal; la vista del espacio suma lo de todos. El diseño original queda abajo como referencia.
 
 **Objetivo:** varios usuarios ven y categorizan los gastos de un fondo común, sin que nadie vea las finanzas personales de los demás.
 
@@ -215,7 +223,7 @@ Nina/
 ├── src/                          API NestJS
 │   ├── auth/  chat/  nina-router/  finance-engine/  ai/  expenses/  income/  goals/
 │   ├── home/  realtime/  jobs/  memory/  insights/  intelligence/ …
-├── supabase/migrations/          001 … 013 (013 = RLS). Ojo: la BD real no coincide 100% con 001–012 (ver EVALUACION)
+├── supabase/migrations/          001 … 019 (013 RLS · 015 fecha · 016 reglas · 017 espacios · 018 consentimientos · 019 cuentas). La BD real no coincide 100% con 001–012 (ver EVALUACION)
 ├── supabase/tests/rls_check.sql  auditoría de RLS
 └── nina_app/                     Flutter (lib/core, lib/data, lib/domain, lib/features, lib/shared)
 ```

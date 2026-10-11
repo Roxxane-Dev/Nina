@@ -23,13 +23,15 @@ Leyenda de estado real: ✅ hecho y probado · ⚠️ existe pero incompleto o c
 | A — Una sola fuente de cifras | ✅ 11 oct | `0b09743` (API), `c464a5f` (app) |
 | B — Corrección de categorías | ✅ 11 oct (migración 016 por aplicar) | `d38f2b4`, `297935a` |
 | C — Espacios compartidos | ✅ código 11 oct (*migración 017 + `spaces_rls.sql` por aplicar/verificar) | `92bd985`, `f0188f1`, `ce4d76b`, `f0d7a1c` |
-| D — Confianza y cuenta | Diseño pendiente de aprobación | — |
-| E — Cuentas | Diseño pendiente de aprobación | — |
+| D — Confianza y cuenta | ✅ 11 oct (*migración 018 por aplicar) | `d972277`, `eb4c24b` |
+| E — Cuentas | ✅ 11 oct (*migración 019 por aplicar) | `d71ee9d`, `1b516cc`, `cef2a1d` |
 
 * Las historias de espacios funcionan cuando apliques la migración 017; hasta entonces la API responde "los espacios todavía no están activados" sin afectar lo personal.
 
 ### Migraciones por aplicar (en orden, SQL editor de DEV)
-013 (RLS) → 015 (fecha) → 016 (reglas de categoría) → 017 (espacios). Luego correr `supabase/tests/rls_check.sql` y `supabase/tests/spaces_rls.sql` (este último se ejecuta dentro de una transacción con rollback: no deja datos).
+013 (RLS) → 015 (fecha) → 016 (reglas de categoría) → 017 (espacios) → 018 (consentimientos) → 019 (cuentas; requiere 017).
+Después: `supabase/tests/rls_check.sql`, `supabase/tests/spaces_rls.sql` y `supabase/tests/accounts_rls.sql` (los dos últimos corren dentro de una transacción con rollback: no dejan datos).
+Mientras una migración no esté aplicada, su función responde "todavía no está activada" (503 con código) sin romper el resto; sin la 018 la app funciona pero la IA queda apagada.
 
 ## Trazabilidad
 
@@ -37,10 +39,10 @@ Leyenda de estado real: ✅ hecho y probado · ⚠️ existe pero incompleto o c
 | ID | Historia (resumen) | Prio | Estado real | Qué falta |
 |---|---|---|---|---|
 | US-01 | Registro con email o Google | P0 | ⚠️ email ✅ | Google pasa a noviembre (decisión 11 oct) |
-| US-02 | Iniciar sesión | P0 | ✅ | Verificar "entro directo a Inicio con datos" cuando Inicio esté arreglado |
-| US-03 | Consentimiento explícito (datos, IA, analítica) | P0 | ❌ | Tabla `consents` + RLS, pantalla en onboarding, guard que bloquea IA sin consentimiento |
+| US-02 | Iniciar sesión | P0 | ✅ | — |
+| US-03 | Consentimiento explícito (datos, IA, analítica) | P0 | ✅ Sprint D* | — |
 | US-04 | Guía al primer movimiento | P1 | ✅ Sprint A | — |
-| US-05 | Cerrar sesión | P0 | ✅ | Ya en Más; añadir test |
+| US-05 | Cerrar sesión | P0 | ✅ | — |
 
 ### Épica 2 — Chat con Nina
 | ID | Historia | Prio | Estado real | Qué falta |
@@ -96,9 +98,9 @@ Leyenda de estado real: ✅ hecho y probado · ⚠️ existe pero incompleto o c
 ### Épica 7 — Más
 | ID | Historia | Prio | Estado real | Qué falta |
 |---|---|---|---|---|
-| US-40 | Perfil (nombre, moneda) | P1 | ⚠️ | Edición sobre `profiles` |
-| US-41 | Cuentas (banco, efectivo, tarjeta) | P1 | ❌ | Tabla `accounts` + asociar movimientos |
-| US-42 | Revisar/revocar consentimientos | P0 | ❌ | Junto con US-03 |
+| US-40 | Perfil (nombre, moneda) | P1 | ✅ Sprint D (solo PEN) | — |
+| US-41 | Cuentas (banco, efectivo, tarjeta) | P1 | ✅ Sprint E* | — |
+| US-42 | Revisar/revocar consentimientos | P0 | ✅ Sprint D* | — |
 | US-43–45 | Exportar, eliminar cuenta, notificaciones | P1–P2 | Fase 2 | — |
 
 ### Épica 8 — Metas: Fase 2 (US-46, US-47).
