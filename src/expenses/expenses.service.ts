@@ -99,7 +99,9 @@ export class ExpensesService implements OnModuleInit {
     const resolved: ResolvedExpense[] = []
     for (const item of parsed) {
       const remembered = matchCategoryRule(item.rawCategory, userRules)
-      const slug = remembered ?? normalizeCategorySlug(item.normalizedCategory)
+      // Parser keyword first; if it has none ('other'), the engine's canonical aliases ('luz' → services).
+      const fromParser = normalizeCategorySlug(item.normalizedCategory)
+      const slug = remembered ?? (fromParser !== 'other' ? fromParser : normalizeCategorySlug(item.rawCategory))
       const category = await this.resolveCategory(slug)
       resolved.push({
         amount: item.amount,
@@ -113,7 +115,8 @@ export class ExpensesService implements OnModuleInit {
     return this.buildConfirmationMessage(resolved)
   }
 
-  async insertExpenses(items: ResolvedExpense[], userId: string): Promise<{ result: string }> {
+  /** sharedSpaceId: membership already verified by the caller (US-35). */
+  async insertExpenses(items: ResolvedExpense[], userId: string, sharedSpaceId?: string): Promise<{ result: string }> {
     if (!this.db) return { result: 'Listo, gastos registrados ✅' }
 
     // Calendar day in Lima (finance-engine/timezone.ts), not UTC: after 7 p.m. UTC is already tomorrow.
@@ -128,6 +131,7 @@ export class ExpensesService implements OnModuleInit {
         date: today,
         source_table: 'manual',
         space_id: 'personal',
+        ...(sharedSpaceId ? { shared_space_id: sharedSpaceId } : {}),
       })),
     )
 

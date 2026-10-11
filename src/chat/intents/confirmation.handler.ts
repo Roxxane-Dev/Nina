@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common'
+import { SpacesService } from '../../spaces/spaces.service'
 import { ExpensesService, detectConfirmIntent, type ResolvedExpense } from '../../expenses/expenses.service'
 import { IncomeService } from '../../income/income.service'
 import { GoalService, type ParsedGoal } from '../../goals/goal.service'
@@ -21,6 +22,7 @@ export class ConfirmationHandler implements ChatIntentHandler {
     private readonly expensesService: ExpensesService,
     private readonly incomeService: IncomeService,
     private readonly goalService: GoalService,
+    @Optional() private readonly spaces?: SpacesService,
   ) {}
 
   async handle(ctx: ChatContext): Promise<HandlerResult | null> {
@@ -45,21 +47,38 @@ export class ConfirmationHandler implements ChatIntentHandler {
         reply: reply('Entendido, cancelé el registro. ¿Hay algo más en lo que te pueda ayudar?'),
       }
     }
+    // US-35: membership is checked again at save time (it may have changed since the question).
+    const spaceId = typeof pending.payload.spaceId === 'string' ? pending.payload.spaceId : undefined
+    if (spaceId) {
+      try {
+        if (!this.spaces) throw new NotFoundException()
+        await this.spaces.assertMember(ctx.userId, spaceId)
+      } catch (e) {
+        if (!(e instanceof NotFoundException)) throw e
+        return {
+          outcome: 'cancelled',
+          reply: reply('Ya no perteneces a ese espacio compartido, así que no registré nada. ¿Lo registro como personal? Cuéntamelo de nuevo.'),
+        }
+      }
+    }
+    const saved = await this.commit(ctx.userId, pending, spaceId)
+    const name = typeof pending.payload.spaceName === 'string' ? pending.payload.spaceName : null
     return {
       outcome: 'saved',
-      reply: reply(await this.commit(ctx.userId, pending), { followUps: AFTER_SAVE_FOLLOW_UPS }),
+      reply: reply(name ? `${saved}
+Quedó en el espacio «${name}».` : saved, { followUps: AFTER_SAVE_FOLLOW_UPS }),
     }
   }
 
-  private async commit(userId: string, pending: PendingAction): Promise<string> {
+  private async commit(userId: string, pending: PendingAction, spaceId?: string): Promise<string> {
     const { kind, payload } = pending
     if (kind === 'income') {
-      return (await this.incomeService.insertIncome(payload.income as ParsedIncome, userId)).result
+      return (await this.incomeService.insertIncome(payload.income as ParsedIncome, userId, spaceId)).result
     }
     if (kind === 'goal') {
       return (await this.goalService.insertGoal(payload.goal as ParsedGoal, userId)).result
     }
-    const { result } = await this.expensesService.insertExpenses(payload.items as ResolvedExpense[], userId)
+    const { result } = await this.expensesService.insertExpenses(payload.items as ResolvedExpense[], userId, spaceId)
     // Keeps user_profiles fresh for the nightly job's user list.
     this.expensesService
       .updateUserProfile(userId)

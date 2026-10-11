@@ -7,6 +7,7 @@ import { IncomeModule } from '../income/income.module'
 import { GoalsModule } from '../goals/goals.module'
 import { FinanceEngineModule } from '../finance-engine/finance-engine.module'
 import { NinaRouterModule } from '../nina-router/nina-router.module'
+import { SpacesModule } from '../spaces/spaces.module'
 import { ChatController } from './chat.controller'
 import { ChatService } from './chat.service'
 import { ChatTelemetry } from './chat-telemetry'
@@ -31,6 +32,7 @@ import {
     GoalsModule,
     FinanceEngineModule,
     NinaRouterModule,
+    SpacesModule,
   ],
   controllers: [ChatController],
   providers: [

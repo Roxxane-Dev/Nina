@@ -130,7 +130,7 @@ describe('chat regression (real Supabase date format)', () => {
     expect(ask.needsConfirmation).toBe(true)
 
     const done = await chat.handleMessage('user-1', 'confirmar', ask.pendingToken)
-    expect(insertIncome).toHaveBeenCalledWith(expect.objectContaining({ amount: 4500 }), 'user-1')
+    expect(insertIncome).toHaveBeenCalledWith(expect.objectContaining({ amount: 4500 }), 'user-1', undefined) // personal
     expect(done.reply).toBe('¡Ingreso de S/ 4500.00 registrado! 💚')
   })
 

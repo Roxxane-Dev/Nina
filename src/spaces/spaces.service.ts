@@ -102,6 +102,15 @@ export class SpacesService implements OnModuleInit {
     }))
   }
 
+  /** Spaces for chat detection; [] when spaces are not enabled yet or unreadable. */
+  async listMineOrEmpty(userId: string): Promise<SpaceSummary[]> {
+    try {
+      return await this.listMine(userId)
+    } catch {
+      return []
+    }
+  }
+
   /** US-33. The creator becomes the owner. */
   async create(userId: string, name: string, type: SpaceType): Promise<SpaceSummary> {
     const db = this.client()

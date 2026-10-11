@@ -64,8 +64,9 @@ export class IncomeService implements OnModuleInit {
 
   /**
    * Confirms a pending income — saves directly to transactions ledger.
+   * sharedSpaceId: membership already verified by the caller (US-35).
    */
-  async insertIncome(income: ParsedIncome, userId: string): Promise<{ result: string }> {
+  async insertIncome(income: ParsedIncome, userId: string, sharedSpaceId?: string): Promise<{ result: string }> {
     if (!this.db) return { result: '¡Ingreso registrado! ✅' }
 
     // Calendar day in Lima (finance-engine/timezone.ts), not UTC: after 7 p.m. UTC is already tomorrow.
@@ -80,6 +81,7 @@ export class IncomeService implements OnModuleInit {
       date: today,
       source_table: 'manual',
       space_id: 'personal',
+      ...(sharedSpaceId ? { shared_space_id: sharedSpaceId } : {}),
     })
 
     if (txErr) {
