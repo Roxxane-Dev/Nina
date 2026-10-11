@@ -31,7 +31,7 @@ describe('US-24: correct a category and remember it', () => {
   function controllerWith(row: { description: string | null; type: string } | null) {
     const rules = fakeRules()
     const transactions = { updateCategory: jest.fn(async () => row), today: () => new Date() }
-    return { ctrl: new TransactionsController(transactions as never, rules.svc), transactions, rules }
+    return { ctrl: new TransactionsController(transactions as never, rules.svc, {} as never), transactions, rules }
   }
 
   it('updates the category and remembers it for the description', async () => {

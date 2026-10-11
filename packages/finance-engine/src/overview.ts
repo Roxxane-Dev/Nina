@@ -101,3 +101,30 @@ export function parsePeriodParam(param: string | undefined, asOf: Date): PeriodR
 function round(n: number): number {
   return Math.round(n * 100) / 100
 }
+
+export type MemberContribution = { userId: string; income: number; expenses: number; count: number }
+
+/**
+ * US-37: what each member registered in a shared space during the period.
+ * `txs` are the space's rows; members with nothing registered still appear.
+ */
+export function memberContributions(
+  txs: EngineTransaction[],
+  range: PeriodRange,
+  memberIds: string[],
+): MemberContribution[] {
+  const by = new Map<string, MemberContribution>(
+    memberIds.map((id) => [id, { userId: id, income: 0, expenses: 0, count: 0 }]),
+  )
+  for (const t of signedFlows(txs)) {
+    if (!t.authorId || t.postedAt < range.from || t.postedAt > range.to) continue
+    const m = by.get(t.authorId) ?? { userId: t.authorId, income: 0, expenses: 0, count: 0 }
+    if (t.amount > 0) m.income += t.amount
+    else m.expenses += -t.amount
+    m.count += 1
+    by.set(t.authorId, m)
+  }
+  return [...by.values()]
+    .map((m) => ({ ...m, income: round(m.income), expenses: round(m.expenses) }))
+    .sort((a, b) => b.expenses - a.expenses)
+}

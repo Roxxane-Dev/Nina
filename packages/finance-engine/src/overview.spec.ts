@@ -1,5 +1,5 @@
 import { ANA_TXS } from './__golden__/user-ana'
-import { buildOverview, monthlyTrend, parsePeriodParam } from './overview'
+import { buildOverview, memberContributions, monthlyTrend, parsePeriodParam } from './overview'
 import { monthRange } from './periods'
 
 const OCT_9 = new Date(Date.UTC(2026, 9, 9))
@@ -67,5 +67,29 @@ describe('parsePeriodParam', () => {
 
   it.each(['2026-13', '2026-11', 'abc', '2026-7'])('rejects %p', (param) => {
     expect(parsePeriodParam(param, OCT_9)).toBeNull()
+  })
+})
+
+describe('memberContributions (US-37)', () => {
+  const tx = (id: string, author: string, amount: number, day: number) => ({
+    id,
+    postedAt: new Date(Date.UTC(2026, 9, day)),
+    amount,
+    currency: 'PEN' as const,
+    categorySlug: 'home',
+    merchantNormalized: 'X',
+    isTransfer: false,
+    authorId: author,
+    sharedSpaceId: 'casa',
+  })
+
+  it('splits the space by who registered each movement', () => {
+    const rows = [tx('1', 'ana', -1200, 1), tx('2', 'beto', -300.5, 3), tx('3', 'beto', 500, 4), tx('4', 'ana', -50, 20)]
+    const range = monthRange(2026, 9, new Date(Date.UTC(2026, 9, 10)))
+    expect(memberContributions(rows, range, ['ana', 'beto', 'carla'])).toEqual([
+      { userId: 'ana', income: 0, expenses: 1200, count: 1 },
+      { userId: 'beto', income: 500, expenses: 300.5, count: 2 },
+      { userId: 'carla', income: 0, expenses: 0, count: 0 },
+    ])
   })
 })

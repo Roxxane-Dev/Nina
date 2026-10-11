@@ -62,7 +62,12 @@ export class TransactionsService implements OnModuleInit {
     if (url && key) this.db = createAdminClient(url, key)
   }
 
-  async create(userId: string, input: Required<Omit<NewTransactionInput, 'note'>> & { note: string }) {
+  /** sharedSpaceId: the caller must have checked membership (SpacesService.assertMember). */
+  async create(
+    userId: string,
+    input: Required<Omit<NewTransactionInput, 'note'>> & { note: string },
+    sharedSpaceId?: string,
+  ) {
     if (!this.db) throw new FinanceDataUnavailableError('no_client')
     const { data, error } = await this.db
       .from('transactions')
@@ -75,6 +80,8 @@ export class TransactionsService implements OnModuleInit {
         date: input.date,
         source_table: 'manual',
         space_id: 'personal',
+        // Only sent for shared rows, so personal inserts work before migration 017.
+        ...(sharedSpaceId ? { shared_space_id: sharedSpaceId } : {}),
       })
       .select('id')
       .single()

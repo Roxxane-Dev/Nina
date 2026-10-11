@@ -8,10 +8,12 @@ import {
 } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { FinanceDataUnavailableError } from '../finance-engine/errors'
+import { SpacesNotReadyError } from '../spaces/spaces.errors'
 
 export type ChatRequest = Request & { chatRequestId?: string }
 export type ApiRequest = ChatRequest
 
+export const SPACES_NOT_READY_REPLY = 'Los espacios compartidos todavía no están activados. Inténtalo más tarde.'
 export const DATA_UNAVAILABLE_REPLY = 'No pude consultar tus movimientos ahora. Inténtalo en unos minutos.'
 export const INTERNAL_REPLY = 'Tuve un problema procesando tu mensaje. Inténtalo de nuevo.'
 
@@ -30,6 +32,16 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const res = http.getResponse<Response>()
     const req = http.getRequest<ChatRequest>()
     const requestId = req.chatRequestId
+
+    if (exception instanceof SpacesNotReadyError) {
+      res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+        code: exception.code,
+        message: SPACES_NOT_READY_REPLY,
+        requestId,
+      })
+      return
+    }
 
     if (exception instanceof FinanceDataUnavailableError) {
       res.status(HttpStatus.SERVICE_UNAVAILABLE).json({

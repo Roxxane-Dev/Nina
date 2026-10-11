@@ -13,6 +13,10 @@ export type EngineTransaction = {
   isTransfer: boolean
   isEssential?: boolean
   accountId?: string
+  /** Who registered it (shared spaces: per-member contributions). */
+  authorId?: string
+  /** Shared space it belongs to; undefined = personal. */
+  sharedSpaceId?: string
 }
 
 export type RecurringItemInput = {

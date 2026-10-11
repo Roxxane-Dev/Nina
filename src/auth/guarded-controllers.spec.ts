@@ -6,6 +6,7 @@ import { FinanceEngineController } from '../finance-engine/finance-engine.contro
 import { HomeController } from '../home/home.controller'
 import { IntelligenceController } from '../intelligence/intelligence.controller'
 import { TransactionsController } from '../transactions/transactions.controller'
+import { SpacesController } from '../spaces/spaces.controller'
 
 // Every HTTP controller that touches user data must be guarded by the JWT guard.
 describe('controller guards', () => {
@@ -16,6 +17,7 @@ describe('controller guards', () => {
     HomeController,
     IntelligenceController,
     TransactionsController,
+    SpacesController,
   ])('%p is guarded by SupabaseAuthGuard', (controller) => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, controller) ?? []
     expect(guards).toContain(SupabaseAuthGuard)

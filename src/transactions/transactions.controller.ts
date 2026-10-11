@@ -19,6 +19,7 @@ import type { SupabaseUser } from '../auth/auth.service'
 import { ApiExceptionFilter } from '../common/api-exception.filter'
 import { CATEGORY_LABELS_ES, categoryLabel, normalizeCategorySlug } from '../../packages/finance-engine/src'
 import { CategoryRulesService } from '../category-rules/category-rules.service'
+import { SpacesService } from '../spaces/spaces.service'
 import { TransactionsService, validateNewTransaction, type NewTransactionInput } from './transactions.service'
 
 type AuthedRequest = ExpressRequest & { user: SupabaseUser }
@@ -31,13 +32,20 @@ export class TransactionsController {
   constructor(
     private readonly transactions: TransactionsService,
     private readonly rules: CategoryRulesService,
+    private readonly spaces: SpacesService,
   ) {}
 
   @Post()
-  async create(@Request() req: AuthedRequest, @Body() body: Partial<NewTransactionInput>) {
+  async create(@Request() req: AuthedRequest, @Body() body: Partial<NewTransactionInput> & { spaceId?: string }) {
     const v = validateNewTransaction(body ?? {}, this.transactions.today())
     if (!v.ok) throw new BadRequestException(v.error)
-    return this.transactions.create(req.user.id, v.value)
+    let spaceId: string | undefined
+    if (body?.spaceId !== undefined && body.spaceId !== null) {
+      if (typeof body.spaceId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.spaceId)) throw new BadRequestException('invalid spaceId')
+      await this.spaces.assertMember(req.user.id, body.spaceId) // 404 if not a member (US-35)
+      spaceId = body.spaceId
+    }
+    return this.transactions.create(req.user.id, v.value, spaceId)
   }
 
   /** US-24: fix the category and remember it for similar descriptions. */
