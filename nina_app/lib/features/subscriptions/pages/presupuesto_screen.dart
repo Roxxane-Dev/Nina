@@ -130,7 +130,10 @@ class _PresupuestoTabState extends State<_PresupuestoTab> {
     super.initState();
     _dataFuture = _load();
     _txSubscription = widget.repo.watchTransactions().listen((_) {
-      if (mounted) setState(() => _dataFuture = _load());
+      if (mounted)
+        setState(() {
+          _dataFuture = _load();
+        });
     });
   }
 

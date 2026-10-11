@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -65,13 +67,15 @@ class FakeApi extends FinanceApiService {
     required String category,
     required String date,
     String? note,
+    String? spaceId,
   }) async {
     created.add({
       'type': type,
       'amount': amount,
       'category': category,
       'date': date,
-      'note': note
+      'note': note,
+      'spaceId': spaceId
     });
   }
 
@@ -174,6 +178,25 @@ void main() {
       expect(find.text('Contárselo a Nina'), findsOneWidget);
       expect(find.byKey(const Key('home-balance')), findsNothing);
     });
+  });
+
+  testWidgets(
+      'a data change reloads Inicio without errors (setState regression)',
+      (tester) async {
+    final changes = StreamController<Object?>();
+    final api = FakeApi();
+    await tester.pumpWidget(wrap(HomeScreen(
+      api: api,
+      loadRecent: () async => rows,
+      loadProfile: () async => const NinaUserProfile(),
+      watchChanges: () => changes.stream,
+    )));
+    await tester.pumpAndSettle();
+    changes.add(null);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(api.periods.length, 2);
+    await changes.close();
   });
 
   group('Movimientos (US-22, 23, 25)', () {

@@ -40,6 +40,7 @@ class FinanceApiService {
     required String category,
     required String date,
     String? note,
+    String? spaceId,
   }) async {
     await _dio.post<Map<String, dynamic>>('/v1/transactions', data: {
       'type': type,
@@ -47,6 +48,7 @@ class FinanceApiService {
       'category': category,
       'date': date,
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      if (spaceId != null) 'spaceId': spaceId,
     });
   }
 

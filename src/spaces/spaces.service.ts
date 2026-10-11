@@ -77,7 +77,7 @@ export class SpacesService implements OnModuleInit {
       .eq('user_id', userId)
       .maybeSingle()
     if (error) this.fail('assertMember', error)
-    if (!data) throw new NotFoundException('space not found')
+    if (!data) throw new NotFoundException('No encontré ese espacio.')
     return data.role as 'owner' | 'member'
   }
 

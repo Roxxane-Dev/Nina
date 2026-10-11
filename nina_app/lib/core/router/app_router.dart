@@ -6,6 +6,8 @@ import '../../features/auth/bloc/auth_state.dart';
 import '../../features/auth/pages/login_page.dart';
 import '../../features/chat/pages/chat_page.dart';
 import '../../features/chat/bloc/chat_bloc.dart';
+import '../../features/spaces/pages/space_detail_page.dart';
+import '../../features/spaces/pages/spaces_page.dart';
 
 // NEW SCREENS
 import '../../features/home/pages/home_screen.dart';
@@ -46,6 +48,12 @@ GoRouter buildRouter(AuthBloc authBloc) {
 
       // Full-screen modal routes (outside shell)
       GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
+      GoRoute(path: '/spaces', builder: (_, __) => const SpacesPage()),
+      GoRoute(
+        path: '/spaces/:id',
+        builder: (_, state) =>
+            SpaceDetailPage(spaceId: state.pathParameters['id']!),
+      ),
 
       // Shell with bottom nav
       ShellRoute(

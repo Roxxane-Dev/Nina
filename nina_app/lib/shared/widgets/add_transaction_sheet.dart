@@ -27,7 +27,7 @@ const incomeCategories = <String, String>{
 
 /// Opens the manual entry form (US-26). Resolves to true when a movement was saved.
 Future<bool> showAddTransactionSheet(BuildContext context,
-    {FinanceApiService? api}) async {
+    {FinanceApiService? api, String? spaceId, String? spaceName}) async {
   final saved = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -35,15 +35,24 @@ Future<bool> showAddTransactionSheet(BuildContext context,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => AddTransactionSheet(api: api ?? FinanceApiService.instance),
+    builder: (_) => AddTransactionSheet(
+      api: api ?? FinanceApiService.instance,
+      spaceId: spaceId,
+      spaceName: spaceName,
+    ),
   );
   return saved == true;
 }
 
 class AddTransactionSheet extends StatefulWidget {
-  const AddTransactionSheet({super.key, required this.api});
+  const AddTransactionSheet(
+      {super.key, required this.api, this.spaceId, this.spaceName});
 
   final FinanceApiService api;
+
+  /// When set, the movement goes to this shared space (US-35/36).
+  final String? spaceId;
+  final String? spaceName;
 
   @override
   State<AddTransactionSheet> createState() => _AddTransactionSheetState();
@@ -102,6 +111,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
         category: _category,
         date: DateFormat('yyyy-MM-dd').format(_date),
         note: _note.text,
+        spaceId: widget.spaceId,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -123,8 +133,10 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Nuevo movimiento',
+          Text(
+            widget.spaceName == null
+                ? 'Nuevo movimiento'
+                : 'Nuevo movimiento · ${widget.spaceName}',
             style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,

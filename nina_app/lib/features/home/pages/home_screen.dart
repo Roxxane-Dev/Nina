@@ -70,7 +70,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _reload() {
-    if (mounted) setState(() => _dataFuture = _loadData());
+    if (mounted)
+      setState(() {
+        _dataFuture = _loadData();
+      });
   }
 
   Future<void> _refreshProfile() async {
@@ -184,6 +187,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 letterSpacing: -0.5,
               ),
             ),
+          ),
+          IconButton(
+            key: const Key('home-spaces'),
+            tooltip: 'Espacios compartidos',
+            onPressed: () => context.push('/spaces'),
+            icon: const Icon(Icons.home_work_outlined,
+                color: NinaColors.textSecondary),
           ),
           IconButton.filledTonal(
             key: const Key('home-add'),

@@ -57,7 +57,10 @@ class _AnalisisScreenState extends State<AnalisisScreen> {
   }
 
   void _reload() {
-    if (mounted) setState(() => _future = _load());
+    if (mounted)
+      setState(() {
+        _future = _load();
+      });
   }
 
   Future<_AnalisisData> _load() async {
