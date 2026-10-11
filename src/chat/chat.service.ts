@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { localToday, resolveQuestion } from '../../packages/finance-engine/src'
 import { MemoryService } from '../memory/memory.service'
+import { ConsentsService } from '../consents/consents.service'
 import { ChatTelemetry, hashUserId } from './chat-telemetry'
 import type { ChatReply } from './chat-reply'
 import { ConfirmationHandler } from './intents/confirmation.handler'
@@ -40,6 +41,7 @@ export class ChatService {
     private readonly general: GeneralHandler,
     private readonly memoryService: MemoryService,
     private readonly telemetry: ChatTelemetry,
+    private readonly consents: ConsentsService,
   ) {
     this.handlers = [confirmation, registerIncome, registerGoal, registerExpense, balanceQuery, spendingQuery, general]
   }
@@ -52,7 +54,8 @@ export class ChatService {
   ): Promise<ChatReply> {
     const started = Date.now()
     const asOf = localToday(new Date())
-    const ctx: ChatContext = { userId, message, pendingToken, asOf, question: resolveQuestion(message, asOf) }
+    const aiAllowed = await this.consents.allowsAi(userId)
+    const ctx: ChatContext = { userId, message, pendingToken, asOf, question: resolveQuestion(message, asOf), aiAllowed }
     const turn = {
       requestId,
       userHash: hashUserId(userId),
@@ -75,7 +78,8 @@ export class ChatService {
           engineVersion: result.engineVersion,
           latencyMs: Date.now() - started,
         })
-        this.memoryService
+        // Memory embeddings send the text to an LLM provider: only with AI consent.
+        if (aiAllowed) this.memoryService
           .storeExchange(userId, message, result.reply.reply)
           .catch((e) => this.logger.warn(`storeExchange failed: ${e instanceof Error ? e.name : 'error'}`))
         return result.reply

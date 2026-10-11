@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import type { FactsPayload } from '../../../packages/finance-engine/src'
 import { NinaRouterService } from '../../nina-router/nina-router.service'
+import { templatedAnswer } from '../../nina-router/validator'
 import { buildCard, suggestedFollowUps, type RecentItem } from '../answer-card'
 import { reply } from '../chat-reply'
 import type { ChatContext, HandlerResult } from './handler'
@@ -40,7 +41,10 @@ export class QueryResponder {
       }
     }
 
-    const routed = await this.router.explainFacts(ctx.userId, ctx.message, facts)
+    // FR-02: without AI consent the answer is built from the engine facts only.
+    const routed = ctx.aiAllowed
+      ? await this.router.explainFacts(ctx.userId, ctx.message, facts)
+      : { answer: templatedAnswer(facts), validationPassed: true, usedLlm: false }
     const { answer } = routed
     let text = answer.recommendation ? `${answer.message}\n\n💡 ${answer.recommendation}` : answer.message
     // Said deterministically: the implicit month was empty, so we show the latest month with data.

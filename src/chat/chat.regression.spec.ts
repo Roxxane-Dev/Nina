@@ -40,7 +40,7 @@ function fakeDb(result: { data: unknown[] | null; error: { code: string; message
   return { from: () => chain }
 }
 
-function setup(dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: null }) {
+function setup(dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: null }, aiAllowed = true) {
   const config = { get: () => undefined } as never
   const engine = new FinanceEngineService(config, {} as never)
   ;(engine as unknown as { db: unknown }).db = fakeDb(dbResult)
@@ -76,8 +76,9 @@ function setup(dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: nul
     new GeneralHandler(),
     memory as never,
     telemetry,
+    { allowsAi: async () => aiAllowed } as never,
   )
-  return { chat, insertIncome, insertExpenses, record, router }
+  return { chat, insertIncome, insertExpenses, record, router, memory }
 }
 
 describe('chat regression (real Supabase date format)', () => {
@@ -148,6 +149,15 @@ describe('chat regression (real Supabase date format)', () => {
     expect(record).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: 'error', errorType: 'FinanceDataUnavailableError', stack: expect.any(String) }),
     )
+  })
+
+  it('FR-02: without AI consent no data reaches an LLM, answers still use engine figures', async () => {
+    const { chat, router, memory } = setup(undefined, false)
+    const r = await chat.handleMessage('user-1', 'dime cuanto he gastado en el año')
+    expect(router.explainFacts).not.toHaveBeenCalled()
+    expect(memory.storeExchange).not.toHaveBeenCalled()
+    expect(r.reply).toContain('S/ 250.50')
+    expect(r.grounded?.usedLlm).toBe(false)
   })
 
   it('telemetry never contains the message text, amounts or the raw user id', async () => {

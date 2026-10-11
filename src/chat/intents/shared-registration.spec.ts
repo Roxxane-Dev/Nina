@@ -5,7 +5,7 @@ import { RegisterExpenseHandler } from './registration.handlers'
 import type { ChatContext } from './handler'
 
 const ctx = (message: string, pendingToken?: string): ChatContext =>
-  ({ userId: 'u1', message, pendingToken, asOf: new Date(), question: {} as never })
+  ({ userId: 'u1', message, pendingToken, asOf: new Date(), question: {} as never, aiAllowed: true })
 
 function setup(spaces: Array<{ id: string; name: string }>, member = true) {
   const tokens = new ConfirmationTokens('t')

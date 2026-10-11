@@ -12,6 +12,8 @@ import { IntelligenceModule } from './intelligence/intelligence.module'
 import { FinanceEngineModule } from './finance-engine/finance-engine.module'
 import { TransactionsModule } from './transactions/transactions.module'
 import { SpacesModule } from './spaces/spaces.module'
+import { ConsentsModule } from './consents/consents.module'
+import { MeModule } from './me/me.module'
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { SpacesModule } from './spaces/spaces.module'
     FinanceEngineModule,
     TransactionsModule,
     SpacesModule,
+    ConsentsModule,
+    MeModule,
   ],
 })
 export class AppModule { }

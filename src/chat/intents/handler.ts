@@ -20,6 +20,8 @@ export type ChatContext = {
   asOf: Date
   /** Deterministic reading of the message (intent, period, category). */
   question: ResolvedQuestion
+  /** FR-02: the user consented to AI processing. If false, no data reaches an LLM. */
+  aiAllowed: boolean
 }
 
 export type HandlerResult = {
