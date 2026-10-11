@@ -3,13 +3,12 @@ import { ConfigService } from '@nestjs/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '../common/supabase.client'
 import { FinanceDataUnavailableError } from '../finance-engine/errors'
-import { isMissingSchema } from '../spaces/spaces.errors'
+import { FeatureNotReadyError, isMissingSchema } from '../common/feature-not-ready'
 
 /** Migration 018 pending: consents cannot be stored yet (503 CONSENTS_NOT_READY). */
-export class ConsentsNotReadyError extends Error {
-  readonly code = 'CONSENTS_NOT_READY'
+export class ConsentsNotReadyError extends FeatureNotReadyError {
   constructor() {
-    super('Consents are not enabled (migration 018 pending)')
+    super('CONSENTS_NOT_READY', 'Los permisos todavía no se pueden guardar. Inténtalo más tarde.')
     this.name = 'ConsentsNotReadyError'
   }
 }

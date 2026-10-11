@@ -67,6 +67,7 @@ export class TransactionsService implements OnModuleInit {
     userId: string,
     input: Required<Omit<NewTransactionInput, 'note'>> & { note: string },
     sharedSpaceId?: string,
+    accountId?: string,
   ) {
     if (!this.db) throw new FinanceDataUnavailableError('no_client')
     const { data, error } = await this.db
@@ -82,6 +83,8 @@ export class TransactionsService implements OnModuleInit {
         space_id: 'personal',
         // Only sent for shared rows, so personal inserts work before migration 017.
         ...(sharedSpaceId ? { shared_space_id: sharedSpaceId } : {}),
+        // Only sent when set, so inserts work before migration 019.
+        ...(accountId ? { account_id: accountId } : {}),
       })
       .select('id')
       .single()

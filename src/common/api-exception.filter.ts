@@ -8,13 +8,11 @@ import {
 } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { FinanceDataUnavailableError } from '../finance-engine/errors'
-import { SpacesNotReadyError } from '../spaces/spaces.errors'
-import { ConsentsNotReadyError } from '../consents/consents.service'
+import { FeatureNotReadyError } from './feature-not-ready'
 
 export type ChatRequest = Request & { chatRequestId?: string }
 export type ApiRequest = ChatRequest
 
-export const SPACES_NOT_READY_REPLY = 'Los espacios compartidos todavía no están activados. Inténtalo más tarde.'
 export const DATA_UNAVAILABLE_REPLY = 'No pude consultar tus movimientos ahora. Inténtalo en unos minutos.'
 export const INTERNAL_REPLY = 'Tuve un problema procesando tu mensaje. Inténtalo de nuevo.'
 
@@ -34,21 +32,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const req = http.getRequest<ChatRequest>()
     const requestId = req.chatRequestId
 
-    if (exception instanceof ConsentsNotReadyError) {
+    // A feature whose migration is pending (spaces, consents, accounts).
+    if (exception instanceof FeatureNotReadyError) {
       res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
         code: exception.code,
-        message: 'Los permisos todavía no se pueden guardar. Inténtalo más tarde.',
-        requestId,
-      })
-      return
-    }
-
-    if (exception instanceof SpacesNotReadyError) {
-      res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
-        statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-        code: exception.code,
-        message: SPACES_NOT_READY_REPLY,
+        message: exception.userMessage,
         requestId,
       })
       return

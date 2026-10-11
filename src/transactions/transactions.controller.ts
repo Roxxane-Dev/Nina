@@ -20,6 +20,7 @@ import { ApiExceptionFilter } from '../common/api-exception.filter'
 import { CATEGORY_LABELS_ES, categoryLabel, normalizeCategorySlug } from '../../packages/finance-engine/src'
 import { CategoryRulesService } from '../category-rules/category-rules.service'
 import { SpacesService } from '../spaces/spaces.service'
+import { AccountsService } from '../accounts/accounts.service'
 import { TransactionsService, validateNewTransaction, type NewTransactionInput } from './transactions.service'
 
 type AuthedRequest = ExpressRequest & { user: SupabaseUser }
@@ -33,10 +34,11 @@ export class TransactionsController {
     private readonly transactions: TransactionsService,
     private readonly rules: CategoryRulesService,
     private readonly spaces: SpacesService,
+    private readonly accounts: AccountsService,
   ) {}
 
   @Post()
-  async create(@Request() req: AuthedRequest, @Body() body: Partial<NewTransactionInput> & { spaceId?: string }) {
+  async create(@Request() req: AuthedRequest, @Body() body: Partial<NewTransactionInput> & { spaceId?: string; accountId?: string }) {
     const v = validateNewTransaction(body ?? {}, this.transactions.today())
     if (!v.ok) throw new BadRequestException(v.error)
     let spaceId: string | undefined
@@ -45,7 +47,15 @@ export class TransactionsController {
       await this.spaces.assertMember(req.user.id, body.spaceId) // 404 if not a member (US-35)
       spaceId = body.spaceId
     }
-    return this.transactions.create(req.user.id, v.value, spaceId)
+    let accountId: string | undefined
+    if (body?.accountId !== undefined && body.accountId !== null) {
+      if (typeof body.accountId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.accountId)) {
+        throw new BadRequestException('invalid accountId')
+      }
+      await this.accounts.assertOwned(req.user.id, body.accountId) // US-41: only own, active accounts
+      accountId = body.accountId
+    }
+    return this.transactions.create(req.user.id, v.value, spaceId, accountId)
   }
 
   /** US-24: fix the category and remember it for similar descriptions. */

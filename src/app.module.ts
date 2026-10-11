@@ -14,6 +14,7 @@ import { TransactionsModule } from './transactions/transactions.module'
 import { SpacesModule } from './spaces/spaces.module'
 import { ConsentsModule } from './consents/consents.module'
 import { MeModule } from './me/me.module'
+import { AccountsModule } from './accounts/accounts.module'
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { MeModule } from './me/me.module'
     SpacesModule,
     ConsentsModule,
     MeModule,
+    AccountsModule,
   ],
 })
 export class AppModule { }
