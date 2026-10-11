@@ -168,6 +168,57 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     }
   }
 
+  /// US-24: pick the right category; Nina remembers it for similar descriptions.
+  Future<void> _changeCategory(Map<String, dynamic> row) async {
+    final options =
+        row['type'] == 'income' ? incomeCategories : expenseCategories;
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: NinaColors.surface,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Cambiar categoría',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: NinaColors.textPrimary)),
+            ),
+            for (final e in options.entries)
+              ListTile(
+                title: Text(e.value),
+                trailing: categoryLabel(row['category'] as String?) == e.value
+                    ? const Icon(Icons.check, color: NinaColors.accent)
+                    : null,
+                onTap: () => Navigator.pop(ctx, e.key),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    try {
+      final remembered =
+          await _api.updateCategory(row['id'].toString(), picked);
+      if (!mounted) return;
+      final note = (row['description'] as String?)?.trim();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(remembered && note != null && note.isNotEmpty
+            ? 'Listo. La próxima vez que registres "$note" usaré esta categoría.'
+            : 'Categoría actualizada.'),
+      ));
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(financeErrorMessage(e))));
+      }
+    }
+  }
+
   // ── UI ────────────────────────────────────────────────────────────────────
 
   @override
@@ -386,6 +437,7 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
         child: const Icon(Icons.delete_outline, color: NinaColors.errorLight),
       ),
       child: ListTile(
+        onTap: () => _changeCategory(r),
         contentPadding: EdgeInsets.zero,
         leading: Text(
             CategoryUtils.categoryEmoji((r['category'] ?? '').toString()),

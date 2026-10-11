@@ -43,6 +43,7 @@ class FakeApi extends FinanceApiService {
   final created = <Map<String, Object?>>[];
   final deleted = <String>[];
   final periods = <OverviewPeriod>[];
+  final recategorized = <String, String>{};
 
   @override
   Future<Overview> getOverview(
@@ -76,6 +77,12 @@ class FakeApi extends FinanceApiService {
 
   @override
   Future<void> deleteTransaction(String id) async => deleted.add(id);
+
+  @override
+  Future<bool> updateCategory(String id, String category) async {
+    recategorized[id] = category;
+    return true;
+  }
 }
 
 final rows = [
@@ -193,6 +200,20 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('mercado'), findsOneWidget);
       expect(find.text('sueldo'), findsNothing);
+    });
+
+    testWidgets(
+        'tapping a movement changes its category and says it will remember (US-24)',
+        (tester) async {
+      final api = await pump(tester);
+      await tester.tap(find.text('mercado'));
+      await tester.pumpAndSettle();
+      expect(find.text('Cambiar categoría'), findsOneWidget);
+      await tester.tap(find.text('Hogar'));
+      await tester.pumpAndSettle();
+      expect(api.recategorized, {'b2': 'home'});
+      expect(find.textContaining('La próxima vez que registres "mercado"'),
+          findsOneWidget);
     });
 
     testWidgets('delete asks for confirmation and calls the API',

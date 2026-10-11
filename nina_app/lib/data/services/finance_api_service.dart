@@ -50,6 +50,15 @@ class FinanceApiService {
     });
   }
 
+  /// US-24. Returns true when Nina will remember it for similar descriptions.
+  Future<bool> updateCategory(String id, String category) async {
+    final res = await _dio.patch<Map<String, dynamic>>(
+      '/v1/transactions/$id',
+      data: {'category': category},
+    );
+    return res.data?['remembered'] == true;
+  }
+
   /// US-25.
   Future<void> deleteTransaction(String id) async {
     await _dio.delete<void>('/v1/transactions/$id');
