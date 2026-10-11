@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/design_system.dart';
+import '../../../core/utils/money.dart';
 import '../bloc/chat_message.dart';
 
-final _money =
-    NumberFormat.currency(locale: 'en_US', symbol: 'S/ ', decimalDigits: 2);
-
-String formatSoles(double amount) =>
-    amount < 0 ? '-${_money.format(-amount)}' : _money.format(amount);
+export '../../../core/utils/money.dart' show formatSoles;
 
 /// Figures card under Nina's answer (FDS §6.4) with "Cómo lo calculé".
 class AnswerCardView extends StatelessWidget {
