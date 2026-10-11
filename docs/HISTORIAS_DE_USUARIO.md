@@ -21,10 +21,15 @@ Leyenda de estado real: ✅ hecho y probado · ⚠️ existe pero incompleto o c
 | Sprint | Estado | Commits |
 |---|---|---|
 | A — Una sola fuente de cifras | ✅ 11 oct | `0b09743` (API), `c464a5f` (app) |
-| B — Corrección de categorías | Plan pendiente de aprobación | — |
-| C — Espacios compartidos | Plan pendiente de aprobación | — |
-| D — Confianza y cuenta | Pendiente | — |
-| E — Cuentas | Pendiente | — |
+| B — Corrección de categorías | ✅ 11 oct (migración 016 por aplicar) | `d38f2b4`, `297935a` |
+| C — Espacios compartidos | ✅ código 11 oct (*migración 017 + `spaces_rls.sql` por aplicar/verificar) | `92bd985`, `f0188f1`, `ce4d76b`, `f0d7a1c` |
+| D — Confianza y cuenta | Diseño pendiente de aprobación | — |
+| E — Cuentas | Diseño pendiente de aprobación | — |
+
+* Las historias de espacios funcionan cuando apliques la migración 017; hasta entonces la API responde "los espacios todavía no están activados" sin afectar lo personal.
+
+### Migraciones por aplicar (en orden, SQL editor de DEV)
+013 (RLS) → 015 (fecha) → 016 (reglas de categoría) → 017 (espacios). Luego correr `supabase/tests/rls_check.sql` y `supabase/tests/spaces_rls.sql` (este último se ejecuta dentro de una transacción con rollback: no deja datos).
 
 ## Trazabilidad
 
@@ -66,7 +71,7 @@ Leyenda de estado real: ✅ hecho y probado · ⚠️ existe pero incompleto o c
 |---|---|---|---|---|
 | US-22 | Historial completo | P0 | ✅ Sprint A | — |
 | US-23 | Filtros (categoría, tipo, fecha) | P1 | ✅ Sprint A | — |
-| US-24 | Corregir categoría y recordar | P0 | ❌ | Edición + tabla `merchant_rules` (RLS) usada por el parser |
+| US-24 | Corregir categoría y recordar | P0 | ✅ Sprint B | — |
 | US-25 | Eliminar movimiento | P0 | ✅ Sprint A | — |
 | US-26 | Formulario de alta | P1 | ✅ Sprint A | — |
 
@@ -80,13 +85,13 @@ Leyenda de estado real: ✅ hecho y probado · ⚠️ existe pero incompleto o c
 ### Épica 6 — Espacios compartidos
 | ID | Historia | Prio | Estado real | Qué falta |
 |---|---|---|---|---|
-| US-33 | Crear espacio | P0 | ❌ (tabla `spaces` actual no sirve para compartir) | Modelo nuevo (ver ARCHITECTURE §5) |
-| US-34 | Invitar por código | P0 | ❌ | `space_invites` + unirse |
-| US-35 | Gasto del espacio por chat | P0 | ❌ | Parser: "es de la casa" → espacio |
-| US-36 | Balance del espacio separado | P0 | ❌ | Facts del motor por espacio |
-| US-37 | Quién aportó qué | P1 | ❌ | Autor por movimiento |
-| US-38 | Salir del espacio | P1 | ❌ | Baja de `space_members` |
-| US-39 | Privacidad de lo personal | P0 | ❌ | RLS + tests con dos usuarios |
+| US-33 | Crear espacio | P0 | ✅ Sprint C* | — |
+| US-34 | Invitar por código | P0 | ✅ Sprint C* | — |
+| US-35 | Gasto del espacio por chat | P0 | ✅ Sprint C* | — |
+| US-36 | Balance del espacio separado | P0 | ✅ Sprint C* | — |
+| US-37 | Quién aportó qué | P1 | ✅ Sprint C* | — |
+| US-38 | Salir del espacio | P1 | ✅ Sprint C* | — |
+| US-39 | Privacidad de lo personal | P0 | ✅ Sprint C* | — |
 
 ### Épica 7 — Más
 | ID | Historia | Prio | Estado real | Qué falta |
