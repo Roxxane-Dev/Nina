@@ -63,3 +63,33 @@ export function detectCategoryInText(message: string): string | null {
   }
   return null
 }
+
+export type CategoryRule = { pattern: string; category: string }
+
+/**
+ * Normalized key for a user's category correction (US-24): lowercase, no
+ * accents, digits or punctuation, single spaces. '' when too short to be useful.
+ */
+export function normalizeRulePattern(text: string | null | undefined): string {
+  const out = fold(text ?? '')
+    .replace(/[^a-zñ ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return out.length >= 3 ? out : ''
+}
+
+/**
+ * The user's rule for a description, if any: a rule applies when its pattern
+ * appears as whole words in the text; the longest (most specific) pattern wins.
+ */
+export function matchCategoryRule(text: string, rules: CategoryRule[]): string | null {
+  const norm = normalizeRulePattern(text)
+  if (!norm) return null
+  const padded = ` ${norm} `
+  let best: CategoryRule | null = null
+  for (const r of rules) {
+    if (!r.pattern || !padded.includes(` ${r.pattern} `)) continue
+    if (!best || r.pattern.length > best.pattern.length) best = r
+  }
+  return best ? normalizeCategorySlug(best.category) : null
+}

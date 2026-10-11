@@ -85,6 +85,31 @@ export class TransactionsService implements OnModuleInit {
     return { id: data.id as string }
   }
 
+  /**
+   * US-24: change the category of one of the user's movements. Returns the
+   * row's description and type (to remember a rule), or null when the row does
+   * not exist or is not the user's.
+   */
+  async updateCategory(
+    userId: string,
+    id: string,
+    category: string,
+  ): Promise<{ description: string | null; type: string } | null> {
+    if (!this.db) throw new FinanceDataUnavailableError('no_client')
+    const { data, error } = await this.db
+      .from('transactions')
+      .update({ category })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select('description, type')
+    if (error) {
+      this.logger.error(`updateCategory failed: ${error.code ?? 'unknown'}`)
+      throw new FinanceDataUnavailableError(error.code)
+    }
+    const row = (data ?? [])[0] as { description: string | null; type: string } | undefined
+    return row ?? null
+  }
+
   /** Returns false when the row does not exist or is not the user's (never reveals which). */
   async remove(userId: string, id: string): Promise<boolean> {
     if (!this.db) throw new FinanceDataUnavailableError('no_client')

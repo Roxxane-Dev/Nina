@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Optional,
   Logger,
   NotFoundException,
   OnModuleInit,
@@ -8,7 +9,15 @@ import { ConfigService } from '@nestjs/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '../common/supabase.client'
 import { parseExpenses, type ParsedExpense } from './expense-parser'
-import { isoDate, localToday, normalizeCategorySlug } from '../../packages/finance-engine/src'
+import {
+  categoryLabel,
+  isoDate,
+  localToday,
+  matchCategoryRule,
+  normalizeCategorySlug,
+} from '../../packages/finance-engine/src'
+import { formatSoles } from '../common/money'
+import { CategoryRulesService } from '../category-rules/category-rules.service'
 import type { UserInsights } from '../ai/ai.types'
 
 export type ResolvedExpense = {
@@ -58,7 +67,11 @@ export class ExpensesService implements OnModuleInit {
   private readonly logger = new Logger(ExpensesService.name)
   private db!: SupabaseClient
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    /** The user's remembered corrections (US-24); optional so tests can omit it. */
+    @Optional() private readonly rules?: CategoryRulesService,
+  ) {}
 
   onModuleInit(): void {
     const url = this.config.get<string>('SUPABASE_URL')
@@ -81,14 +94,18 @@ export class ExpensesService implements OnModuleInit {
     const parsed = parseExpenses(message)
     if (parsed.length === 0) return null
 
+    // The user's own corrections win over the default keyword categories.
+    const userRules = this.rules ? await this.rules.listForUser(userId) : []
     const resolved: ResolvedExpense[] = []
     for (const item of parsed) {
-      const category = await this.resolveCategory(item.normalizedCategory)
+      const remembered = matchCategoryRule(item.rawCategory, userRules)
+      const slug = remembered ?? normalizeCategorySlug(item.normalizedCategory)
+      const category = await this.resolveCategory(slug)
       resolved.push({
         amount: item.amount,
         category_id: category.id,
-        category_name: category.name,
-        category_slug: normalizeCategorySlug(item.normalizedCategory),
+        category_name: remembered ? categoryLabel(remembered) : category.name,
+        category_slug: slug,
         description: item.rawCategory,
       })
     }
@@ -152,7 +169,7 @@ export class ExpensesService implements OnModuleInit {
   }
 
   private buildConfirmationMessage(items: ResolvedExpense[]): ConfirmationPayload {
-    const lines = items.map((e) => `• $${e.amount} en ${e.category_name}`)
+    const lines = items.map((e) => `• ${formatSoles(e.amount)} en ${e.category_name}`)
     const text = `Voy a registrar:\n${lines.join('\n')}\n\n¿Confirmas?`
     return { text, items }
   }

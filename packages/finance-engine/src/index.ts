@@ -9,7 +9,7 @@ export { simulatePurchase, simulateSaveMore, simulateIncomeChange } from './simu
 export { classifyIntent } from './intent'
 export { resolvePeriodRange, previousRange, monthRange, monthLabelEs, type PeriodRange, type PeriodGranularity } from './periods'
 export { buildFactsPayload, buildBalanceFacts, recentTransactions } from './facts'
-export { normalizeCategorySlug, categoryLabel, detectCategoryInText, CATEGORY_LABELS_ES } from './categories'
+export { normalizeCategorySlug, categoryLabel, detectCategoryInText, CATEGORY_LABELS_ES, normalizeRulePattern, matchCategoryRule, type CategoryRule } from './categories'
 export { isoDate, startOfMonth, endOfMonth } from './period'
 export { round2, clamp, median, mean } from './stats'
 export { APP_TIME_ZONE, toLocalDay, localDayOf, localToday, isValidDate } from './timezone'
