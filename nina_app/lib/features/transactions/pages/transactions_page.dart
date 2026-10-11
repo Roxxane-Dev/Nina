@@ -109,7 +109,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
         itemBuilder: (context, i) {
           final cat = cats[i];
           final selected = _filter == cat;
-          final label = cat == null ? 'Todos' : InsightEngine.categoryLabel(cat);
+          final label =
+              cat == null ? 'Todos' : InsightEngine.categoryLabel(cat);
           return GestureDetector(
             onTap: () => setState(() => _filter = cat),
             child: AnimatedContainer(
@@ -148,14 +149,16 @@ class _TransactionsPageState extends State<TransactionsPage> {
       ),
       child: Text(
         _insightBanner!,
-        style: const TextStyle(color: NinaColors.warning, fontSize: 13, height: 1.4),
+        style: const TextStyle(
+            color: NinaColors.warning, fontSize: 13, height: 1.4),
       ),
     ).animate().fadeIn().slideY(begin: -0.1, end: 0);
   }
 
   Widget _buildList() {
     if (_txs == null) {
-      return const Center(child: CircularProgressIndicator(color: NinaColors.primary));
+      return const Center(
+          child: CircularProgressIndicator(color: NinaColors.primary));
     }
     final groups = _grouped;
     final keys = groups.keys.toList();

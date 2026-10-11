@@ -18,7 +18,10 @@ class RiskTimeline extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 24),
           child: Text(
             'Radar de Riesgo Futuro',
-            style: TextStyle(color: NinaColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: NinaColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: 16),
@@ -37,9 +40,14 @@ class RiskTimeline extends StatelessWidget {
                 width: 200,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isHigh ? NinaColors.primary.withAlpha(10) : NinaColors.surface,
+                  color: isHigh
+                      ? NinaColors.primary.withAlpha(10)
+                      : NinaColors.surface,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: isHigh ? NinaColors.primary.withAlpha(50) : NinaColors.border),
+                  border: Border.all(
+                      color: isHigh
+                          ? NinaColors.primary.withAlpha(50)
+                          : NinaColors.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,13 +57,17 @@ class RiskTimeline extends StatelessWidget {
                         Icon(
                           Icons.radar_rounded,
                           size: 16,
-                          color: isHigh ? NinaColors.primary : NinaColors.textSecondary,
+                          color: isHigh
+                              ? NinaColors.primary
+                              : NinaColors.textSecondary,
                         ),
                         const SizedBox(width: 8),
                         Text(
                           signal.window,
                           style: TextStyle(
-                            color: isHigh ? NinaColors.primary : NinaColors.textSecondary,
+                            color: isHigh
+                                ? NinaColors.primary
+                                : NinaColors.textSecondary,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -65,12 +77,16 @@ class RiskTimeline extends StatelessWidget {
                     const Spacer(),
                     Text(
                       signal.type,
-                      style: const TextStyle(color: NinaColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w900),
+                      style: const TextStyle(
+                          color: NinaColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Probabilidad: ${(signal.probability * 100).toInt()}%',
-                      style: const TextStyle(color: NinaColors.textSecondary, fontSize: 11),
+                      style: const TextStyle(
+                          color: NinaColors.textSecondary, fontSize: 11),
                     ),
                   ],
                 ),

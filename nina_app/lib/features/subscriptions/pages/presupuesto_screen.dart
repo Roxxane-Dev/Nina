@@ -99,7 +99,8 @@ class _PresupuestoScreenState extends State<PresupuestoScreen>
           dividerColor: Colors.transparent,
           labelColor: Colors.white,
           unselectedLabelColor: NinaColors.textSecondary,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          labelStyle:
+              const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
           tabs: const [
             Tab(text: 'Presupuesto'),
             Tab(text: 'Suscripciones'),
@@ -203,9 +204,8 @@ class _PresupuestoTabState extends State<_PresupuestoTab> {
     }).toList()
       ..sort((a, b) => b.spent.compareTo(a.spent));
 
-    final projection = daysElapsed > 0
-        ? (totalSpent / daysElapsed) * daysInMonth
-        : 0.0;
+    final projection =
+        daysElapsed > 0 ? (totalSpent / daysElapsed) * daysInMonth : 0.0;
 
     final dailyAllowance =
         daysRemaining > 0 ? (budgetLimit - totalSpent) / daysRemaining : 0.0;
@@ -322,8 +322,8 @@ class _PresupuestoTabState extends State<_PresupuestoTab> {
                     decoration: BoxDecoration(
                       color: NinaColors.warning.withAlpha(20),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                          color: NinaColors.warning.withAlpha(80)),
+                      border:
+                          Border.all(color: NinaColors.warning.withAlpha(80)),
                     ),
                     child: Row(
                       children: [
@@ -362,7 +362,8 @@ class _PresupuestoTabState extends State<_PresupuestoTab> {
                     Expanded(
                       child: _MetricCard(
                         label: 'Disponible hoy',
-                        value: 'S/ ${fmt.format(data.dailyAllowance.clamp(0, double.infinity))}',
+                        value:
+                            'S/ ${fmt.format(data.dailyAllowance.clamp(0, double.infinity))}',
                         valueColor: data.dailyAllowance > 0
                             ? NinaColors.accent
                             : NinaColors.error,
@@ -379,8 +380,7 @@ class _PresupuestoTabState extends State<_PresupuestoTab> {
                 const SizedBox(height: 10),
                 Container(
                   height: 140,
-                  padding:
-                      const EdgeInsets.fromLTRB(0, 8, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
                   decoration: BoxDecoration(
                     color: NinaColors.surface,
                     borderRadius: BorderRadius.circular(16),
@@ -389,22 +389,18 @@ class _PresupuestoTabState extends State<_PresupuestoTab> {
                   child: data.dailyTotals.every((v) => v == 0)
                       ? const Center(
                           child: Text('Sin gastos aún',
-                              style: TextStyle(
-                                  color: NinaColors.textTertiary)))
+                              style: TextStyle(color: NinaColors.textTertiary)))
                       : BarChart(
                           BarChartData(
                             alignment: BarChartAlignment.spaceAround,
                             gridData: const FlGridData(show: false),
                             titlesData: FlTitlesData(
                               topTitles: const AxisTitles(
-                                  sideTitles:
-                                      SideTitles(showTitles: false)),
+                                  sideTitles: SideTitles(showTitles: false)),
                               rightTitles: const AxisTitles(
-                                  sideTitles:
-                                      SideTitles(showTitles: false)),
+                                  sideTitles: SideTitles(showTitles: false)),
                               leftTitles: const AxisTitles(
-                                  sideTitles:
-                                      SideTitles(showTitles: false)),
+                                  sideTitles: SideTitles(showTitles: false)),
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
@@ -448,9 +444,8 @@ class _PresupuestoTabState extends State<_PresupuestoTab> {
                 // Category breakdown
                 const _SectionLabel('POR CATEGORÍA'),
                 const SizedBox(height: 10),
-                ...data.catBudgets.map((cb) => _CatBudgetRow(item: cb)
-                    .animate()
-                    .fadeIn(delay: 200.ms)),
+                ...data.catBudgets.map((cb) =>
+                    _CatBudgetRow(item: cb).animate().fadeIn(delay: 200.ms)),
 
                 const SizedBox(height: 12),
 
@@ -510,8 +505,7 @@ class _SuscripcionesTabState extends State<_SuscripcionesTab> {
         if (snap.hasError) {
           return Center(
               child: Text(snap.error.toString(),
-                  style:
-                      const TextStyle(color: NinaColors.textSecondary)));
+                  style: const TextStyle(color: NinaColors.textSecondary)));
         }
         final all = snap.data ?? [];
         if (all.isEmpty) {
@@ -525,11 +519,9 @@ class _SuscripcionesTabState extends State<_SuscripcionesTab> {
           ..sort();
         final filtered = _catFilter == null
             ? all
-            : all
-                .where((s) => s['category'] == _catFilter)
-                .toList();
-        final monthly = all.fold(
-            0.0, (s, sub) => s + (sub['amount'] as num).toDouble());
+            : all.where((s) => s['category'] == _catFilter).toList();
+        final monthly =
+            all.fold(0.0, (s, sub) => s + (sub['amount'] as num).toDouble());
 
         return CustomScrollView(
           physics: const BouncingScrollPhysics(),
@@ -547,17 +539,13 @@ class _SuscripcionesTabState extends State<_SuscripcionesTab> {
                       child: Padding(
                         padding: EdgeInsets.all(24),
                         child: Text('Sin suscripciones en esta categoría',
-                            style:
-                                TextStyle(color: NinaColors.textTertiary)),
+                            style: TextStyle(color: NinaColors.textTertiary)),
                       ),
                     )
                   else
                     ...filtered.asMap().entries.map((entry) =>
-                        _SubCard(sub: entry.value)
-                            .animate()
-                            .fadeIn(
-                                delay: Duration(
-                                    milliseconds: 100 * entry.key))),
+                        _SubCard(sub: entry.value).animate().fadeIn(
+                            delay: Duration(milliseconds: 100 * entry.key))),
                   const SizedBox(height: 16),
                   _buildCoupleCTA(context).animate().fadeIn(delay: 300.ms),
                 ]),
@@ -644,7 +632,8 @@ class _SuscripcionesTabState extends State<_SuscripcionesTab> {
                       fontSize: 15,
                     )),
                 SizedBox(height: 2),
-                Text('Activa el modo En Pareja para gestionar suscripciones juntos.',
+                Text(
+                    'Activa el modo En Pareja para gestionar suscripciones juntos.',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 12,
@@ -671,8 +660,7 @@ class _SuscripcionesTabState extends State<_SuscripcionesTab> {
             SizedBox(height: 16),
             Text(
               'Aún no tienes suscripciones registradas.\nCuéntale a Nina cuáles tienes.',
-              style:
-                  TextStyle(color: NinaColors.textSecondary, fontSize: 14),
+              style: TextStyle(color: NinaColors.textSecondary, fontSize: 14),
               textAlign: TextAlign.center,
             ),
           ],
@@ -736,9 +724,8 @@ class _CatBudgetRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat('#,##0.00', 'es');
-    final pct = item.limit > 0
-        ? (item.spent / item.limit).clamp(0.0, 1.0)
-        : 0.0;
+    final pct =
+        item.limit > 0 ? (item.spent / item.limit).clamp(0.0, 1.0) : 0.0;
     final pctInt = (pct * 100).toInt();
     final barColor = pct > 0.85
         ? NinaColors.error
@@ -810,7 +797,8 @@ class _SubCard extends StatelessWidget {
     final fmt = NumberFormat('#,##0.00', 'es');
     final dateFmt = DateFormat('d MMM yyyy', 'es');
     final amount = (sub['amount'] as num).toDouble();
-    final nextDate = DateTime.tryParse(sub['next_billing_date'] as String? ?? '');
+    final nextDate =
+        DateTime.tryParse(sub['next_billing_date'] as String? ?? '');
     final daysLeft = nextDate?.difference(DateTime.now()).inDays ?? 0;
     final category = sub['category'] as String? ?? '';
 
@@ -831,8 +819,8 @@ class _SubCard extends StatelessWidget {
               color: NinaColors.primary.withAlpha(30),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Center(
-                child: Text('📱', style: TextStyle(fontSize: 20))),
+            child:
+                const Center(child: Text('📱', style: TextStyle(fontSize: 20))),
           ),
           const SizedBox(width: 12),
           Expanded(

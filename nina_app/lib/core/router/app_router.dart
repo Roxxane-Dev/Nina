@@ -30,27 +30,31 @@ GoRouter buildRouter(AuthBloc authBloc) {
     redirect: (context, state) {
       final authState = authBloc.state;
       final loc = state.matchedLocation;
-      final isPublic = loc == '/login' || loc == '/splash' || loc == '/onboarding';
+      final isPublic =
+          loc == '/login' || loc == '/splash' || loc == '/onboarding';
 
       if (authState is AuthUnauthenticated && !isPublic) return '/login';
       if (authState is AuthAuthenticated && loc == '/login') return '/home';
-      if (authState is AuthAuthenticated && loc == '/onboarding') return '/home';
+      if (authState is AuthAuthenticated && loc == '/onboarding')
+        return '/home';
       return null;
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
       GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingPage()),
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
-      
+
       // Full-screen modal routes (outside shell)
       GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
-      
+
       // Shell with bottom nav
       ShellRoute(
         builder: (context, state, child) => _ScaffoldWithNav(child: child),
         routes: [
           GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
-          GoRoute(path: '/transactions', builder: (_, __) => const MovimientosScreen()),
+          GoRoute(
+              path: '/transactions',
+              builder: (_, __) => const MovimientosScreen()),
           GoRoute(
             path: '/chat',
             builder: (_, __) => BlocProvider(
@@ -58,8 +62,11 @@ GoRouter buildRouter(AuthBloc authBloc) {
               child: const ChatPage(),
             ),
           ),
-          GoRoute(path: '/insights', builder: (_, __) => const AnalisisScreen()),
-          GoRoute(path: '/presupuesto', builder: (_, __) => const PresupuestoScreen()),
+          GoRoute(
+              path: '/insights', builder: (_, __) => const AnalisisScreen()),
+          GoRoute(
+              path: '/presupuesto',
+              builder: (_, __) => const PresupuestoScreen()),
           GoRoute(path: '/mas', builder: (_, __) => const ProfilePage()),
         ],
       ),

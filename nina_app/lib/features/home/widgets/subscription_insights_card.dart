@@ -74,7 +74,8 @@ class SubscriptionInsightsCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded, color: NinaColors.accent, size: 16),
+                  const Icon(Icons.auto_awesome_rounded,
+                      color: NinaColors.accent, size: 16),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

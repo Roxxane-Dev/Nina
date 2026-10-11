@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 class FinancialSummary extends Equatable {
   // Balance
-  final double totalBalance;          // current account balance
+  final double totalBalance; // current account balance
   final double previousPeriodBalance; // balance 30 days ago
 
   // Monthly
@@ -45,7 +45,9 @@ class FinancialSummary extends Equatable {
 
   /// % of income saved this month
   double get savingsRate => totalIncomeThisMonth > 0
-      ? ((totalIncomeThisMonth - totalSpentThisMonth) / totalIncomeThisMonth * 100)
+      ? ((totalIncomeThisMonth - totalSpentThisMonth) /
+              totalIncomeThisMonth *
+              100)
           .clamp(0, 100)
       : 0;
 

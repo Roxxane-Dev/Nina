@@ -44,19 +44,25 @@ class _SplashPageState extends State<SplashPage> {
             Text(
               'N',
               style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                color: NinaColors.primary,
-                fontWeight: FontWeight.w800,
-                fontSize: 64,
-              ),
-            ).animate().fade(duration: 400.ms).scale(begin: const Offset(0.8, 0.8)),
+                    color: NinaColors.primary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 64,
+                  ),
+            )
+                .animate()
+                .fade(duration: 400.ms)
+                .scale(begin: const Offset(0.8, 0.8)),
             const SizedBox(height: 16),
             Text(
               'Tu dinero. Con actitud.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: NinaColors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ).animate().fade(delay: 300.ms, duration: 400.ms).slideY(begin: 0.5, end: 0),
+                    color: NinaColors.textSecondary,
+                    letterSpacing: 0.5,
+                  ),
+            )
+                .animate()
+                .fade(delay: 300.ms, duration: 400.ms)
+                .slideY(begin: 0.5, end: 0),
           ],
         ),
       ),

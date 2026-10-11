@@ -44,7 +44,8 @@ class IntelligenceTimeline extends StatelessWidget {
   Widget _buildTimelineCard(IntelligenceEvent event) {
     final isAnomaly = event.type == 'anomaly';
     final color = isAnomaly ? NinaColors.primaryLight : NinaColors.accent;
-    final icon = isAnomaly ? Icons.warning_amber_rounded : Icons.insights_rounded;
+    final icon =
+        isAnomaly ? Icons.warning_amber_rounded : Icons.insights_rounded;
 
     return Container(
       padding: const EdgeInsets.all(20),

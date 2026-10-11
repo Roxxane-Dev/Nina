@@ -55,7 +55,8 @@ class CategoryUtils {
     final amount = (tx['amount'] as num?)?.toDouble() ?? 0;
     final type = tx['type'] as String? ?? '';
     if (type == 'income') return '#Fijo';
-    if (['rent', 'utilities', 'subscriptions', 'alquiler', 'servicios'].contains(cat)) return '#Fijo';
+    if (['rent', 'utilities', 'subscriptions', 'alquiler', 'servicios']
+        .contains(cat)) return '#Fijo';
     if (amount < 30 && type == 'expense') return '#Hormiga';
     return '#Variable';
   }
@@ -63,9 +64,12 @@ class CategoryUtils {
   static IconData commitmentIcon(String nombre) {
     final n = nombre.toLowerCase();
     if (n.contains('luz') || n.contains('electric')) return Icons.bolt_outlined;
-    if (n.contains('agua') || n.contains('water')) return Icons.water_drop_outlined;
-    if (n.contains('internet') || n.contains('claro') || n.contains('movistar')) return Icons.wifi_outlined;
-    if (n.contains('netflix') || n.contains('spotify') || n.contains('stream')) return Icons.play_circle_outline_rounded;
+    if (n.contains('agua') || n.contains('water'))
+      return Icons.water_drop_outlined;
+    if (n.contains('internet') || n.contains('claro') || n.contains('movistar'))
+      return Icons.wifi_outlined;
+    if (n.contains('netflix') || n.contains('spotify') || n.contains('stream'))
+      return Icons.play_circle_outline_rounded;
     return Icons.receipt_long_outlined;
   }
 }

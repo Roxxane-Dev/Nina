@@ -19,30 +19,27 @@ class ProfilePage extends StatelessWidget {
             Text(
               'Perfil',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: NinaColors.textPrimary,
-              ),
+                    fontWeight: FontWeight.w800,
+                    color: NinaColors.textPrimary,
+                  ),
             ),
             const SizedBox(height: 48),
-            
             _buildSectionHeader(context, 'CUENTA'),
             _buildListTile(context, 'Tu plan', 'Gratis'),
             _buildListTile(context, 'Datos personales', ''),
             const SizedBox(height: 32),
-            
             _buildSectionHeader(context, 'PREFERENCIAS'),
             _buildListTile(context, 'Notificaciones', 'Activadas'),
             _buildListTile(context, 'Voz de Nina', 'Directa'),
             const SizedBox(height: 48),
-            
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
                 'Cerrar sesión',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: NinaColors.error,
-                  fontWeight: FontWeight.w600,
-                ),
+                      color: NinaColors.error,
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
               onTap: () {
                 context.read<AuthBloc>().add(const AuthSignOutRequested());
@@ -61,10 +58,10 @@ class ProfilePage extends StatelessWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: NinaColors.textTertiary,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.0,
-        ),
+              color: NinaColors.textTertiary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.0,
+            ),
       ),
     );
   }
@@ -78,16 +75,16 @@ class ProfilePage extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: NinaColors.textPrimary,
-              fontWeight: FontWeight.w500,
-            ),
+                  color: NinaColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           if (trailing.isNotEmpty)
             Text(
               trailing,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: NinaColors.textSecondary,
-              ),
+                    color: NinaColors.textSecondary,
+                  ),
             ),
         ],
       ),

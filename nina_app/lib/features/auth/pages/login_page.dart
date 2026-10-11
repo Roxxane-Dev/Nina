@@ -179,9 +179,7 @@ class _LoginPageState extends State<LoginPage> {
           TextButton(
             onPressed: () => setState(() => _isSignUp = !_isSignUp),
             child: Text(
-              _isSignUp
-                  ? "Ya tengo cuenta →"
-                  : "Crear cuenta →",
+              _isSignUp ? "Ya tengo cuenta →" : "Crear cuenta →",
               style: const TextStyle(color: NinaColors.accent),
             ),
           ),

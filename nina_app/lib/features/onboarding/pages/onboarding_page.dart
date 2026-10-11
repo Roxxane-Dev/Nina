@@ -294,16 +294,15 @@ class _Dot extends StatefulWidget {
   State<_Dot> createState() => _DotState();
 }
 
-class _DotState extends State<_Dot>
-    with SingleTickerProviderStateMixin {
+class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 800))
-          ..repeat();
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800))
+      ..repeat();
   }
 
   @override

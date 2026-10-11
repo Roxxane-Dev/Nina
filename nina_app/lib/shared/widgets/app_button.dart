@@ -27,8 +27,7 @@ class AppButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              isPrimary ? NinaColors.primary : NinaColors.surface,
+          backgroundColor: isPrimary ? NinaColors.primary : NinaColors.surface,
           foregroundColor: NinaColors.textPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(

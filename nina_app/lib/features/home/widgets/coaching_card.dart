@@ -68,7 +68,7 @@ class CoachingCard extends StatelessWidget {
         color: NinaColors.primaryLight,
         size: 24,
       ),
-    ).animate(onPlay: (controller) => controller.repeat())
-     .shimmer(duration: 2.seconds, color: NinaColors.primaryLight.withAlpha(100));
+    ).animate(onPlay: (controller) => controller.repeat()).shimmer(
+        duration: 2.seconds, color: NinaColors.primaryLight.withAlpha(100));
   }
 }

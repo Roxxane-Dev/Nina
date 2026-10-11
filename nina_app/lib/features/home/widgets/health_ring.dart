@@ -58,7 +58,7 @@ class _RingPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 10;
     const startAngle = math.pi * 0.75; // start at ~7:30
-    const sweepMax = math.pi * 1.5;   // 270°
+    const sweepMax = math.pi * 1.5; // 270°
 
     // Background track
     canvas.drawArc(

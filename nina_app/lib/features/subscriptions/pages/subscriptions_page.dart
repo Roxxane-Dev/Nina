@@ -35,7 +35,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       backgroundColor: NinaColors.background,
       body: SafeArea(
         child: _subs == null
-            ? const Center(child: CircularProgressIndicator(color: NinaColors.primary))
+            ? const Center(
+                child: CircularProgressIndicator(color: NinaColors.primary))
             : CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
@@ -44,9 +45,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, i) =>
-                            _SubCard(sub: _subs![i]).animate().fadeIn(
-                                delay: Duration(milliseconds: 80 * i)),
+                        (context, i) => _SubCard(sub: _subs![i])
+                            .animate()
+                            .fadeIn(delay: Duration(milliseconds: 80 * i)),
                         childCount: _subs!.length,
                       ),
                     ),

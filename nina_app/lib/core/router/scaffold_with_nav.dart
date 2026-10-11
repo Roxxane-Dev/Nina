@@ -52,7 +52,9 @@ class _ScaffoldWithNav extends StatelessWidget {
         height: 72,
         decoration: BoxDecoration(
           color: NinaColors.background,
-          border: Border(top: BorderSide(color: NinaColors.border.withAlpha(128), width: 0.5)),
+          border: Border(
+              top: BorderSide(
+                  color: NinaColors.border.withAlpha(128), width: 0.5)),
         ),
         child: SafeArea(
           top: false,

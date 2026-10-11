@@ -13,14 +13,16 @@ class SupabaseFinanceRepository {
   String? get currentUserId => _db.auth.currentUser?.id;
 
   // Helper to safely execute a query and return empty list if table/column missing
-  Future<List<Map<String, dynamic>>> _safeQuery(Future<dynamic> queryFuture) async {
+  Future<List<Map<String, dynamic>>> _safeQuery(
+      Future<dynamic> queryFuture) async {
     try {
       final res = await queryFuture;
       if (res == null) return [];
       return List<Map<String, dynamic>>.from(res);
     } on PostgrestException catch (e) {
       if (e.code == 'PGRST205' || e.code == '42P01' || e.code == '42703') {
-        debugPrint('SupabaseFinanceRepository: Ignored missing schema/table: ${e.message}');
+        debugPrint(
+            'SupabaseFinanceRepository: Ignored missing schema/table: ${e.message}');
         return [];
       }
       rethrow;
@@ -33,21 +35,25 @@ class SupabaseFinanceRepository {
   // ─────────────────────────── EXPENSES ───────────────────────────────────
 
   /// All expenses for the current user from the unified [transactions] table.
-  Future<List<Map<String, dynamic>>> getExpenses({String? month, String spaceId = 'personal'}) async {
+  Future<List<Map<String, dynamic>>> getExpenses(
+      {String? month, String spaceId = 'personal'}) async {
     final uid = currentUserId;
     if (uid == null) return [];
 
-    var q = _db.from('transactions').select().eq('user_id', uid).eq('type', 'expense');
+    var q = _db
+        .from('transactions')
+        .select()
+        .eq('user_id', uid)
+        .eq('type', 'expense');
 
     if (month != null) {
       final start = '$month-01';
       final parts = month.split('-');
       final y = int.parse(parts[0]);
       final m = int.parse(parts[1]);
-      final lastDay =
-          DateTime(m == 12 ? y + 1 : y, m == 12 ? 1 : m + 1, 1)
-              .subtract(const Duration(days: 1))
-              .day;
+      final lastDay = DateTime(m == 12 ? y + 1 : y, m == 12 ? 1 : m + 1, 1)
+          .subtract(const Duration(days: 1))
+          .day;
       q = q.gte('date', start).lte('date', '$month-$lastDay');
     }
 
@@ -55,9 +61,8 @@ class SupabaseFinanceRepository {
   }
 
   /// Expenses-only view of [watchTransactions].
-  Stream<List<Map<String, dynamic>>> watchExpenses() =>
-      watchTransactions()
-          .map((rows) => rows.where((r) => r['type'] == 'expense').toList());
+  Stream<List<Map<String, dynamic>>> watchExpenses() => watchTransactions()
+      .map((rows) => rows.where((r) => r['type'] == 'expense').toList());
 
   /// Budget limit from row (`limit_amount` or legacy `amount`).
   static double budgetLimit(Map<String, dynamic> row) {
@@ -68,20 +73,24 @@ class SupabaseFinanceRepository {
   // ─────────────────────────── INCOMES ────────────────────────────────────
 
   /// All incomes for the current user from the unified [transactions] table.
-  Future<List<Map<String, dynamic>>> getIncomes({String? month, String spaceId = 'personal'}) async {
+  Future<List<Map<String, dynamic>>> getIncomes(
+      {String? month, String spaceId = 'personal'}) async {
     final uid = currentUserId;
     if (uid == null) return [];
 
-    var q = _db.from('transactions').select().eq('user_id', uid).eq('type', 'income');
+    var q = _db
+        .from('transactions')
+        .select()
+        .eq('user_id', uid)
+        .eq('type', 'income');
 
     if (month != null) {
       final parts = month.split('-');
       final y = int.parse(parts[0]);
       final m = int.parse(parts[1]);
-      final lastDay =
-          DateTime(m == 12 ? y + 1 : y, m == 12 ? 1 : m + 1, 1)
-              .subtract(const Duration(days: 1))
-              .day;
+      final lastDay = DateTime(m == 12 ? y + 1 : y, m == 12 ? 1 : m + 1, 1)
+          .subtract(const Duration(days: 1))
+          .day;
       q = q.gte('date', '$month-01').lte('date', '$month-$lastDay');
     }
 
@@ -101,10 +110,9 @@ class SupabaseFinanceRepository {
       final parts = month.split('-');
       final y = int.parse(parts[0]);
       final m = int.parse(parts[1]);
-      final lastDay =
-          DateTime(m == 12 ? y + 1 : y, m == 12 ? 1 : m + 1, 1)
-              .subtract(const Duration(days: 1))
-              .day;
+      final lastDay = DateTime(m == 12 ? y + 1 : y, m == 12 ? 1 : m + 1, 1)
+          .subtract(const Duration(days: 1))
+          .day;
       q = q.gte('date', '$month-01').lte('date', '$month-$lastDay');
     }
 
@@ -180,7 +188,11 @@ class SupabaseFinanceRepository {
     final uid = currentUserId;
     if (uid == null) return [];
     return _safeQuery(
-      _db.from('goals').select().eq('user_id', uid).order('created_at', ascending: false),
+      _db
+          .from('goals')
+          .select()
+          .eq('user_id', uid)
+          .order('created_at', ascending: false),
     );
   }
 
@@ -199,7 +211,8 @@ class SupabaseFinanceRepository {
 
   // ─────────────────────────── AI INSIGHTS ────────────────────────────────
 
-  Future<List<Map<String, dynamic>>> getAiInsights({bool undismissedOnly = true}) async {
+  Future<List<Map<String, dynamic>>> getAiInsights(
+      {bool undismissedOnly = true}) async {
     final uid = currentUserId;
     if (uid == null) return [];
     var q = _db.from('ai_insights').select().eq('user_id', uid);
@@ -216,7 +229,8 @@ class SupabaseFinanceRepository {
   // ─────────────────────────── ACTIVITY FEED ──────────────────────────────
 
   /// Returns last [limit] transactions (income + expense) sorted by date.
-  Future<List<Map<String, dynamic>>> getActivityFeed({int limit = 8, String spaceId = 'personal'}) async {
+  Future<List<Map<String, dynamic>>> getActivityFeed(
+      {int limit = 8, String spaceId = 'personal'}) async {
     final uid = currentUserId;
     if (uid == null) return [];
 

@@ -91,13 +91,17 @@ class AdaptiveThemeEngine {
     }
   }
 
-  static FinancialUiState mapHealthToState(int score, String riskLevel, List<String> signals) {
-    if (signals.contains('stressed') || signals.contains('stress_spending')) return FinancialUiState.stressed;
+  static FinancialUiState mapHealthToState(
+      int score, String riskLevel, List<String> signals) {
+    if (signals.contains('stressed') || signals.contains('stress_spending'))
+      return FinancialUiState.stressed;
     if (riskLevel == 'high') return FinancialUiState.risky;
     if (signals.contains('overspending')) return FinancialUiState.overspending;
     if (score > 85) return FinancialUiState.thriving;
-    if (score > 70 && signals.contains('disciplined')) return FinancialUiState.disciplined;
-    if (score > 60 && signals.contains('recovering')) return FinancialUiState.recovering;
+    if (score > 70 && signals.contains('disciplined'))
+      return FinancialUiState.disciplined;
+    if (score > 60 && signals.contains('recovering'))
+      return FinancialUiState.recovering;
     return FinancialUiState.stable;
   }
 }

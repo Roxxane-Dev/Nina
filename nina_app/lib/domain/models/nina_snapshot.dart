@@ -305,7 +305,8 @@ class FlujoCajaLibre {
         ingresoPromedio3m: (j['ingresoPromedio3m'] as num?)?.toDouble() ?? 0,
         gastosFijosRecurrentes:
             (j['gastosFijosRecurrentes'] as num?)?.toDouble() ?? 0,
-        promedioVariables3m: (j['promedioVariables3m'] as num?)?.toDouble() ?? 0,
+        promedioVariables3m:
+            (j['promedioVariables3m'] as num?)?.toDouble() ?? 0,
         ratioAhorro: (j['ratioAhorro'] as num?)?.toDouble() ?? 0,
         ratioAhorroPct: (j['ratioAhorroPct'] as num?)?.toDouble() ?? 0,
         mensajeNatural: j['mensajeNatural'] as String? ?? '',

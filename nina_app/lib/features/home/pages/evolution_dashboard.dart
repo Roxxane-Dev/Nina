@@ -13,7 +13,8 @@ class EvolutionDashboard extends StatelessWidget {
     return Scaffold(
       backgroundColor: NinaColors.background,
       appBar: AppBar(
-        title: const Text('Evolución Conductual', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Evolución Conductual',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -50,17 +51,22 @@ class EvolutionDashboard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
-          BoxShadow(color: NinaColors.primary.withAlpha(80), blurRadius: 20, offset: const Offset(0, 10))
+          BoxShadow(
+              color: NinaColors.primary.withAlpha(80),
+              blurRadius: 20,
+              offset: const Offset(0, 10))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Identidad Financiera', style: TextStyle(color: Colors.white70, fontSize: 14)),
+          const Text('Identidad Financiera',
+              style: TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 8),
           Text(
             id.identity.replaceAll('_', ' ').toUpperCase(),
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 20),
           Row(
@@ -86,7 +92,11 @@ class EvolutionDashboard extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white, size: 16),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -109,17 +119,25 @@ class EvolutionDashboard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Trayectoria de Flujo', style: TextStyle(color: NinaColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('Trayectoria de Flujo',
+                  style: TextStyle(
+                      color: NinaColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: cf.state == 'thriving' ? Colors.green.withAlpha(30) : Colors.orange.withAlpha(30),
+                  color: cf.state == 'thriving'
+                      ? Colors.green.withAlpha(30)
+                      : Colors.orange.withAlpha(30),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   cf.state.toUpperCase(),
                   style: TextStyle(
-                    color: cf.state == 'thriving' ? Colors.green : Colors.orange,
+                    color:
+                        cf.state == 'thriving' ? Colors.green : Colors.orange,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
@@ -130,9 +148,11 @@ class EvolutionDashboard extends StatelessWidget {
           const SizedBox(height: 20),
           Row(
             children: [
-              _buildMetric('Reserva', '${cf.runwayMonths.toStringAsFixed(1)} m', Icons.calendar_today),
+              _buildMetric('Reserva', '${cf.runwayMonths.toStringAsFixed(1)} m',
+                  Icons.calendar_today),
               const Spacer(),
-              _buildMetric('Inercia', 'x${cf.accelerationFactor}', Icons.trending_up),
+              _buildMetric(
+                  'Inercia', 'x${cf.accelerationFactor}', Icons.trending_up),
             ],
           ),
         ],
@@ -148,22 +168,33 @@ class EvolutionDashboard extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: NinaColors.textSecondary),
             const SizedBox(width: 8),
-            Text(label, style: const TextStyle(color: NinaColors.textSecondary, fontSize: 12)),
+            Text(label,
+                style: const TextStyle(
+                    color: NinaColors.textSecondary, fontSize: 12)),
           ],
         ),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(color: NinaColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w900)),
+        Text(value,
+            style: const TextStyle(
+                color: NinaColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w900)),
       ],
     );
   }
 
   Widget _buildStreaksSection() {
-    if (intelligence.streaks == null || intelligence.streaks!.isEmpty) return const SizedBox.shrink();
+    if (intelligence.streaks == null || intelligence.streaks!.isEmpty)
+      return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Rachas Activas', style: TextStyle(color: NinaColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Rachas Activas',
+            style: TextStyle(
+                color: NinaColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         SizedBox(
           height: 100,
@@ -184,9 +215,16 @@ class EvolutionDashboard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('${streak.length} Días', style: const TextStyle(color: NinaColors.primary, fontSize: 20, fontWeight: FontWeight.w900)),
+                    Text('${streak.length} Días',
+                        style: const TextStyle(
+                            color: NinaColors.primary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900)),
                     const SizedBox(height: 4),
-                    Text(streak.type, style: const TextStyle(color: NinaColors.textSecondary, fontSize: 10), textAlign: TextAlign.center),
+                    Text(streak.type,
+                        style: const TextStyle(
+                            color: NinaColors.textSecondary, fontSize: 10),
+                        textAlign: TextAlign.center),
                   ],
                 ),
               );
@@ -213,7 +251,11 @@ class EvolutionDashboard extends StatelessWidget {
             children: [
               Icon(Icons.group_rounded, color: NinaColors.primary),
               SizedBox(width: 12),
-              Text('Hogar Inteligente', style: TextStyle(color: NinaColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Hogar Inteligente',
+                  style: TextStyle(
+                      color: NinaColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 16),
@@ -225,18 +267,26 @@ class EvolutionDashboard extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
           ),
           const SizedBox(height: 12),
-          Text('Sincronización: ${hh.syncScore}%', style: const TextStyle(color: NinaColors.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text('Sincronización: ${hh.syncScore}%',
+              style: const TextStyle(
+                  color: NinaColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           ...hh.insights.map((insight) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                const Icon(Icons.auto_awesome, size: 14, color: Colors.amber),
-                const SizedBox(width: 8),
-                Expanded(child: Text(insight, style: const TextStyle(color: NinaColors.textPrimary, fontSize: 12))),
-              ],
-            ),
-          )),
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_awesome,
+                        size: 14, color: Colors.amber),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: Text(insight,
+                            style: const TextStyle(
+                                color: NinaColors.textPrimary, fontSize: 12))),
+                  ],
+                ),
+              )),
         ],
       ),
     );

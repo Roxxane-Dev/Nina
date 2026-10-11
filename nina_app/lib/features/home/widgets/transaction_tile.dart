@@ -76,10 +76,13 @@ class TransactionTile extends StatelessWidget {
           ),
           // Amount
           Text(
-            tx.isIncome ? '+${fmt.format(tx.amount)}' : '-${fmt.format(tx.amount)}',
+            tx.isIncome
+                ? '+${fmt.format(tx.amount)}'
+                : '-${fmt.format(tx.amount)}',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: tx.isIncome ? NinaColors.accent : NinaColors.textPrimary,
+                  color:
+                      tx.isIncome ? NinaColors.accent : NinaColors.textPrimary,
                 ),
           ),
         ],

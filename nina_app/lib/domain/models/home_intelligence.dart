@@ -50,24 +50,34 @@ class HomeIntelligence {
       timeline: (json['timeline'] as List? ?? [])
           .map((e) => IntelligenceEvent.fromJson(e))
           .toList(),
-      subscriptions: json['subscriptionBurden'] != null 
-          ? SubscriptionBurden.fromJson(json['subscriptionBurden']) 
+      subscriptions: json['subscriptionBurden'] != null
+          ? SubscriptionBurden.fromJson(json['subscriptionBurden'])
           : null,
       streaks: (json['streaks'] as List? ?? [])
           .map((e) => FinancialStreak.fromJson(e))
           .toList(),
-      recovery: json['recovery'] != null ? RecoveryInfo.fromJson(json['recovery']) : null,
+      recovery: json['recovery'] != null
+          ? RecoveryInfo.fromJson(json['recovery'])
+          : null,
       reinforcements: (json['reinforcements'] as List? ?? [])
           .map((e) => ReinforcementMoment.fromJson(e))
           .toList(),
       nudges: (json['nudges'] as List? ?? [])
           .map((e) => AdaptiveNudge.fromJson(e))
           .toList(),
-      prevention: json['prevention'] != null ? PreventionIntelligence.fromJson(json['prevention']) : null,
-      household: json['household'] != null ? HouseholdIntelligence.fromJson(json['household']) : null,
-      cashFlow: json['cashFlow'] != null ? CashFlowTrajectory.fromJson(json['cashFlow']) : null,
+      prevention: json['prevention'] != null
+          ? PreventionIntelligence.fromJson(json['prevention'])
+          : null,
+      household: json['household'] != null
+          ? HouseholdIntelligence.fromJson(json['household'])
+          : null,
+      cashFlow: json['cashFlow'] != null
+          ? CashFlowTrajectory.fromJson(json['cashFlow'])
+          : null,
       lifeStage: json['lifeStage'],
-      identity: json['identity'] != null ? FinancialIdentity.fromJson(json['identity']) : null,
+      identity: json['identity'] != null
+          ? FinancialIdentity.fromJson(json['identity'])
+          : null,
     );
   }
 }
@@ -94,7 +104,9 @@ class FinancialHealth {
       riskLevel: json['riskLevel'] ?? 'low',
       runwayMonths: (json['emergencyRunway']?['months'] ?? 0).toDouble(),
       volatilityLevel: json['volatility']?['level'] ?? 'low',
-      forecasts: json['forecasts'] != null ? FinancialForecast.fromJson(json['forecasts']) : null,
+      forecasts: json['forecasts'] != null
+          ? FinancialForecast.fromJson(json['forecasts'])
+          : null,
     );
   }
 }
@@ -220,7 +232,9 @@ class IntelligenceEvent {
       body: json['body'] ?? '',
       type: json['type'] ?? 'insight',
       severity: json['severity'] ?? 'low',
-      createdAt: DateTime.parse(json['created_at'] ?? json['generatedAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(json['created_at'] ??
+          json['generatedAt'] ??
+          DateTime.now().toIso8601String()),
     );
   }
 }
@@ -231,7 +245,8 @@ class FinancialStreak {
   final int length;
   final String status;
 
-  const FinancialStreak({required this.type, required this.length, required this.status});
+  const FinancialStreak(
+      {required this.type, required this.length, required this.status});
 
   factory FinancialStreak.fromJson(Map<String, dynamic> json) {
     return FinancialStreak(
@@ -296,7 +311,8 @@ class AdaptiveNudge {
   final String type;
   final String content;
 
-  const AdaptiveNudge({required this.id, required this.type, required this.content});
+  const AdaptiveNudge(
+      {required this.id, required this.type, required this.content});
 
   factory AdaptiveNudge.fromJson(Map<String, dynamic> json) {
     return AdaptiveNudge(
@@ -413,7 +429,6 @@ class BehavioralRegressionInfo {
   }
 }
 
-
 @immutable
 class HouseholdIntelligence {
   final int syncScore;
@@ -453,7 +468,9 @@ class CashFlowTrajectory {
     return CashFlowTrajectory(
       state: json['state'] ?? 'stable',
       runwayMonths: (json['runwayMonths'] ?? 0).toDouble(),
-      projectedBurnoutDate: json['projectedBurnoutDate'] != null ? DateTime.parse(json['projectedBurnoutDate']) : null,
+      projectedBurnoutDate: json['projectedBurnoutDate'] != null
+          ? DateTime.parse(json['projectedBurnoutDate'])
+          : null,
       accelerationFactor: (json['accelerationFactor'] ?? 1.0).toDouble(),
     );
   }

@@ -14,7 +14,7 @@ class HomeCubit extends Cubit<HomeState> {
   StreamSubscription? _realtimeSubscription;
 
   HomeCubit(
-    this._financeRepo, 
+    this._financeRepo,
     this._homeRepo,
     this._realtimeService,
   ) : super(HomeInitial());
@@ -56,7 +56,7 @@ class HomeCubit extends Cubit<HomeState> {
 
   void _handleRealtimeUpdate(Map<String, dynamic> update) {
     if (state is! HomeLoaded) return;
-    
+
     final current = state as HomeLoaded;
     final type = update['type'] as String;
     final payload = update['payload'];
@@ -87,7 +87,8 @@ class HomeCubit extends Cubit<HomeState> {
     ));
   }
 
-  HomeIntelligence _mergeHealthUpdate(HomeIntelligence current, dynamic payload) {
+  HomeIntelligence _mergeHealthUpdate(
+      HomeIntelligence current, dynamic payload) {
     final newHealth = FinancialHealth.fromJson(payload);
     return HomeIntelligence(
       health: newHealth,
@@ -100,7 +101,8 @@ class HomeCubit extends Cubit<HomeState> {
     );
   }
 
-  HomeIntelligence _mergeCoachingUpdate(HomeIntelligence current, dynamic payload) {
+  HomeIntelligence _mergeCoachingUpdate(
+      HomeIntelligence current, dynamic payload) {
     final newCoaching = CoachingPayload.fromJson(payload);
     return HomeIntelligence(
       health: current.health,
@@ -113,7 +115,8 @@ class HomeCubit extends Cubit<HomeState> {
     );
   }
 
-  HomeIntelligence _mergeTimelineEvent(HomeIntelligence current, dynamic payload) {
+  HomeIntelligence _mergeTimelineEvent(
+      HomeIntelligence current, dynamic payload) {
     final newEvent = IntelligenceEvent.fromJson(payload);
     final newList = [newEvent, ...current.timeline];
     if (newList.length > 20) newList.removeLast();

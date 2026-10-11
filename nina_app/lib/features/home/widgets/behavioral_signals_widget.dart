@@ -49,10 +49,14 @@ class BehavioralSignalsWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: isNegative ? NinaColors.primary.withAlpha(20) : NinaColors.accent.withAlpha(20),
+        color: isNegative
+            ? NinaColors.primary.withAlpha(20)
+            : NinaColors.accent.withAlpha(20),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isNegative ? NinaColors.primary.withAlpha(50) : NinaColors.accent.withAlpha(50),
+          color: isNegative
+              ? NinaColors.primary.withAlpha(50)
+              : NinaColors.accent.withAlpha(50),
         ),
       ),
       child: Text(

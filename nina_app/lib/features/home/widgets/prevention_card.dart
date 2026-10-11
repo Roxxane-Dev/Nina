@@ -9,18 +9,24 @@ class PreventionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (prevention.relapseRisk.riskLevel == 'low' && prevention.trajectory == 'stabilizing') {
+    if (prevention.relapseRisk.riskLevel == 'low' &&
+        prevention.trajectory == 'stabilizing') {
       return const SizedBox.shrink();
     }
 
-    final isHighRisk = prevention.relapseRisk.riskLevel == 'high' || prevention.relapseRisk.riskLevel == 'critical';
+    final isHighRisk = prevention.relapseRisk.riskLevel == 'high' ||
+        prevention.relapseRisk.riskLevel == 'critical';
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isHighRisk ? NinaColors.primary.withAlpha(15) : NinaColors.surface,
+        color:
+            isHighRisk ? NinaColors.primary.withAlpha(15) : NinaColors.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: isHighRisk ? NinaColors.primary.withAlpha(40) : NinaColors.border),
+        border: Border.all(
+            color: isHighRisk
+                ? NinaColors.primary.withAlpha(40)
+                : NinaColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,12 +36,18 @@ class PreventionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isHighRisk ? NinaColors.primary.withAlpha(30) : NinaColors.surface,
+                  color: isHighRisk
+                      ? NinaColors.primary.withAlpha(30)
+                      : NinaColors.surface,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  isHighRisk ? Icons.auto_awesome_rounded : Icons.shield_rounded,
-                  color: isHighRisk ? NinaColors.primary : NinaColors.textSecondary,
+                  isHighRisk
+                      ? Icons.auto_awesome_rounded
+                      : Icons.shield_rounded,
+                  color: isHighRisk
+                      ? NinaColors.primary
+                      : NinaColors.textSecondary,
                   size: 20,
                 ),
               ),
@@ -54,7 +66,9 @@ class PreventionCard extends StatelessWidget {
                   Text(
                     'Trayectoria: ${prevention.trajectory.replaceAll('_', ' ').toUpperCase()}',
                     style: TextStyle(
-                      color: isHighRisk ? NinaColors.primary : NinaColors.textSecondary,
+                      color: isHighRisk
+                          ? NinaColors.primary
+                          : NinaColors.textSecondary,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                     ),
@@ -77,7 +91,10 @@ class PreventionCard extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: prevention.predictiveSignals.take(2).map((signal) => _buildSignalChip(signal)).toList(),
+              children: prevention.predictiveSignals
+                  .take(2)
+                  .map((signal) => _buildSignalChip(signal))
+                  .toList(),
             ),
           ],
         ],
@@ -96,11 +113,15 @@ class PreventionCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.timer_outlined, size: 12, color: NinaColors.textSecondary),
+          const Icon(Icons.timer_outlined,
+              size: 12, color: NinaColors.textSecondary),
           const SizedBox(width: 6),
           Text(
             signal.window,
-            style: const TextStyle(color: NinaColors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                color: NinaColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.bold),
           ),
         ],
       ),

@@ -14,9 +14,9 @@ class FinancialHealthOverviewCard extends StatelessWidget {
     final currency = NumberFormat.currency(symbol: 'S/', decimalDigits: 0);
     final isGood = health.overallScore > 75;
     final isRisky = health.riskLevel == 'high';
-    
-    final mainColor = isRisky 
-        ? NinaColors.primary 
+
+    final mainColor = isRisky
+        ? NinaColors.primary
         : (isGood ? NinaColors.accent : NinaColors.primaryLight);
 
     return Container(
@@ -79,18 +79,22 @@ class FinancialHealthOverviewCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildQuickMetric(
-                'Reserva', 
+                'Reserva',
                 '${health.runwayMonths.toStringAsFixed(1)} meses',
-                health.runwayMonths < 1 ? NinaColors.primary : NinaColors.textPrimary,
+                health.runwayMonths < 1
+                    ? NinaColors.primary
+                    : NinaColors.textPrimary,
               ),
               _buildQuickMetric(
-                'Volatilidad', 
+                'Volatilidad',
                 health.volatilityLevel.toUpperCase(),
-                health.volatilityLevel == 'high' ? NinaColors.primary : NinaColors.accent,
+                health.volatilityLevel == 'high'
+                    ? NinaColors.primary
+                    : NinaColors.accent,
               ),
               if (health.forecasts != null)
                 _buildQuickMetric(
-                  'Proyectado', 
+                  'Proyectado',
                   currency.format(health.forecasts!.projectedBalance),
                   NinaColors.textPrimary,
                 ),
@@ -110,11 +114,14 @@ class FinancialHealthOverviewCard extends StatelessWidget {
 
   Widget _buildTrendIcon(Color color) {
     return Icon(
-      health.overallScore > 70 ? Icons.trending_up_rounded : Icons.trending_flat_rounded,
+      health.overallScore > 70
+          ? Icons.trending_up_rounded
+          : Icons.trending_flat_rounded,
       color: color,
       size: 24,
-    ).animate(onPlay: (controller) => controller.repeat())
-     .shimmer(duration: 2.seconds, color: Colors.white24);
+    )
+        .animate(onPlay: (controller) => controller.repeat())
+        .shimmer(duration: 2.seconds, color: Colors.white24);
   }
 
   Widget _buildScoreGauge(Color color) {

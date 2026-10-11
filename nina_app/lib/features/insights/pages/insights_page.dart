@@ -43,7 +43,8 @@ class _InsightsPageState extends State<InsightsPage> {
       backgroundColor: NinaColors.background,
       body: SafeArea(
         child: _insights == null
-            ? const Center(child: CircularProgressIndicator(color: NinaColors.primary))
+            ? const Center(
+                child: CircularProgressIndicator(color: NinaColors.primary))
             : CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
@@ -57,7 +58,9 @@ class _InsightsPageState extends State<InsightsPage> {
                         (context, i) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: InsightCard(insight: _insights![i]),
-                        ).animate().fadeIn(delay: Duration(milliseconds: 80 * i)),
+                        )
+                            .animate()
+                            .fadeIn(delay: Duration(milliseconds: 80 * i)),
                         childCount: _insights!.length,
                       ),
                     ),
@@ -80,7 +83,8 @@ class _InsightsPageState extends State<InsightsPage> {
                     fontSize: 26,
                   )),
           const SizedBox(height: 4),
-          Text('Nina detectó ${_insights?.length ?? 0} patrones en tus finanzas.',
+          Text(
+              'Nina detectó ${_insights?.length ?? 0} patrones en tus finanzas.',
               style: Theme.of(context).textTheme.bodyMedium),
         ],
       ),
@@ -90,7 +94,11 @@ class _InsightsPageState extends State<InsightsPage> {
   Widget _buildTrendChart() {
     if (_trend == null) return const SizedBox();
     final maxY = (_trend!.reduce((a, b) => a > b ? a : b) * 1.3).ceilToDouble();
-    final spots = _trend!.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList();
+    final spots = _trend!
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value))
+        .toList();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
@@ -124,16 +132,20 @@ class _InsightsPageState extends State<InsightsPage> {
                   ),
                 ),
                 titlesData: FlTitlesData(
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (v, _) {
                         final labels = ['S-4', 'S-3', 'S-2', 'Esta'];
                         return Text(labels[v.toInt()],
-                            style: const TextStyle(color: NinaColors.textTertiary, fontSize: 11));
+                            style: const TextStyle(
+                                color: NinaColors.textTertiary, fontSize: 11));
                       },
                     ),
                   ),
@@ -182,7 +194,8 @@ class _InsightsPageState extends State<InsightsPage> {
   Widget _buildCategoryBreakdown() {
     if (_breakdown == null || _breakdown!.isEmpty) return const SizedBox();
     final total = _breakdown!.values.fold(0.0, (s, v) => s + v);
-    final sorted = _breakdown!.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = _breakdown!.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
@@ -214,9 +227,16 @@ class _InsightsPageState extends State<InsightsPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(e.key, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: NinaColors.textPrimary)),
+                          Text(e.key,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: NinaColors.textPrimary)),
                           Text('${(pct * 100).toStringAsFixed(0)}%',
-                              style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700)),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -226,7 +246,8 @@ class _InsightsPageState extends State<InsightsPage> {
                           value: pct,
                           minHeight: 5,
                           backgroundColor: NinaColors.surfaceAlt,
-                          valueColor: const AlwaysStoppedAnimation(NinaColors.primary),
+                          valueColor:
+                              const AlwaysStoppedAnimation(NinaColors.primary),
                         ),
                       ),
                     ],

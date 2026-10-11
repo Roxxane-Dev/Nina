@@ -81,7 +81,8 @@ class InsightEngine {
     final insights = <Insight>[];
     final now = DateTime.now();
 
-    double weekSpend(List<Transaction> txs, int weeksAgo, TransactionCategory cat) {
+    double weekSpend(
+        List<Transaction> txs, int weeksAgo, TransactionCategory cat) {
       final end = now.subtract(Duration(days: weeksAgo * 7));
       final start = end.subtract(const Duration(days: 7));
       return txs
@@ -140,7 +141,8 @@ class InsightEngine {
     if (subTotal > 250) {
       insights.add(Insight(
         id: 'sub_total',
-        title: 'Podrías ahorrar \$${(subTotal * 0.4).toStringAsFixed(0)} en suscripciones',
+        title:
+            'Podrías ahorrar \$${(subTotal * 0.4).toStringAsFixed(0)} en suscripciones',
         body:
             'Tengo identificadas ${_subCount(transactions)} suscripciones activas. Al menos 2 parecen estar sin uso. ¿Las cancelamos?',
         type: InsightType.subscription,
@@ -160,7 +162,8 @@ class InsightEngine {
     if (coffeeSpend > 40) {
       insights.add(Insight(
         id: 'coffee',
-        title: 'Ahorrarías \$${(coffeeSpend * 12).toStringAsFixed(0)}/año en café ☕',
+        title:
+            'Ahorrarías \$${(coffeeSpend * 12).toStringAsFixed(0)}/año en café ☕',
         body:
             'Gastas ~\$${coffeeSpend.toStringAsFixed(0)} al mes en cafeterías. No te juzgo — solo te lo digo 😏',
         type: InsightType.savings,
@@ -170,9 +173,8 @@ class InsightEngine {
     }
 
     // Positive: savings rate
-    final income = transactions
-        .where((t) => t.isIncome)
-        .fold(0.0, (s, t) => s + t.amount);
+    final income =
+        transactions.where((t) => t.isIncome).fold(0.0, (s, t) => s + t.amount);
     final spent = transactions
         .where((t) => !t.isIncome)
         .fold(0.0, (s, t) => s + t.amount);
@@ -196,7 +198,8 @@ class InsightEngine {
 
   int _subCount(List<Transaction> transactions) {
     return transactions
-        .where((t) => t.category == TransactionCategory.subscriptions && !t.isIncome)
+        .where((t) =>
+            t.category == TransactionCategory.subscriptions && !t.isIncome)
         .length;
   }
 

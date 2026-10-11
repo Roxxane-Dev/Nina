@@ -48,7 +48,8 @@ class NinaHomeRepository implements HomeRepository {
         {
           'id': '2',
           'title': 'Alerta de Gasto',
-          'body': "Detectamos un gasto inusual de S/ 250 en 'Ropa'. ¿Fue algo planeado?",
+          'body':
+              "Detectamos un gasto inusual de S/ 250 en 'Ropa'. ¿Fue algo planeado?",
           'type': 'anomaly',
           'severity': 'medium',
           'created_at': '2026-05-14T10:00:00.000Z',

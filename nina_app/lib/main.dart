@@ -11,7 +11,8 @@ Future<void> main() async {
   // Spanish locale for date formatting
   await initializeDateFormatting('es', null);
 
-  if (AppConstants.supabaseUrl.isEmpty || AppConstants.supabaseAnonKey.isEmpty) {
+  if (AppConstants.supabaseUrl.isEmpty ||
+      AppConstants.supabaseAnonKey.isEmpty) {
     // Show the fix on screen instead of a blank page.
     runApp(const MissingConfigApp());
     return;

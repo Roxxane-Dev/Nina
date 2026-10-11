@@ -57,7 +57,8 @@ class StreaksWidget extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.fireplace_rounded, color: NinaColors.primary, size: 20),
+              const Icon(Icons.fireplace_rounded,
+                  color: NinaColors.primary, size: 20),
               const SizedBox(width: 8),
               Text(
                 '${streak.length} d',

@@ -38,5 +38,6 @@ class HomeLoaded extends HomeState {
   });
 
   @override
-  List<Object?> get props => [summary, recentTransactions, insights, intelligence, uiState];
+  List<Object?> get props =>
+      [summary, recentTransactions, insights, intelligence, uiState];
 }
