@@ -10,7 +10,8 @@ If a task does not help test this, do not build it. Ask before starting anything
 1. **Nina Intelligence** (now): understand → predict → recommend. Never moves money.
 2. Nina Agent (later): executes actions with explicit authorization via a licensed BaaS partner.
 3. Nina Wallet (later): payments, savings, credit.
-Differentiators: forecast, explainable score, what-if simulator — not plain categorization (Cleo, FinovAI, Finno, Finsight already do that).
+Differentiators: forecast, explainable score, what-if simulator — not plain categorization (FinovAI, Finno, Finsight already do that).
+Benchmarks: **Cleo** for voice and tone, **Revolut AIR** for chat UX. Positioning: Intelligence now, never moves money (for now); Agent and Wallet phases stay open.
 
 ## Segment (open decision)
 Building **Nina Personal (B2C)**: urban professional, 23–35, Lima, formal salary, 2+ financial products.
