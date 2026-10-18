@@ -21,8 +21,8 @@ export const userRoom = (userId: string) => `user:${userId}`;
  * (`auth: { token }` or an `Authorization: Bearer` header). The userId comes
  * from the validated token — a client-supplied userId is ignored.
  */
+// CORS is applied at runtime by AllowlistIoAdapter (CORS_ALLOWED_ORIGINS); see socket-cors.ts.
 @WebSocketGateway({
-  cors: { origin: '*' },
   namespace: 'intelligence',
 })
 export class IntelligenceGateway implements OnGatewayConnection, OnGatewayDisconnect {

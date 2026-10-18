@@ -4,8 +4,6 @@ import { Injectable } from '@nestjs/common';
 export class FeatureFlagService {
   private readonly flags = {
     'advanced_household_mode': false,
-    'predictive_risk_timeline': true,
-    'premium_behavior_dashboard': true,
     'realtime_streaming': true,
   };
 

@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
 import { Logger } from '@nestjs/common'
 import { AppModule } from './app.module'
+import { AllowlistIoAdapter } from './realtime/socket-cors'
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap')
@@ -18,6 +19,8 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
+
+  app.useWebSocketAdapter(new AllowlistIoAdapter(app))
 
   const port = process.env.PORT ?? 3000
   await app.listen(port, '0.0.0.0')

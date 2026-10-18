@@ -1,4 +1,5 @@
 import type { AIInput, Memory, Prompt, UserInsights } from './ai.types'
+import { formatSoles } from '../common/money'
 import {
   MEMORY_CHAR_BUDGET,
   dedupeMemories,
@@ -44,13 +45,13 @@ function formatInsightsBlock(insights?: UserInsights | null): string {
 
   const lines = [
     `CONTEXTO FINANCIERO DEL USUARIO (usa estos números para responder):`,
-    `- Gasto este mes: $${insights.monthly_spending.toFixed(2)}`,
-    `- Mes anterior: $${insights.previous_month_spending.toFixed(2)}`,
+    `- Gasto este mes: ${formatSoles(insights.monthly_spending)}`,
+    `- Mes anterior: ${formatSoles(insights.previous_month_spending)}`,
     `- Tendencia: ${insights.trend === 'up' ? '⬆️ subiendo' :
       insights.trend === 'down' ? '⬇️ bajando' :
         '➡️ estable'
     }`,
-    `- Proyección fin de mes: $${insights.forecast_end_of_month?.toFixed(2) ?? 'N/A'}`,
+    `- Proyección fin de mes: ${insights.forecast_end_of_month != null ? formatSoles(insights.forecast_end_of_month) : 'N/A'}`,
     `- Categoría principal: ${insights.top_category ?? 'N/A'}`,
   ]
 
@@ -61,7 +62,7 @@ function formatInsightsBlock(insights?: UserInsights | null): string {
     Object.entries(breakdown)
       .sort(([, a], [, b]) => (b as number) - (a as number))
       .forEach(([cat, amount]) => {
-        lines.push(`  · ${cat}: $${(amount as number).toFixed(2)}`)
+        lines.push(`  · ${cat}: ${formatSoles(amount as number)}`)
       })
   }
 
