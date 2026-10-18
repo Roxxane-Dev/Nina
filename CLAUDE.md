@@ -22,6 +22,12 @@ IN: auth, manual transaction entry (CSV import only as stretch), categorization,
 OUT this month (return in November): full forecast, explainable health score, what-if, PDF statement import, notifications, export/deletion, Nina Negocio.
 Always OUT (keep behind feature flags, do not extend): household *intelligence*, emotion/streak/relapse/behavioral features, extra proactive triggers, new LLM providers, anything that moves money.
 
+### State as of 2026-10-18
+- **Built:** Home "Cómo calculé esto" audit sheet (PRD-AUD-06: the engine returns an `audit` block on `GET /v1/overview` with formula, period, income/expenses, `txnCount` and evidence ids; the app only renders it). Nina voice block in `CHAT_SYSTEM_PROMPT_V1`. **Calm mode** (debt, income loss, distress): a deterministic keyword rule in `src/chat/calm-mode.ts`; data questions are answered from the engine template without the LLM, everything else gets a fixed humorless reply. Never detect it with an LLM.
+- **Retired:** `NinaFinanceEngine` (`src/intelligence/*` except `state-machine`), `/intelligence/snapshot`, `/home/intelligence` and the nightly snapshot job, Dart-side metric code and the mocked home/insights screens. The behavioral flags `premium_behavior_dashboard` and `predictive_risk_timeline` were deleted. Emotion, prevention, streak and proactive services still exist in `src/ai` but have no entry point (no controller, cron or event); do not wire them. The `financial_streaks` table stays in the schema.
+- **Privacy:** PII is redacted (`src/nina-router/redaction.ts`: email, phone incl. +51, DNI, RUC, CCI, cards) before any text goes to an LLM or to OpenAI embeddings. WebSocket CORS uses the env allowlist `CORS_ALLOWED_ORIGINS` (empty = no browser origin).
+- **Database:** `supabase/migrations` is now a baseline of the production `public` schema plus re-based migrations; the old chain is archived, unchanged, in `supabase/migrations_legacy`. Develop against local Supabase (`npx supabase@latest start` / `db reset`). Never run `link`, `push`, `pull` or `dump --linked`; production migrations are applied by the founder after review.
+
 ### Shared spaces (new requirement)
 Several users see and categorize expenses of a common fund (rent, groceries, utilities), separate from each member's 100% private finances.
 - Membership lives in a table (`space_members`), not in a JSON column. RLS on shared rows checks membership (`exists (select 1 from space_members where space_id = … and user_id = auth.uid())`), via a `security definer` helper to avoid recursive policies.
@@ -29,7 +35,7 @@ Several users see and categorize expenses of a common fund (rent, groceries, uti
 - Propose the data model and get approval before implementing.
 
 ## Architecture rules (never violate)
-- All financial numbers come from ONE deterministic engine (`packages/finance-engine`, used through `NinaFinanceEngine` + ledger). The LLM only explains; it never computes or invents figures.
+- **One engine, the LLM never computes numbers.** All financial numbers come from ONE deterministic engine (`packages/finance-engine`, used through `FinanceEngineService`). The LLM only explains; it never computes or invents figures, and the number validator stays fail-closed (falls back to the engine template).
 - Do not create a second place that computes the same metric. If two services compute it, consolidate into the engine.
 - `transactions` is the single source of truth. Derived data must be reproducible from it.
 - The Flutter client queries Supabase directly, so every user-owned table MUST have RLS (`user_id = auth.uid()`, or space membership for shared rows). Never rely on client code for isolation.
@@ -42,7 +48,7 @@ Several users see and categorize expenses of a common fund (rent, groceries, uti
 ## Commands
 - API: `npm run lint` (type-check until ESLint is added), `npm run test` (src/ + packages/), `npm run build`, `npm run start:dev`
 - App (from `nina_app/`): `flutter analyze`, `flutter test`, `dart format .`, run with `flutter run --dart-define-from-file=env/dev.json` (env/dev.json is git-ignored)
-- DB: local/dev Supabase project only.
+- DB: local Supabase (Docker) first: `npx supabase@latest start`, `npx supabase@latest db reset`; RLS checks in `supabase/tests/*.sql`. Dev project only after that; never production.
 
 ## Workflow
 - Start every non-trivial task in plan mode: read, propose a plan, wait for approval, then implement.

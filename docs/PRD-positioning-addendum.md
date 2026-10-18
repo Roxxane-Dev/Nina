@@ -4,7 +4,7 @@
 |---|---|
 | Document | NINA-PRD-001 Addendum A (draft v0.1) |
 | Date | 2026-10-13 |
-| Status | Draft for founder review. Not yet merged into NINA-PRD-001. |
+| Status | Draft for founder review. Not merged into NINA-PRD-001. Requirement statuses updated 2026-10-18 after the overnight implementation run. |
 | Source | Positioning brief (Financial Twin, neutral aggregation, deterministic engine, proactive insights, radical privacy) |
 | Related | `docs/HISTORIAS_DE_USUARIO.md` (NINA-US-001), `CLAUDE.md` scope |
 
@@ -34,7 +34,7 @@ Goal: a dynamic 3–6 month projection of the user's money and instant what-if a
 
 | ID | Requirement | Prio | Status | Depends on |
 |---|---|---|---|---|
-| PRD-FT-01 | A single "available this month" figure from the engine, shown on Home and in chat. | P0 | Done (Sprint A, US-18) | — |
+| PRD-FT-01 | A single "available this month" figure from the engine, shown on Home and in chat. | P0 | Done (Home and chat read the one engine figure) | — |
 | PRD-FT-02 | Engine produces a baseline projection for the next 3 months (6 optional) from `transactions`, recurring income and detected recurring expenses. Same inputs always give the same output. | P1 | Not built (US-31) | PRD-AGG-01, PRD-INS-02 |
 | PRD-FT-03 | What-if via chat and a simulator screen: user states a one-off or recurring change (amount, month); the engine re-runs the projection and returns the delta in available money and the date a stated goal is reached or rebuilt. | P1 | Not built (US-32) | PRD-FT-02 |
 | PRD-FT-04 | Each what-if answer returns one chart and one direct recommendation. The recommendation is chosen by deterministic rules; the LLM only phrases it. | P1 | Not built | PRD-FT-03 |
@@ -54,7 +54,7 @@ Goal: banks, cards, savings and cash in one place, with no bank lock-in.
 | ID | Requirement | Prio | Status | Depends on |
 |---|---|---|---|---|
 | PRD-AGG-01 | Manual entry of income and expenses, assignable to an account. | P0 | Done (US-06/07/26, US-41) | — |
-| PRD-AGG-02 | Accounts of type bank, card, cash, savings, with per-account balance derived from `transactions`. | P0 | Done (Sprint E, US-41; migration 019 pending apply) | — |
+| PRD-AGG-02 | Accounts of type bank, card, cash, savings, with per-account balance derived from `transactions`. | P0 | Done (Sprint E, US-41); migration in the new chain, not yet applied to production | — |
 | PRD-AGG-03 | CSV import with column mapping, duplicate detection and a preview before commit. | P1 | Not built (stretch) | PRD-AGG-02 |
 | PRD-AGG-04 | PDF statement import (Peruvian banks supported incrementally). | P1 | Not built (OUT this month) | PRD-AGG-03 |
 | PRD-AGG-05 | Imported rows are marked with their source (manual / csv / pdf) and can be removed as a batch. | P1 | Not built | PRD-AGG-03 |
@@ -71,12 +71,12 @@ Goal: zero invented numbers; every figure explainable.
 
 | ID | Requirement | Prio | Status | Depends on |
 |---|---|---|---|---|
-| PRD-AUD-01 | One engine is the only producer of financial figures; no second computation path in app or services. | P0 | Done for summary/trends (Sprint A); legacy `intelligence` engine still present and must be retired | — |
-| PRD-AUD-02 | Number validator on chat output: any figure in the reply must exist in the facts payload, else the reply is rejected and a safe fallback is sent. | P0 | Partial ("basic validator" in scope; verify coverage) | PRD-AUD-01 |
+| PRD-AUD-01 | One engine is the only producer of financial figures; no second computation path in app or services. | P0 | Done for every user-facing path: legacy `NinaFinanceEngine`, `/intelligence/snapshot`, `/home/intelligence` and the Dart metric code were removed (2026-10). Unreachable scaffolding in `src/ai/analytics` remains. | — |
+| PRD-AUD-02 | Number validator on chat output: any figure in the reply must exist in the facts payload, else the reply is rejected and a safe fallback is sent. | P0 | Done: validator is fail-closed and covered by tests; unchanged by the voice work | PRD-AUD-01 |
 | PRD-AUD-03 | "How I calculated this" button on every figure Nina states (Home, chat, what-if). Shows: formula in plain language, period, filters, number of transactions used, and a link to the transaction list that produced it. | P1 | Not built | PRD-AUD-01 |
 | PRD-AUD-04 | Audit payload is produced by the engine alongside the figure (not re-derived by the client). | P1 | Not built | PRD-AUD-03 |
-| PRD-AUD-05 | LLM receives only engine facts (`FactsPayload`), never raw transactions or balances; descriptions are treated as untrusted text. | P0 | Verify | — |
-| PRD-AUD-06 | Minimal audit view for the "available this month" figure only: plain-language formula, period, and number of transactions used, with a link to the list. Engine returns this alongside the figure. Subset of PRD-AUD-03/04. | P0 (proposed) | Not built | PRD-FT-01 |
+| PRD-AUD-05 | LLM receives only engine facts (`FactsPayload`), never raw transactions or balances; descriptions are treated as untrusted text. | P0 | Verified by code reading and tests (facts only, redacted question, untrusted fence). Live payload capture still pending (needs DEV + keys). | — |
+| PRD-AUD-06 | Minimal audit view for the "available this month" figure only: plain-language formula, period, and number of transactions used, with a link to the list. Engine returns this alongside the figure. Subset of PRD-AUD-03/04. | P0 (proposed) | Done (2026-10): `audit` block on `/v1/overview` + "Cómo calculé esto" sheet on Home with link to Movimientos for the same period | PRD-FT-01 |
 
 Acceptance criteria
 - PRD-AUD-02: *Given* an LLM reply containing a figure not in the payload, *then* it is not shown and the logs contain no amounts or PII.
@@ -110,9 +110,9 @@ Goal: privacy as a visible product feature.
 
 | ID | Requirement | Prio | Status | Depends on |
 |---|---|---|---|---|
-| PRD-PRV-01 | Explicit, revocable consent for data processing, AI use and analytics, with AI disabled when not granted. | P0 | Done (Sprint D, US-03/42; migration 018 pending apply) | — |
-| PRD-PRV-02 | RLS on every user-owned table; personal rows never visible to other members; verified by SQL tests for two users. | P0 | Done for spaces/accounts (tests pending run) | — |
-| PRD-PRV-03 | PII redaction before any LLM call; no amounts or PII in logs. | P0 | Verify | — |
+| PRD-PRV-01 | Explicit, revocable consent for data processing, AI use and analytics, with AI disabled when not granted. | P0 | Done (Sprint D, US-03/42); migration in the new chain | — |
+| PRD-PRV-02 | RLS on every user-owned table; personal rows never visible to other members; verified by SQL tests for two users. | P0 | Done and tested on local DB (2026-10-18): `spaces_rls.sql` and `accounts_rls.sql` pass after migration `20260107` drops a legacy permissive INSERT policy. Production needs that migration. | — |
+| PRD-PRV-03 | PII redaction before any LLM call; no amounts or PII in logs. | P0 | Partial: redaction now covers email, phone (+51), DNI, RUC, CCI and cards and is applied before embeddings; some legacy logs still print amounts or memory content (see audit) | — |
 | PRD-PRV-04 | One-tap export of all user data (CSV/JSON). | P1 | Not built (US-43) | — |
 | PRD-PRV-05 | One-tap account and data deletion, including storage objects, with a confirmation step and a completion receipt. | P1, **P0 candidate**; not to be marketed until legal review is confirmed by the founder | Not built (US-44) | — |
 | PRD-PRV-06 | Published data policy: data is not used to train public models. | P1 | Open question | Provider terms review |
@@ -130,8 +130,8 @@ Goal: several people see and categorize the expenses of a common fund (rent, gro
 
 | ID | Requirement | Prio | Status | Depends on |
 |---|---|---|---|---|
-| PRD-SPC-01 | Membership in `space_members`; RLS on shared rows checks membership via a `security definer` helper. | P0 | Done (Sprint C, US-33/34; migration 017 pending apply) | — |
-| PRD-SPC-02 | A personal transaction is never visible to other members; only rows assigned to a space are shared. | P0 | Done (US-39); SQL test pending run | PRD-SPC-01 |
+| PRD-SPC-01 | Membership in `space_members`; RLS on shared rows checks membership via a `security definer` helper. | P0 | Done; RLS verified on local DB | — |
+| PRD-SPC-02 | A personal transaction is never visible to other members; only rows assigned to a space are shared. | P0 | Done; verified by `spaces_rls.sql` on local DB | PRD-SPC-01 |
 | PRD-SPC-03 | The space balance is computed by the engine, separately from the personal balance; what a member paid counts against their personal available. | P0 | Done (US-36, decision 11 Oct) | PRD-FT-01 |
 | PRD-SPC-04 | Per-member contribution view and leaving a space. | P1 | Done (US-37/38) | PRD-SPC-01 |
 | PRD-SPC-05 | Household *intelligence* (joint insights, joint forecast, joint what-if). | Out | Flagged OUT; see open question 5 | — |
@@ -142,8 +142,8 @@ Acceptance: *Given* users A and B in a space and A's personal transaction, *then
 
 | ID | Requirement | Prio | Status |
 |---|---|---|---|
-| PRD-VOX-01 | All user-facing copy follows the Nina voice guidelines: sassy and warm by default, no sass on debt or distress, never shame, one action per reply. | P0 | Partial |
-| PRD-VOX-02 | A "calm mode" is triggered by deterministic keyword/intent rules and by a user toggle; it removes humour from the reply. | P1 | Not built |
+| PRD-VOX-01 | All user-facing copy follows the Nina voice guidelines: sassy and warm by default, no sass on debt or distress, never shame, one action per reply. | P0 | Done: voice, calm-mode and limits blocks are in `CHAT_SYSTEM_PROMPT_V1` |
+| PRD-VOX-02 | A "calm mode" is triggered by deterministic keyword/intent rules and by a user toggle; it removes humour from the reply. | P1 | Partial: deterministic keyword rule done (debt, income loss, distress; no LLM detection). User toggle not built. |
 
 Acceptance: *Given* a message about debt or distress, *then* the reply contains no joke or emoji and offers one concrete next step.
 
@@ -172,3 +172,8 @@ Decided 2026-10-13 unless noted.
 4. **In-app-only insights:** decided. Proactive triggers stay behind feature flags; push is a later phase.
 5. **Shared spaces vs. "household intelligence OUT":** open. Spaces share data and balances (in); joint insights or forecasts are out. Confirm this is the intended boundary.
 6. **Benchmark:** decided. Cleo for voice, Revolut AIR for chat UX.
+
+## 12. Change log
+
+- 2026-10-18: statuses updated for the overnight run. Built: PRD-AUD-06 (audit view), PRD-VOX-01 (voice in the chat prompt), PRD-VOX-02 (keyword calm mode, toggle pending), PII redaction before embeddings (PRD-PRV-03, partial). Retired: legacy engine path (PRD-AUD-01). Verified on a local database: RLS tests for spaces and accounts (PRD-PRV-02, PRD-SPC-01/02).
+- Production note: the repo's migration chain is now a baseline of the production `public` schema plus re-based migrations for category rules, shared spaces, consents and accounts, and one security fix (see `docs/OVERNIGHT-LOG.md`). Nothing has been applied to production.
