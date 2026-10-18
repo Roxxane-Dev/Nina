@@ -4,10 +4,27 @@
  */
 import { periodTotals, signedFlows } from './aggregates'
 import { categoryLabel } from './categories'
-import { isoDate } from './period'
+import { inPeriod, isoDate } from './period'
 import { monthLabelEs, monthRange, previousRange, type PeriodRange } from './periods'
 import { ENGINE_VERSION } from './version'
 import type { EngineTransaction } from './types'
+
+/**
+ * How the "available" figure was calculated (PRD-AUD-06). Produced here, next
+ * to the figure, so the app never re-derives it.
+ */
+export type OverviewAudit = {
+  metric: 'available'
+  /** Plain-language formula, already worded for the user. */
+  formula: string
+  period: { from: string; to: string; label: string }
+  income: number
+  expenses: number
+  available: number
+  txnCount: number
+  /** Ids of the movements that make up the figure (transfers are not counted). */
+  evidenceTxnIds: string[]
+}
 
 export type Overview = {
   period: { from: string; to: string; label: string; granularity: PeriodRange['granularity'] }
@@ -24,6 +41,7 @@ export type Overview = {
   previous: { label: string; income: number; expenses: number }
   /** expenses − previous.expenses */
   expensesChange: number
+  audit: OverviewAudit
   engineVersion: string
 }
 
@@ -35,6 +53,7 @@ export function buildOverview(txs: EngineTransaction[], range: PeriodRange, asOf
   const firstDay = flows.reduce<Date | null>((min, t) => (!min || t.postedAt < min ? t.postedAt : min), null)
   const all = firstDay ? periodTotals(flows, firstDay, asOf) : { income: 0, expenses: 0 }
 
+  const evidenceTxnIds = flows.filter((t) => inPeriod(t.postedAt, range.from, range.to)).map((t) => t.id)
   const categories = Object.entries(current.byCategory)
     .sort((a, b) => b[1] - a[1])
     .map(([slug, amount]) => ({
@@ -55,6 +74,16 @@ export function buildOverview(txs: EngineTransaction[], range: PeriodRange, asOf
     categories,
     previous: { label: prevRange.label, income: round(prev.income), expenses: round(prev.expenses) },
     expensesChange: round(current.expenses - prev.expenses),
+    audit: {
+      metric: 'available',
+      formula: `Disponible = ingresos de ${range.label} − gastos de ${range.label}. Las transferencias entre tus cuentas no se cuentan.`,
+      period: { from: isoDate(range.from), to: isoDate(range.to), label: range.label },
+      income: round(current.income),
+      expenses: round(current.expenses),
+      available: round(current.income - current.expenses),
+      txnCount: current.count,
+      evidenceTxnIds,
+    },
     engineVersion: ENGINE_VERSION,
   }
 }
