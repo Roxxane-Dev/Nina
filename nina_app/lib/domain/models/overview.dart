@@ -15,6 +15,7 @@ class Overview {
     required this.previousLabel,
     required this.previousExpenses,
     required this.expensesChange,
+    this.audit,
   });
 
   final String periodLabel;
@@ -30,6 +31,9 @@ class Overview {
   final String previousLabel;
   final double previousExpenses;
   final double expensesChange;
+
+  /// How `available` was calculated; computed by the engine (PRD-AUD-06).
+  final OverviewAudit? audit;
 
   factory Overview.fromJson(Map<String, dynamic> j) {
     final period = (j['period'] as Map?) ?? const {};
@@ -56,6 +60,44 @@ class Overview {
       previousLabel: previous['label'] as String? ?? '',
       previousExpenses: _d(previous['expenses']),
       expensesChange: _d(j['expensesChange']),
+      audit: j['audit'] is Map
+          ? OverviewAudit.fromJson((j['audit'] as Map).cast<String, dynamic>())
+          : null,
+    );
+  }
+}
+
+/// The engine's own explanation of the "available" figure.
+class OverviewAudit {
+  const OverviewAudit({
+    required this.formula,
+    required this.periodLabel,
+    required this.income,
+    required this.expenses,
+    required this.available,
+    required this.txnCount,
+    required this.evidenceTxnIds,
+  });
+
+  final String formula;
+  final String periodLabel;
+  final double income;
+  final double expenses;
+  final double available;
+  final int txnCount;
+  final List<String> evidenceTxnIds;
+
+  factory OverviewAudit.fromJson(Map<String, dynamic> j) {
+    final period = (j['period'] as Map?) ?? const {};
+    return OverviewAudit(
+      formula: j['formula'] as String? ?? '',
+      periodLabel: period['label'] as String? ?? '',
+      income: _d(j['income']),
+      expenses: _d(j['expenses']),
+      available: _d(j['available']),
+      txnCount: (j['txnCount'] as num?)?.toInt() ?? 0,
+      evidenceTxnIds:
+          (j['evidenceTxnIds'] as List? ?? const []).map((e) => '$e').toList(),
     );
   }
 }

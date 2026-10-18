@@ -12,6 +12,7 @@ import '../../../data/services/finance_api_service.dart';
 import '../../../domain/models/nina_user_profile.dart';
 import '../../../domain/models/overview.dart';
 import '../../../shared/widgets/add_transaction_sheet.dart';
+import '../widgets/audit_sheet.dart';
 
 /// Inicio (US-18 to US-21, US-04). Every figure comes from GET /v1/overview
 /// (the backend engine); the app never sums transactions itself.
@@ -21,13 +22,17 @@ class HomeScreen extends StatefulWidget {
       this.api,
       this.loadRecent,
       this.loadProfile,
-      this.watchChanges});
+      this.watchChanges,
+      this.onOpenTransactions});
 
   /// Injectable for tests.
   final FinanceApiService? api;
   final Future<List<Map<String, dynamic>>> Function()? loadRecent;
   final Future<NinaUserProfile> Function()? loadProfile;
   final Stream<Object?> Function()? watchChanges;
+
+  /// Opens Movimientos filtered to a period ('current' | 'previous'). Default: router.
+  final void Function(String period)? onOpenTransactions;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -226,6 +231,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  void _openTransactions() {
+    final period = _period == OverviewPeriod.previous ? 'previous' : 'current';
+    final open = widget.onOpenTransactions;
+    if (open != null) {
+      open(period);
+    } else {
+      context.go('/transactions?period=$period');
+    }
+  }
+
   // 3. Hero (US-18): balance, available, income and expenses of the period.
   Widget _buildHero(Overview o) {
     final change = o.expensesChange;
@@ -275,7 +290,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     : NinaColors.errorLight,
               ),
             ),
-            const SizedBox(height: 12),
+            if (o.audit != null)
+              TextButton(
+                key: const Key('home-audit'),
+                style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 28),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    alignment: Alignment.centerLeft),
+                onPressed: () => showAuditSheet(
+                  context,
+                  audit: o.audit!,
+                  onViewTransactions: _openTransactions,
+                ),
+                child: Text('Cómo calculé esto',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withAlpha(210),
+                        decoration: TextDecoration.underline)),
+              ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(

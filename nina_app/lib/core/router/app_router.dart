@@ -69,7 +69,8 @@ GoRouter buildRouter(AuthBloc authBloc) {
           GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
           GoRoute(
               path: '/transactions',
-              builder: (_, __) => const MovimientosScreen()),
+              builder: (_, state) => MovimientosScreen(
+                  initialPeriod: state.uri.queryParameters['period'])),
           GoRoute(
             path: '/chat',
             builder: (_, __) => BlocProvider(

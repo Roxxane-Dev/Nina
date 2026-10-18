@@ -22,8 +22,39 @@ describe('golden: overview (user Ana)', () => {
       ],
       previous: { label: 'julio 2026', income: 4500, expenses: 1760.4 },
       expensesChange: 109.9,
+      audit: {
+        metric: 'available',
+        formula: 'Disponible = ingresos de agosto 2026 − gastos de agosto 2026. Las transferencias entre tus cuentas no se cuentan.',
+        period: { from: '2026-08-01', to: '2026-08-31', label: 'agosto 2026' },
+        income: 5100,
+        expenses: 1870.3,
+        available: 3229.7,
+        txnCount: 5,
+        evidenceTxnIds: expect.any(Array),
+      },
       engineVersion: expect.any(String),
     })
+  })
+
+  it('audit (PRD-AUD-06): the evidence is exactly the movements behind the figure', () => {
+    const range = monthRange(2026, 7, OCT_9)
+    const o = buildOverview(ANA_TXS, range, OCT_9)
+    const inAugust = ANA_TXS.filter((t) => t.postedAt >= range.from && t.postedAt <= range.to)
+    const counted = inAugust.filter((t) => !t.isTransfer)
+    expect(inAugust.some((t) => t.isTransfer)).toBe(true)
+    expect(o.audit.evidenceTxnIds).toEqual(counted.map((t) => t.id))
+    expect(o.audit.evidenceTxnIds).toHaveLength(o.audit.txnCount)
+    // Reproducible from transactions alone.
+    const income = counted.filter((t) => t.amount > 0).reduce((a, t) => a + t.amount, 0)
+    const expenses = counted.filter((t) => t.amount < 0).reduce((a, t) => a - t.amount, 0)
+    expect(o.audit.available).toBeCloseTo(income - expenses, 2)
+    expect(o.audit.available).toBe(o.available)
+  })
+
+  it('audit of an empty month has no evidence', () => {
+    const o = buildOverview(ANA_TXS, monthRange(2026, 9, OCT_9), OCT_9)
+    expect(o.audit.evidenceTxnIds).toEqual([])
+    expect(o.audit.txnCount).toBe(0)
   })
 
   it('an empty current month still carries the historical balance', () => {
