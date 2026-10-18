@@ -9,12 +9,11 @@ abstract class ChatEvent extends Equatable {
 }
 
 class ChatMessageSent extends ChatEvent {
-  const ChatMessageSent({required this.message, this.snapshotContext});
+  const ChatMessageSent({required this.message});
   final String message;
-  final Map<String, dynamic>? snapshotContext;
 
   @override
-  List<Object?> get props => [message, snapshotContext];
+  List<Object?> get props => [message];
 }
 
 class ChatConfirmationAccepted extends ChatEvent {
