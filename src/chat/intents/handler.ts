@@ -1,4 +1,5 @@
 import type { ResolvedQuestion } from '../../../packages/finance-engine/src'
+import type { CalmKind } from '../calm-mode'
 import type { ChatReply } from '../chat-reply'
 
 /** What happened in a turn — for telemetry and tests, never shown to the user. */
@@ -22,6 +23,8 @@ export type ChatContext = {
   question: ResolvedQuestion
   /** FR-02: the user consented to AI processing. If false, no data reaches an LLM. */
   aiAllowed: boolean
+  /** Calm mode (PRD-VOX-02): set by a keyword rule when the topic is debt, income loss or distress. */
+  calm?: CalmKind | null
 }
 
 export type HandlerResult = {

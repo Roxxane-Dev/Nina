@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { HELP_REPLY, suggestedFollowUps } from '../answer-card'
+import { CALM_REPLIES } from '../calm-mode'
 import { reply } from '../chat-reply'
 import type { ChatContext, ChatIntentHandler, HandlerResult } from './handler'
 
@@ -17,6 +18,11 @@ export class GeneralHandler implements ChatIntentHandler {
   readonly name = 'general'
 
   async handle(ctx: ChatContext): Promise<HandlerResult> {
+    // Calm mode: fixed, humorless reply (PRD-VOX-02). No LLM, no figures.
+    if (ctx.calm && ctx.question.intent !== 'help') {
+      const calm = CALM_REPLIES[ctx.calm]
+      return { outcome: 'ok', reply: reply(calm.reply, { followUps: calm.followUps }) }
+    }
     switch (ctx.question.intent) {
       case 'help':
         return { outcome: 'ok', reply: reply(HELP_REPLY, { followUps: suggestedFollowUps('help') }) }

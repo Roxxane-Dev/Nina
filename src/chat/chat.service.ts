@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { localToday, resolveQuestion } from '../../packages/finance-engine/src'
 import { MemoryService } from '../memory/memory.service'
 import { ConsentsService } from '../consents/consents.service'
+import { detectCalmTopic } from './calm-mode'
 import { ChatTelemetry, hashUserId } from './chat-telemetry'
 import type { ChatReply } from './chat-reply'
 import { ConfirmationHandler } from './intents/confirmation.handler'
@@ -55,7 +56,7 @@ export class ChatService {
     const started = Date.now()
     const asOf = localToday(new Date())
     const aiAllowed = await this.consents.allowsAi(userId)
-    const ctx: ChatContext = { userId, message, pendingToken, asOf, question: resolveQuestion(message, asOf), aiAllowed }
+    const ctx: ChatContext = { userId, message, pendingToken, asOf, question: resolveQuestion(message, asOf), aiAllowed, calm: detectCalmTopic(message) }
     const turn = {
       requestId,
       userHash: hashUserId(userId),

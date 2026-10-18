@@ -3,6 +3,7 @@ import type { FactsPayload } from '../../../packages/finance-engine/src'
 import { NinaRouterService } from '../../nina-router/nina-router.service'
 import { templatedAnswer } from '../../nina-router/validator'
 import { buildCard, suggestedFollowUps, type RecentItem } from '../answer-card'
+import { CALM_PREFIX } from '../calm-mode'
 import { reply } from '../chat-reply'
 import type { ChatContext, HandlerResult } from './handler'
 
@@ -36,6 +37,21 @@ export class QueryResponder {
         reply: reply('Estos son tus últimos movimientos registrados.', {
           card,
           followUps: suggestedFollowUps('recent'),
+          grounded: { ...base, validationPassed: true, usedLlm: false },
+        }),
+      }
+    }
+
+    // Calm mode (PRD-VOX-02): engine template only, no LLM, no humor, no emoji.
+    if (ctx.calm) {
+      return {
+        outcome: 'ok',
+        llmUsed: false,
+        validationPassed: true,
+        engineVersion: facts.engineVersion,
+        reply: reply(`${CALM_PREFIX} ${templatedAnswer(facts).message}`, {
+          card,
+          followUps: suggestedFollowUps(facts.intent),
           grounded: { ...base, validationPassed: true, usedLlm: false },
         }),
       }
