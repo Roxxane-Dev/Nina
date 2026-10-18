@@ -25,12 +25,16 @@ class MovimientosScreen extends StatefulWidget {
       this.api,
       this.loadTransactions,
       this.watchChanges,
-      this.loadAccounts});
+      this.loadAccounts,
+      this.initialPeriod});
 
   final FinanceApiService? api;
   final Future<List<Map<String, dynamic>>> Function()? loadTransactions;
   final Stream<Object?> Function()? watchChanges;
   final Future<List<Account>> Function()? loadAccounts;
+
+  /// 'current' | 'previous' | 'all'; anything else means the current month.
+  final String? initialPeriod;
 
   @override
   State<MovimientosScreen> createState() => _MovimientosScreenState();
@@ -45,7 +49,11 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
   Overview? _overview;
   String? _error;
 
-  _PeriodFilter _period = _PeriodFilter.current;
+  late _PeriodFilter _period = switch (widget.initialPeriod) {
+    'previous' => _PeriodFilter.previous,
+    'all' => _PeriodFilter.all,
+    _ => _PeriodFilter.current,
+  };
   _TypeFilter _type = _TypeFilter.all;
   String? _category; // display label, null = all
   String? _accountId; // US-41 filter, null = all
