@@ -22,7 +22,6 @@ import {
   type FactsPayload,
 } from '../../packages/finance-engine/src'
 import { createAdminClient } from '../common/supabase.client'
-import { NinaFinanceEngine } from '../intelligence/nina-finance.engine'
 import { FinanceDataUnavailableError } from './errors'
 import { toEngineTransactions, type TransactionRow } from './map-transactions'
 
@@ -33,7 +32,6 @@ export class FinanceEngineService implements OnModuleInit {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly snapshotEngine: NinaFinanceEngine,
   ) {}
 
   onModuleInit(): void {
@@ -124,9 +122,5 @@ export class FinanceEngineService implements OnModuleInit {
 
   async trends(userId: string, months: number, asOf = localToday(new Date())): Promise<TrendPoint[]> {
     return monthlyTrend(await this.loadTransactions(userId), asOf, months)
-  }
-
-  getSnapshot(userId: string) {
-    return this.snapshotEngine.getSnapshot(userId)
   }
 }

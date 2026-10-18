@@ -3,7 +3,6 @@ import {
   toLocalDay,
   type EngineTransaction,
 } from '../../packages/finance-engine/src'
-import type { FinanceTransaction } from '../intelligence/nina-finance.types'
 
 export type TransactionRow = {
   id: string
@@ -56,15 +55,3 @@ export function toEngineTransactions(rows: TransactionRow[]): {
   return { txs, dropped: rows.length - txs.length }
 }
 
-export function fromFinanceTransactions(rows: FinanceTransaction[]): EngineTransaction[] {
-  return toEngineTransactions(
-    rows.map((r) => ({
-      id: r.id,
-      type: r.type,
-      amount: r.amount,
-      category: r.category,
-      description: r.description,
-      date: r.date,
-    })),
-  ).txs
-}

@@ -4,11 +4,9 @@ import { AuthModule } from './auth/auth.module'
 import { AIModule } from './ai/ai.module'
 import { ChatModule } from './chat/chat.module'
 import { ExpensesModule } from './expenses/expenses.module'
-import { HomeModule } from './home/home.module'
 import { JobsModule } from './jobs/jobs.module'
 import { RealtimeModule } from './realtime/realtime.module'
 import { ConnectivityModule } from './financial-connectivity/connectivity.module'
-import { IntelligenceModule } from './intelligence/intelligence.module'
 import { FinanceEngineModule } from './finance-engine/finance-engine.module'
 import { TransactionsModule } from './transactions/transactions.module'
 import { SpacesModule } from './spaces/spaces.module'
@@ -23,11 +21,9 @@ import { AccountsModule } from './accounts/accounts.module'
     AIModule,
     ChatModule,
     ExpensesModule,
-    HomeModule,
     JobsModule,
     RealtimeModule,
     ConnectivityModule,
-    IntelligenceModule,
     FinanceEngineModule,
     TransactionsModule,
     SpacesModule,

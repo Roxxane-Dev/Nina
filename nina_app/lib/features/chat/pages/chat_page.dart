@@ -7,8 +7,6 @@ import '../widgets/message_bubble.dart';
 import '../widgets/input_bar.dart';
 import '../../../shared/widgets/loading_dots.dart';
 import '../../../core/theme/design_system.dart';
-import '../../../data/services/intelligence_api_service.dart';
-import '../../../domain/models/nina_snapshot.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -19,18 +17,6 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final _scrollCtrl = ScrollController();
-  NinaSnapshot? _snapshot;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSnapshot();
-  }
-
-  Future<void> _loadSnapshot() async {
-    final snap = await IntelligenceApiService.instance.fetchSnapshot();
-    if (mounted) setState(() => _snapshot = snap);
-  }
 
   @override
   void dispose() {
@@ -99,7 +85,7 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
             _buildChipsRow(context),
-            _InputBarWrapper(snapshot: _snapshot),
+            const _InputBarWrapper(),
           ],
         ),
       ),
@@ -159,10 +145,7 @@ class _ChatPageState extends State<ChatPage> {
         itemBuilder: (context, i) {
           return GestureDetector(
             onTap: () {
-              context.read<ChatBloc>().add(ChatMessageSent(
-                    message: chips[i],
-                    snapshotContext: _snapshot?.toJson(),
-                  ));
+              context.read<ChatBloc>().add(ChatMessageSent(message: chips[i]));
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -187,8 +170,7 @@ class _ChatPageState extends State<ChatPage> {
 }
 
 class _InputBarWrapper extends StatelessWidget {
-  final NinaSnapshot? snapshot;
-  const _InputBarWrapper({this.snapshot});
+  const _InputBarWrapper();
 
   @override
   Widget build(BuildContext context) {
@@ -198,10 +180,7 @@ class _InputBarWrapper extends StatelessWidget {
         return InputBar(
           enabled: !isSending,
           onSend: (text) {
-            context.read<ChatBloc>().add(ChatMessageSent(
-                  message: text,
-                  snapshotContext: snapshot?.toJson(),
-                ));
+            context.read<ChatBloc>().add(ChatMessageSent(message: text));
           },
         );
       },
