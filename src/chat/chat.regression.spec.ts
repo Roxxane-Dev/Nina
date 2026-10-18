@@ -42,7 +42,7 @@ function fakeDb(result: { data: unknown[] | null; error: { code: string; message
 
 function setup(dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: null }, aiAllowed = true) {
   const config = { get: () => undefined } as never
-  const engine = new FinanceEngineService(config, {} as never)
+  const engine = new FinanceEngineService(config)
   ;(engine as unknown as { db: unknown }).db = fakeDb(dbResult)
 
   const income = new IncomeService(config)
