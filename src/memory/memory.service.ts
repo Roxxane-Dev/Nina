@@ -5,6 +5,7 @@ import OpenAI from 'openai'
 import type { Memory } from '../ai/ai.types'
 import { dedupeMemories, sortMemoriesByRelevance } from '../ai/memory-utils'
 import { createAdminClient } from '../common/supabase.client'
+import { redactPii } from '../nina-router/redaction'
 
 /**
  * OpenAI text-embedding-3-small → 1536-dimensional vectors.
@@ -137,11 +138,10 @@ export class MemoryService implements OnModuleInit {
   // ─── Private ───────────────────────────────────────────────────────────────
 
   private async embedText(text: string): Promise<number[]> {
-    console.log('USING EMBEDDING MODEL:', OPENAI_EMBEDDING_MODEL)
-
+    // The provider only sees redacted text; the stored message keeps the original.
     const res = await this.openai.embeddings.create({
       model: OPENAI_EMBEDDING_MODEL,
-      input: text,
+      input: redactPii(text).text,
     })
 
     const embedding = res.data[0].embedding
