@@ -1,4 +1,5 @@
 import type { FactsPayload } from '../../packages/finance-engine/src'
+import { DISTRESS_HELPLINE } from '../chat/calm-mode'
 import { buildGroundedUserPrompt, CHAT_SYSTEM_PROMPT_V1 } from './chat-prompt'
 import { templatedAnswer } from './validator'
 
@@ -38,6 +39,12 @@ describe('CHAT_SYSTEM_PROMPT_V1', () => {
     expect(CHAT_SYSTEM_PROMPT_V1).toContain('cero humor, cero emojis')
     expect(CHAT_SYSTEM_PROMPT_V1).toContain('No eres un banco')
     expect(CHAT_SYSTEM_PROMPT_V1).toContain('no prometes resultados')
+  })
+
+  it('tells the model to give the crisis resource on hopelessness or self-harm, even without keywords', () => {
+    expect(CHAT_SYSTEM_PROMPT_V1).toContain('desesperanza o ideas de hacerse daño')
+    expect(CHAT_SYSTEM_PROMPT_V1).toContain('aunque no use ninguna palabra clave')
+    expect(CHAT_SYSTEM_PROMPT_V1).toContain(DISTRESS_HELPLINE) // same constant as the fixed reply
   })
 
   it('keeps the injection defence and the JSON contract', () => {

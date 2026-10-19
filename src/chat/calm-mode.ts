@@ -25,6 +25,12 @@ const DISTRESS = [
   /\bno quiero vivir\b/,
   /\bhacerme dano\b/,
   /\bsuicid/,
+  /\bquitarme la vida\b/,
+  /\bacabar con (todo|mi vida)\b/,
+  /\bno quiero seguir (viviendo|asi)\b/,
+  /\bya no quiero seguir\b/,
+  /\bno tengo salida\b/,
+  /\bno le veo (salida|sentido)\b/,
 ]
 
 const DEBT = [
@@ -59,6 +65,16 @@ export function detectCalmTopic(message: string): CalmKind | null {
   return null
 }
 
+/**
+ * The one place that holds the crisis resource. The reply below and the system
+ * prompt (chat-prompt.ts) both build from this constant; do not copy it.
+ * No menu option is hard-coded on purpose.
+ */
+export const DISTRESS_HELPLINE = 'Línea 113 del Minsa, salud mental (gratuita, las 24 horas)'
+
+/** Final distress reply (founder-approved text). */
+export const DISTRESS_REPLY = `Gracias por contármelo. No tienes que resolver todo hoy. Si sientes que esto te supera o piensas en hacerte daño, llama ahora a la ${DISTRESS_HELPLINE}. Aquí sigo, con calma, cuando quieras ver los números.`
+
 /** Fixed replies: no jokes, no emoji, one concrete next step. */
 export const CALM_REPLIES: Record<CalmKind, { reply: string; followUps: string[] }> = {
   debt: {
@@ -72,8 +88,7 @@ export const CALM_REPLIES: Record<CalmKind, { reply: string; followUps: string[]
     followUps: ['¿Cuánto me queda?', '¿En qué gasto más?'],
   },
   distress: {
-    reply:
-      'Gracias por contármelo. No tienes que resolver todo hoy. Si sientes que esto te supera, hablarlo con alguien de confianza o con un profesional ayuda. Aquí sigo, con calma, cuando quieras ver tus números.',
+    reply: DISTRESS_REPLY,
     followUps: ['¿Cuánto me queda?'],
   },
 }

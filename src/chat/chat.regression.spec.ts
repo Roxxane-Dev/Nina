@@ -117,6 +117,23 @@ describe('chat regression (real Supabase date format)', () => {
     expect(record).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'no_data' }))
   })
 
+  it('distress wins over a data question: fixed reply with the helpline, no figures, no LLM', async () => {
+    const { chat, router, record } = setup()
+    const r = await chat.handleMessage('user-1', 'ya no puedo más, ¿cuánto gasté este mes?')
+    expect(r.reply).toContain('Línea 113 del Minsa')
+    expect(r.reply).not.toContain('S/')
+    expect(/\p{Extended_Pictographic}/u.test(r.reply)).toBe(false)
+    expect(router.explainFacts).not.toHaveBeenCalled()
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ handler: 'calm', outcome: 'ok', llmUsed: false }))
+  })
+
+  it('debt still answers a data question from the engine template, calmly', async () => {
+    const { chat, router } = setup()
+    const r = await chat.handleMessage('user-1', 'tengo deudas, ¿cuánto gasté este mes?')
+    expect(r.reply.startsWith('Vamos con calma.')).toBe(true)
+    expect(router.explainFacts).not.toHaveBeenCalled()
+  })
+
   it('an unrecognized finance question asks to rephrase', async () => {
     const { chat, record } = setup()
     const r = await chat.handleMessage('user-1', 'mi plata está rara')
