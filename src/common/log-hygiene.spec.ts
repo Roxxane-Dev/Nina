@@ -3,7 +3,6 @@ import type { FactsPayload } from '../../packages/finance-engine/src'
 import { AIService } from '../ai/ai.service'
 import { LongTermMemoryService } from '../ai/memory/long-term-memory.service'
 import { MemoryRankingService } from '../ai/memory/memory-ranking.service'
-import { NotificationEngineService } from '../ai/proactive/notification-engine.service'
 import { NinaRouterService } from '../nina-router/nina-router.service'
 import { reasonCode, safeErrorCode, statusFromMessage } from './log-safe'
 
@@ -60,14 +59,6 @@ describe('no message text, amounts or raw error bodies in logs', () => {
       2000,
     )
     expect(everything()).not.toContain(SECRET)
-  })
-
-  it('notification engine', async () => {
-    const svc = new NotificationEngineService()
-    await svc.dispatchNotifications('user-1', [SECRET], [{ severity: 'high' } as never])
-    expect(logged.length).toBeGreaterThan(0)
-    expect(everything()).not.toContain(SECRET)
-    expect(everything()).not.toContain('user-1')
   })
 
   it('AIService: provider failures log a code and the aggregated error has no body', async () => {

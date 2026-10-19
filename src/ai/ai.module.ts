@@ -22,46 +22,22 @@ import { MemoryRankingService } from './memory/memory-ranking.service';
 
 // Analytics
 import { FinancialAnalyticsService } from './analytics/financial-analytics.service';
-import { FinancialHealthService } from './analytics/financial-health.service';
-import { FinancialHealthV2Service } from './analytics/financial-health-v2.service';
 import { CashFlowTrajectoryService } from './analytics/cash-flow-trajectory.service';
 
 // Profiles
-import { BehaviorSignalsService } from './profiles/behavior-signals.service';
-import { UserProfileEvolutionService } from './profiles/user-profile-evolution.service';
-import { OnboardingService } from './profiles/onboarding.service';
 
-// RAG & Insights
-import { CustomRAGService } from './rag/rag.service';
+// Insights
 import { FinancialInsightsEngine } from './insights/financial-insights.service';
 
 // Proactive
-import { TriggerEngineService } from './proactive/trigger-engine.service';
-import { RiskMonitorService } from './proactive/risk-monitor.service';
-import { CoachingEngineService } from './proactive/coaching-engine.service';
-import { NotificationEngineService } from './proactive/notification-engine.service';
-import { ProactiveEngineService } from './proactive/proactive-engine.service';
 
 // Emotion
-import { EmotionalContextEngine } from './emotion/emotional-context.engine';
 
 // Behavioral
-import { StreakEngineService } from './behavioral/streak-engine.service';
-import { ReinforcementEngineService } from './behavioral/reinforcement-engine.service';
-import { RecoveryEngineService } from './behavioral/recovery-engine.service';
-import { AdaptiveNudgesService } from './behavioral/adaptive-nudges.service';
-import { LifeStageIntelligenceService, FinancialIdentityService } from './behavioral/life-stage.service';
-import { InterventionEngine, MultiPersonaCoachingService } from './behavioral/intervention-engine.service';
 
 // Prevention
-import { RelapseDetectionService } from './prevention/relapse-detection.service';
-import { RiskTrajectoryService } from './prevention/risk-trajectory.service';
-import { BehavioralRegressionService } from './prevention/behavioral-regression.service';
-import { PredictiveSignalsService } from './prevention/predictive-signals.service';
-import { PreventionCoachingService } from './prevention/prevention-coaching.service';
 
 // Social
-import { HouseholdIntelligenceService, CollaborativeRiskEngine } from './social/household-intelligence.service';
 
 // Observability & Governance
 import { AIObservabilityService } from './observability/ai-observability.service';
@@ -100,49 +76,10 @@ const AI_PROVIDERS = [
 
   // Analytics
   FinancialAnalyticsService,
-  FinancialHealthService,
-  FinancialHealthV2Service,
   CashFlowTrajectoryService,
 
-  // Profiles
-  BehaviorSignalsService,
-  UserProfileEvolutionService,
-  OnboardingService,
-
-  // RAG & Insights
-  CustomRAGService,
+  // Insights
   FinancialInsightsEngine,
-
-  // Proactive
-  TriggerEngineService,
-  RiskMonitorService,
-  CoachingEngineService,
-  NotificationEngineService,
-  ProactiveEngineService,
-
-  // Emotion
-  EmotionalContextEngine,
-
-  // Behavioral
-  StreakEngineService,
-  ReinforcementEngineService,
-  RecoveryEngineService,
-  AdaptiveNudgesService,
-  LifeStageIntelligenceService,
-  FinancialIdentityService,
-  InterventionEngine,
-  MultiPersonaCoachingService,
-
-  // Prevention
-  RelapseDetectionService,
-  RiskTrajectoryService,
-  BehavioralRegressionService,
-  PredictiveSignalsService,
-  PreventionCoachingService,
-
-  // Social
-  HouseholdIntelligenceService,
-  CollaborativeRiskEngine,
 
   // Observability & Governance
   AIObservabilityService,
