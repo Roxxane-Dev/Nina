@@ -89,3 +89,27 @@ In full `npm test` runs, 1-4 suites sometimes fail to run (suite-level failure, 
 - Behavior against the real Supabase auth flow in the app (only SQL-level and unit-level checks were run).
 - Flutter checks after T5 (no Dart changes) and the docs-only branch.
 - The chain applied to a fresh database *starting from production*: only a fresh local database was used.
+
+## Second overnight run (2026-10-19)
+Summary table, risks, review commands, merge order and open decisions: `docs/OVERNIGHT-REPORT.md`. All work local (host 127.0.0.1), AI_PROVIDER=mock with LLM keys blanked, nothing merged.
+
+| Task | Branch | Result |
+|---|---|---|
+| Seed + local verification + maxWorkers | `chore/local-seed-verify` | pushed; `gh` missing, PR not opened |
+| 1 Calm mode | `feature/calm-mode-final` | done; exact approved text, helpline in `DISTRESS_HELPLINE`, prompt rule, distress overrides data questions; jest 291 |
+| 2 Retire duplicate engine | `refactor/retire-legacy-engine` (earlier) | already built; figures equal SQL sums for user A on the seed |
+| 3 Audit view | `feature/audit-view` (earlier) | already built; audit consistent on the seed |
+| 4 Log hygiene | `fix/log-hygiene` | done; codes only; tests assert no text or amount reaches the logger; jest 295 |
+| 5 Remove unwired behavioral | `chore/remove-unwired-behavioral` | done; stacked on task 4 (modify/delete conflict otherwise); app boots; jest 294 |
+| 6 Scope cleanup | `chore/scope-cleanup` (earlier) | already built; re-verified |
+| 7 Runbook | `chore/prod-runbook` | done; proposed couple_id migration tested locally (6/6, fails without it); replay on a fresh baseline database clean |
+| 8 Docs | `docs/overnight-2` | done |
+
+### Files removed by task 5 (25)
+`src/ai/analytics/financial-health-v2.service.ts`, `src/ai/analytics/financial-health.service.ts` (deprecated wrapper with hard-coded figures), `src/ai/rag/rag.service.ts`; `src/ai/behavioral/` (adaptive-nudges, intervention-engine, life-stage, recovery-engine, reinforcement-engine, streak-engine); `src/ai/emotion/emotional-context.engine.ts`; `src/ai/prevention/` (behavioral-regression, predictive-signals, prevention-coaching, relapse-detection, risk-trajectory); `src/ai/proactive/` (coaching-engine, notification-engine, observability, proactive-engine, risk-monitor, trigger-engine); `src/ai/profiles/` (behavior-signals, onboarding, user-profile-evolution); `src/ai/social/household-intelligence.service.ts`. Edited: `src/ai/ai.module.ts`, `src/ai/context/context-packet.ts` (unused type), `src/common/log-hygiene.spec.ts`. The `financial_streaks` table is untouched. The only remaining flag set is `advanced_household_mode: false` and `realtime_streaming: true`.
+
+### Test runs (graphify hook idle unless noted)
+A1 default workers 53s pass; A2 default workers 102s one suite failed to start; B1 and B2 `--maxWorkers=2` 36s and 35s pass; controls with the hook active: C1 default 96s pass, C2 `--maxWorkers=2` 27s pass.
+
+### Not verified
+Live LLM calls; Flutter app against the local backend; WebSocket client; production data volume; the crisis line's official wording.

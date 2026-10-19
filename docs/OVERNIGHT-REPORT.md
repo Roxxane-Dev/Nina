@@ -1,68 +1,72 @@
-# Overnight report — 2026-10-18
+# Overnight report — second run (2026-10-19)
 
-Work on local Supabase (Docker) and local code only. `main` untouched, production untouched, no `.env*` read. All branches are pushed to origin and merged into `develop` locally (`develop` itself is **not** pushed with these merges). Details and decisions: `docs/OVERNIGHT-LOG.md`.
+Everything ran against the **local** Supabase (host `127.0.0.1`), with `AI_PROVIDER=mock` and the LLM keys blanked for every process I started. No `.env*` contents were read except the host of `SUPABASE_URL`. Synthetic data only. Nothing was merged or pushed to `main`; I merged nothing at all in this run. Details per task: `docs/OVERNIGHT-LOG.md`.
 
 ## Results
 
-| Task | Branch | Status | Tests run |
-|---|---|---|---|
-| DB baseline | `chore/db-baseline` | ✅ (found and fixed an RLS hole) | local `db reset` clean; `spaces_rls.sql`, `accounts_rls.sql` pass; lint; jest 212; analyze 0 errors; flutter 37 |
-| T0 date bug | `fix/date-bridge` | ✅ not broken; regression tests added | lint; jest 216 |
-| T1 DB (013-019, missing tables) | `chore/db-baseline` | ⚠️ done from the prod snapshot; tables with no create migration (`subscriptions`, `ai_insights`, `memories`) come from the snapshot. `memories` does not exist in production and is not used by code (the code reads `messages`). | see above |
-| T2 PII before embeddings | `fix/redact-pii-embeddings` | ✅ | lint; jest 239 (on develop) |
-| T3 retire legacy engine | `refactor/retire-legacy-engine` | ✅ | lint; jest 237; analyze 0 errors; flutter 37 |
-| T4 audit view | `feature/audit-view` | ✅ | lint; jest 241; analyze 0 errors; flutter 43 |
-| T5 voice + calm mode | `feature/voice-calm-mode` | ✅ | lint; jest 277 (no Dart change) |
-| T6 scope cleanup | `chore/scope-cleanup` | ✅ | lint; jest 286; analyze 0 errors; flutter 43 |
-| T7 docs | `docs/overnight-updates` | ✅ | docs only |
+| # | Task | Branch | Status | Tests run |
+|---|---|---|---|---|
+| 0 | Seed, local verification, maxWorkers | `chore/local-seed-verify` (pushed; PR not opened, see below) | ✅ | lint; jest 286 (maxWorkers=2); RLS SQL tests |
+| 1 | Calm mode: final distress text, crisis line in one constant, prompt rule, distress overrides data questions | `feature/calm-mode-final` | ✅ | lint; jest 291; flutter n/a (no Dart change) |
+| 2 | Retire duplicate engine path | already built earlier: `refactor/retire-legacy-engine` (pushed) | ✅ no new work; re-verified against the seed: overview and chat figures equal direct SQL sums for user A | lint; jest; flutter analyze 0 errors, test 43 |
+| 3 | Audit view (PRD-AUD-06) | already built earlier: `feature/audit-view` (pushed) | ✅ no new work; audit block consistent with the figures on the seed | same as above |
+| 4 | Log hygiene | `fix/log-hygiene` | ✅ | lint; jest 295 |
+| 5 | Remove unwired behavioral code | `chore/remove-unwired-behavioral` (stacked on `fix/log-hygiene`) | ✅ | lint; jest 294; app boots, DI resolves |
+| 6 | Scope cleanup | already built earlier: `chore/scope-cleanup` (pushed) | ✅ re-verified by search; one leftover type removed on the task 5 branch | covered above |
+| 7 | Production runbook + couple_id check + replay | `chore/prod-runbook` | ✅ replay clean | lint; jest 286; replay (below) |
+| 8 | Docs | `docs/overnight-2` | ✅ | docs only |
 
-Flutter analyze reports 29 pre-existing `info` items (was 30), no errors or warnings.
+Flutter: `flutter analyze` 0 errors (29 pre-existing infos), `flutter test` 43 pass, run on `develop` at the end. Dart code did not change in this run.
+
+### Replay of the runbook on a fresh local database
+Database reset to the production-snapshot baseline only (13 tables, legacy INSERT policy present). The SQL block of section 4 of the runbook, extracted from the file:
+- **Dry run (ends with `rollback`)**: "All verifications passed", state unchanged afterwards.
+- **Real run (`commit`)**: "All verifications passed"; 19 tables, one INSERT policy ("Users insert own transactions").
+- Schema after the replay equals the repo's migration chain, except for the intended step-7 policy change.
+- `spaces_rls.sql` 10/10, `accounts_rls.sql` 3/3, `couple_insert_rls.sql` 6/6; no table without RLS. The couple test fails without the migration (a non-member could insert into someone else's couple), which proves it checks something.
+
+### Test stability
+Four full runs without the graphify hook active, two with the default worker count and two with `--maxWorkers=2`, plus two controls with the hook active: the only failure was one default-worker run with the hook idle. Both `--maxWorkers=2` runs passed (35-36s), and the two default-worker runs took 53s and 102s. `npm test` now uses `--maxWorkers=2` (on `chore/local-seed-verify`). All runs in this report used it.
 
 ## Top risks to review first
-1. **Production RLS change.** `20260107...drop_legacy_transaction_insert_policy.sql` removes a production policy; couple-based inserts stop working. Confirm `couples` is unused in production before applying.
-2. **Do not apply the baseline to production.** It only mirrors it. Production needs migrations `20260102`-`20260107` (see the log), applied by you after review, in order.
-3. **T3 deletions.** About 30 files removed (legacy engine, `/home/intelligence`, nightly job, unrouted mock screens and widgets). Each was checked as unreferenced from routes and tests, but a screen I classed as dead could be linked from somewhere I did not search (e.g. deep links).
-4. **Calm mode is keyword-based.** It will miss phrasing it does not list and could trigger on borderline phrases. The distress reply has no helpline (none verified).
-5. **`CORS_ALLOWED_ORIGINS`** is a new env variable; unset means no browser origin may open the WebSocket (Flutter web would break until it is set). HTTP CORS is still `*`.
-6. **Flaky full jest runs** (suites failing to start, pass on rerun). Probably CPU contention with the graphify hook; unconfirmed.
-7. **Still logging sensitive content** in legacy AI services (see the log, decision 5).
+1. **Production RLS changes** (runbook steps 6 and 7). Step 6 drops a policy production uses today; step 7 re-adds couple inserts with a membership check. Run section 2 queries first; the runbook has the gates.
+2. **Distress reply.** The text and the 113 line come from you. The wording of the crisis line should be checked against the official source before release. Detection is keywords plus a prompt rule, so phrasing outside both goes to the LLM, which is only instructed, not forced, to give the line.
+3. **Deleting 25 files** in `chore/remove-unwired-behavioral`. Compile, tests and app boot are green, but nothing exercises code that had no entry point. If anything outside the repo imports those services, it breaks.
+4. **Unmerged stack.** Local `develop` contains the first overnight run's merges but is not pushed; remote `develop` is stale. A PR from any branch to the remote `develop` shows all of that work. Push `develop` once before opening PRs.
+5. **HTTP CORS is still `*`** in `main.ts` (only the WebSocket was restricted).
+6. **Seed credentials.** `supabase/seed.sql` contains a synthetic local password and is read by `supabase db reset` only. Never use it on a hosted project.
+7. **Flaky jest** was observed ~6 times in total before the worker cap; it is unproven that the cap fixes it.
 
-## Commands to review each branch
-Branches were created one after another from `develop`, so each includes the previous ones. Use the incremental diff:
+## Review commands
+Each branch from `develop`, unless noted:
 
 ```bash
-# 0) overall
-git log --oneline --graph main..develop
-git diff --stat main...develop
-
-# 1) DB baseline + RLS fix
-git log --oneline main..chore/db-baseline
-git diff main...chore/db-baseline --stat
-
-# 2) date bridge tests
-git diff chore/db-baseline...fix/date-bridge
-
-# 3) PII before embeddings (branched from main; independent)
-git log --oneline main..fix/redact-pii-embeddings
-git diff main...fix/redact-pii-embeddings
-
-# 4) retire legacy engine
-git diff fix/redact-pii-embeddings...refactor/retire-legacy-engine --stat
-
-# 5) audit view
-git diff refactor/retire-legacy-engine...feature/audit-view
-
-# 6) voice + calm mode
-git diff feature/audit-view...feature/voice-calm-mode
-
-# 7) scope cleanup
-git diff feature/voice-calm-mode...chore/scope-cleanup
-
-# 8) docs
-git diff chore/scope-cleanup...docs/overnight-updates --stat
+git log --oneline develop..chore/local-seed-verify  && git diff develop...chore/local-seed-verify --stat
+git log --oneline develop..feature/calm-mode-final  && git diff develop...feature/calm-mode-final
+git log --oneline develop..fix/log-hygiene          && git diff develop...fix/log-hygiene
+git log --oneline fix/log-hygiene..chore/remove-unwired-behavioral && git diff fix/log-hygiene...chore/remove-unwired-behavioral --stat   # stacked
+git log --oneline develop..chore/prod-runbook       && git diff develop...chore/prod-runbook
+git log --oneline develop..docs/overnight-2         && git diff develop...docs/overnight-2
 ```
 
-To re-run the checks: `npm run lint && npm test` and, from `nina_app/`, `flutter analyze && flutter test`. For the database: `npx supabase@latest db reset`, then run `supabase/tests/*.sql` through `docker exec -i supabase_db_Nina psql -U postgres -d postgres < supabase/tests/<file>.sql`.
+To re-run checks: `npm run lint && npm test`; `cd nina_app && flutter analyze && flutter test`; local database: `npx supabase@latest db reset`, then `supabase/tests/*.sql` via `docker exec -i supabase_db_Nina psql -U postgres -d postgres < supabase/tests/<file>.sql`.
 
 ## Suggested merge order
-Because the work is stacked, the simplest path is one reviewed PR `develop → main`. If you prefer separate PRs, merge in this order: `chore/db-baseline` → `fix/date-bridge` → `fix/redact-pii-embeddings` → `refactor/retire-legacy-engine` → `feature/audit-view` → `feature/voice-calm-mode` → `chore/scope-cleanup` → `docs/overnight-updates`. Apply the production migrations only after the DB PR is approved.
+0. Push local `develop` (it already holds the first overnight run's work).
+1. `chore/local-seed-verify` (maxWorkers + seed + log)
+2. `feature/calm-mode-final`
+3. `fix/log-hygiene`
+4. `chore/remove-unwired-behavioral` (needs 3 first)
+5. `chore/prod-runbook`
+6. `docs/overnight-2` (CLAUDE.md and PRD addendum; `docs/OVERNIGHT-LOG.md` also changed on branch 1, expect a trivial conflict at the end of that file)
+
+Production migrations come after the runbook PR is approved, applied by you by hand.
+
+## Needs founder decision
+1. **PR creation.** `gh` is not installed here, so no PR was opened. Compare link for the first one: https://github.com/Roxxane-Dev/Nina/compare/develop...chore/local-seed-verify
+2. **Couples:** keep couples (apply step 7 of the runbook) or retire them (skip step 7)? Section 2 of the runbook gives the usage numbers.
+3. **Push local `develop`?** Needed before PRs show a sane diff.
+4. **Crisis line text:** please confirm the official name and the 24-hour/free claims before release; it is now a single constant.
+5. **HTTP CORS `*`:** restrict it with the same variable, or leave?
+6. **More unwired scaffolding in `src/ai`** that is not behavioral (llm router, orchestrator, graph, insights, analytics, memory services): delete too?
+7. **Production schema oddities** still open: global unique `categories.normalized_name`, subscriptions policy comparing `owner_id` with `couples.id`, `transactions.space_id text default 'personal'`, no `auth.users` triggers in the dump (runbook query 2.8 checks it).
