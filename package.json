@@ -9,7 +9,7 @@
     "start:prod": "node dist/src/main",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "npm run typecheck",
-    "test": "jest",
+    "test": "jest --maxWorkers=2",
     "test:watch": "jest --watch"
   },
   "dependencies": {
