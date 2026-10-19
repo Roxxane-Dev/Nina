@@ -48,7 +48,7 @@ export class MemoryRankingService {
 
     // Observability Logging
     this.logger.log(`Selected ${trimmed.length} memories. Discarded ${discarded.length} due to budget.`);
-    trimmed.forEach(m => this.logger.debug(`[SELECTED] ID: ${m.id} | Type: ${m.type} | Score: ${m.finalScore?.toFixed(3)} | Content: ${m.content.substring(0, 30)}...`));
+    trimmed.forEach(m => this.logger.debug(`[SELECTED] ID: ${m.id} | Type: ${m.type} | Score: ${m.finalScore?.toFixed(3)}`));
     discarded.forEach(m => this.logger.debug(`[TRIMMED] ID: ${m.id} | Type: ${m.type} | Score: ${m.finalScore?.toFixed(3)}`));
 
     return trimmed;

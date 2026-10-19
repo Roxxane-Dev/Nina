@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { reasonCode, safeErrorCode } from '../common/log-safe'
 import { createHash } from 'crypto'
 import type { FactsPayload } from '../../packages/finance-engine/src'
 import { AIService } from '../ai/ai.service'
@@ -68,10 +69,10 @@ export class NinaRouterService {
           passed = true
           break
         }
-        this.logger.warn(`validation failed: ${v.reason}`)
+        this.logger.warn(`validation failed: ${reasonCode(v.reason)}`)
         retryCount += 1
       } catch (e) {
-        this.logger.warn(`LLM call failed: ${e}`)
+        this.logger.warn(`LLM call failed: ${safeErrorCode(e)}`)
         retryCount += 1
       }
     }

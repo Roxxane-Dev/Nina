@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MemoryRankingService } from './memory-ranking.service';
 import { ScoredMemory, MemoryType } from './memory.types';
+import { hashUserId } from '../../chat/chat-telemetry';
 
 @Injectable()
 export class LongTermMemoryService {
@@ -12,7 +13,7 @@ export class LongTermMemoryService {
   ) {}
 
   async retrieveRelevantMemories(userId: string, query: string, maxTokens: number = 2000): Promise<ScoredMemory[]> {
-    this.logger.log(`Retrieving memories for user ${userId} with query: "${query}"`);
+    this.logger.log(`Retrieving memories for user ${hashUserId(userId)}`);
 
     // 1. Semantic search via pgvector (mocked for now)
     // Here we would get the relevance score from the vector distance
@@ -25,7 +26,7 @@ export class LongTermMemoryService {
   }
 
   async storeMemory(userId: string, content: string, type: MemoryType, metadata: any = {}, tags: string[] = []): Promise<void> {
-    this.logger.log(`Storing ${type} memory for user ${userId}: ${content}`);
+    this.logger.log(`Storing ${type} memory for user ${hashUserId(userId)}`);
     
     // 1. Generate embedding
     // const embedding = await this.embeddingProvider.embed(content);
