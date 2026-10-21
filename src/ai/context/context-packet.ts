@@ -3,18 +3,6 @@ import { FinancialHealthSnapshot } from '../analytics/financial-health.types';
 
 export type FinancialHealth = FinancialHealthSnapshot;
 
-export interface BehaviorSignals {
-  [key: string]: any;
-  weekend_overspending?: boolean;
-  stress_spending?: boolean;
-  salary_spike_days?: number[];
-  late_night_ordering?: boolean;
-  food_delivery_dependency?: string;
-  savings_consistency?: string;
-}
-
-
-
 export interface FinancialMetrics {
   trend: 'up' | 'down' | 'stable'
   forecast_end_of_month: number
@@ -56,7 +44,6 @@ export interface ContextPacket {
   insights: any[]
 
   // Phase 2.5 Signals
-  behaviorSignals?: BehaviorSignals;
   financialHealth?: FinancialHealth;
   activeRisks?: string[];
   coachingStyle?: string;
