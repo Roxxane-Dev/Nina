@@ -28,6 +28,13 @@ Always OUT (keep behind feature flags, do not extend): household *intelligence*,
 - **Privacy:** PII is redacted (`src/nina-router/redaction.ts`: email, phone incl. +51, DNI, RUC, CCI, cards) before any text goes to an LLM or to OpenAI embeddings. WebSocket CORS uses the env allowlist `CORS_ALLOWED_ORIGINS` (empty = no browser origin).
 - **Database:** `supabase/migrations` is now a baseline of the production `public` schema plus re-based migrations; the old chain is archived, unchanged, in `supabase/migrations_legacy`. Develop against local Supabase (`npx supabase@latest start` / `db reset`). Never run `link`, `push`, `pull` or `dump --linked`; production migrations are applied by the founder after review.
 
+### Pending review (branches pushed, not merged)
+- `feature/calm-mode-final`: distress reply with the crisis line (single constant `DISTRESS_HELPLINE` in `src/chat/calm-mode.ts`, also used by the system prompt); distress overrides data questions. Do not hard-code the number anywhere else.
+- `fix/log-hygiene`: logs carry error codes and counts only (`src/common/log-safe.ts`); never log message text, amounts, descriptions or raw provider errors.
+- `chore/remove-unwired-behavioral`: removes the unwired behavioral, emotion, prevention, proactive, profiles and social code in `src/ai`. Do not rebuild it without a founder decision.
+- `chore/prod-runbook`: `docs/PROD-MIGRATION-RUNBOOK.md` for the production migrations (the founder applies them by hand); `supabase/proposed_migrations/` holds the unapplied couple_id check.
+- `chore/local-seed-verify`: `supabase/seed.sql` (synthetic, local only) and `npm test` with `--maxWorkers=2`.
+
 ### Shared spaces (new requirement)
 Several users see and categorize expenses of a common fund (rent, groceries, utilities), separate from each member's 100% private finances.
 - Membership lives in a table (`space_members`), not in a JSON column. RLS on shared rows checks membership (`exists (select 1 from space_members where space_id = … and user_id = auth.uid())`), via a `security definer` helper to avoid recursive policies.

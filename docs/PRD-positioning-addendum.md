@@ -112,7 +112,7 @@ Goal: privacy as a visible product feature.
 |---|---|---|---|---|
 | PRD-PRV-01 | Explicit, revocable consent for data processing, AI use and analytics, with AI disabled when not granted. | P0 | Done (Sprint D, US-03/42); migration in the new chain | — |
 | PRD-PRV-02 | RLS on every user-owned table; personal rows never visible to other members; verified by SQL tests for two users. | P0 | Done and tested on local DB (2026-10-18): `spaces_rls.sql` and `accounts_rls.sql` pass after migration `20260107` drops a legacy permissive INSERT policy. Production needs that migration. | — |
-| PRD-PRV-03 | PII redaction before any LLM call; no amounts or PII in logs. | P0 | Partial: redaction now covers email, phone (+51), DNI, RUC, CCI and cards and is applied before embeddings; some legacy logs still print amounts or memory content (see audit) | — |
+| PRD-PRV-03 | PII redaction before any LLM call; no amounts or PII in logs. | P0 | Mostly done: redaction (email, phone incl. +51, DNI, RUC, CCI, cards) before LLM and embeddings; sensitive logs cleaned on branch `fix/log-hygiene` (codes only, pending merge). Live payload capture still pending. | — |
 | PRD-PRV-04 | One-tap export of all user data (CSV/JSON). | P1 | Not built (US-43) | — |
 | PRD-PRV-05 | One-tap account and data deletion, including storage objects, with a confirmation step and a completion receipt. | P1, **P0 candidate**; not to be marketed until legal review is confirmed by the founder | Not built (US-44) | — |
 | PRD-PRV-06 | Published data policy: data is not used to train public models. | P1 | Open question | Provider terms review |
@@ -143,7 +143,7 @@ Acceptance: *Given* users A and B in a space and A's personal transaction, *then
 | ID | Requirement | Prio | Status |
 |---|---|---|---|
 | PRD-VOX-01 | All user-facing copy follows the Nina voice guidelines: sassy and warm by default, no sass on debt or distress, never shame, one action per reply. | P0 | Done: voice, calm-mode and limits blocks are in `CHAT_SYSTEM_PROMPT_V1` |
-| PRD-VOX-02 | A "calm mode" is triggered by deterministic keyword/intent rules and by a user toggle; it removes humour from the reply. | P1 | Partial: deterministic keyword rule done (debt, income loss, distress; no LLM detection). User toggle not built. |
+| PRD-VOX-02 | A "calm mode" is triggered by deterministic keyword/intent rules and by a user toggle; it removes humour from the reply. | P1 | Partial: deterministic keyword rule done (debt, income loss, distress); final distress reply with the crisis line from one constant and a prompt rule for hopelessness without keywords on branch `feature/calm-mode-final` (pending merge). User toggle not built. |
 
 Acceptance: *Given* a message about debt or distress, *then* the reply contains no joke or emoji and offers one concrete next step.
 
@@ -177,3 +177,4 @@ Decided 2026-10-13 unless noted.
 
 - 2026-10-18: statuses updated for the overnight run. Built: PRD-AUD-06 (audit view), PRD-VOX-01 (voice in the chat prompt), PRD-VOX-02 (keyword calm mode, toggle pending), PII redaction before embeddings (PRD-PRV-03, partial). Retired: legacy engine path (PRD-AUD-01). Verified on a local database: RLS tests for spaces and accounts (PRD-PRV-02, PRD-SPC-01/02).
 - Production note: the repo's migration chain is now a baseline of the production `public` schema plus re-based migrations for category rules, shared spaces, consents and accounts, and one security fix (see `docs/OVERNIGHT-LOG.md`). Nothing has been applied to production.
+- 2026-10-19: second overnight run, all on branches awaiting review (nothing merged to main): `feature/calm-mode-final` (founder-approved distress text, helpline in one constant, distress overrides data questions), `fix/log-hygiene` (logs carry codes and counts only), `chore/remove-unwired-behavioral` (25 files of unwired behavioral/emotion/prevention/proactive/profiles/social code plus financial-health-v2, its wrapper and rag.service removed), `chore/prod-runbook` (runbook, proposed couple_id check migration, tested locally, unapplied), `chore/local-seed-verify` (synthetic seed, local verification, jest maxWorkers=2).
