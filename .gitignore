@@ -23,3 +23,6 @@ graphify-out/
 .idea/
 .DS_Store
 Thumbs.db
+
+# local rehearsal output of scripts/extract-runbook-sql.js
+runbook-script.sql
