@@ -90,3 +90,18 @@ describe('templatedAnswer fallbacks still work (fail-closed path untouched)', ()
     expect(empty).toContain('Aún no tienes movimientos')
   })
 })
+
+describe('templatedAnswer period wording', () => {
+  const withPeriod = (periodLabel: string, granularity: string) =>
+    ({ ...facts, intent: 'spending_summary', context: { periodLabel, granularity, hasHistory: true } }) as unknown as FactsPayload
+
+  it.each([
+    ['ayer', 'day', 'Ayer gastaste'],
+    ['hoy', 'day', 'Hoy gastaste'],
+    ['esta semana', 'week', 'Esta semana gastaste'],
+    ['octubre 2026', 'month', 'En octubre 2026 gastaste'],
+    ['el año 2026', 'year', 'En el año 2026 gastaste'],
+  ])('%s (%s) reads "%s"', (label, granularity, expected) => {
+    expect(templatedAnswer(withPeriod(label, granularity)).message).toContain(expected)
+  })
+})

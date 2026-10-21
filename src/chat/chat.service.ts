@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { localToday, resolveQuestion } from '../../packages/finance-engine/src'
 import { MemoryService } from '../memory/memory.service'
 import { ConsentsService } from '../consents/consents.service'
-import { CALM_REPLIES, detectCalmTopic } from './calm-mode'
+import { CALM_REPLIES, detectCalmTopic, isDataQuestion } from './calm-mode'
 import { ChatTelemetry, hashUserId } from './chat-telemetry'
 import type { ChatReply } from './chat-reply'
 import { ConfirmationHandler } from './intents/confirmation.handler'
@@ -68,8 +68,9 @@ export class ChatService {
     try {
       // Distress always gets the fixed reply with the crisis resource, even if the
       // message also looks like a data question or a registration. No LLM, no figures.
-      if (ctx.calm === 'distress') {
-        const calm = CALM_REPLIES.distress
+      // Debt and income-loss statements that are not questions about the numbers also get the fixed reply.
+      if (ctx.calm === 'distress' || (ctx.calm && !isDataQuestion(message))) {
+        const calm = CALM_REPLIES[ctx.calm]
         this.telemetry.record({ ...turn, handler: 'calm', outcome: 'ok', llmUsed: false, latencyMs: Date.now() - started })
         return { reply: calm.reply, needsConfirmation: false, followUps: calm.followUps }
       }
