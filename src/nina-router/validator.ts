@@ -121,7 +121,9 @@ export function validateAnswer(
 export function templatedAnswer(facts: FactsPayload): LlmAnswer {
   const f = facts.figures
   const ctx = facts.context
-  const period = ctx?.periodLabel ? `en ${ctx.periodLabel}` : 'este periodo'
+  // 'hoy', 'ayer' and 'esta semana' read without the preposition; months and years take 'en'.
+  const bare = ctx?.granularity === 'day' || ctx?.granularity === 'week'
+  const period = ctx?.periodLabel ? (bare ? ctx.periodLabel : `en ${ctx.periodLabel}`) : 'este periodo'
   const prefix = ctx?.requestedPeriodLabel
     ? `En ${ctx.requestedPeriodLabel} aún no tienes movimientos; te muestro ${ctx.periodLabel}. `
     : ''

@@ -1,6 +1,6 @@
 import { buildFactsPayload, localToday, resolveQuestion } from '../../packages/finance-engine/src'
 import { toEngineTransactions } from '../finance-engine/map-transactions'
-import { CALM_PREFIX, CALM_REPLIES, DISTRESS_HELPLINE, DISTRESS_REPLY, detectCalmTopic, stripEmoji } from './calm-mode'
+import { CALM_PREFIX, CALM_REPLIES, DISTRESS_HELPLINE, DISTRESS_REPLY, detectCalmTopic, isDataQuestion, stripEmoji } from './calm-mode'
 import { GeneralHandler } from './intents/general.handler'
 import type { ChatContext } from './intents/handler'
 import { QueryResponder } from './intents/query-responder'
@@ -56,6 +56,25 @@ describe('distress reply (founder-approved text)', () => {
   it('does not hard-code a menu option', () => {
     expect(DISTRESS_REPLY).not.toMatch(/opci[oó]n|marca el \d|presiona/i)
   })
+})
+
+describe('isDataQuestion', () => {
+  it.each([
+    'tengo deudas, ¿cuánto me queda este mes?',
+    'cuanto gaste este mes',
+    'cuál es mi saldo',
+    'en qué gasto más',
+    'me despidieron, ¿cuánto me queda?',
+  ])('"%s" is a question about the numbers', (m) => {
+    expect(isDataQuestion(m)).toBe(true)
+  })
+
+  it.each(['me despidieron ayer', 'tengo muchas deudas', 'perdí mi trabajo esta semana', 'estoy en mora desde hoy'])(
+    '"%s" is a statement',
+    (m) => {
+      expect(isDataQuestion(m)).toBe(false)
+    },
+  )
 })
 
 describe('calm replies', () => {

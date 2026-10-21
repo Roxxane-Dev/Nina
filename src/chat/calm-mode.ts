@@ -75,6 +75,22 @@ export const DISTRESS_HELPLINE = 'Línea 113 del Minsa, salud mental (gratuita, 
 /** Final distress reply (founder-approved text). */
 export const DISTRESS_REPLY = `Gracias por contármelo. No tienes que resolver todo hoy. Si sientes que esto te supera o piensas en hacerte daño, llama ahora a la ${DISTRESS_HELPLINE}. Aquí sigo, con calma, cuando quieras ver los números.`
 
+/**
+ * True when the message is plainly a question about the user's numbers
+ * ("tengo deudas, ¿cuánto me queda este mes?"). A statement such as "me despidieron
+ * ayer" is not, even though it contains a period word that the resolver would read
+ * as "spending yesterday". Used only to decide between the template answer and the
+ * fixed calm reply for debt and income-loss messages.
+ */
+export function isDataQuestion(message: string): boolean {
+  const text = fold(message)
+  return (
+    message.includes('?') ||
+    message.includes('¿') ||
+    /\b(cuanto|cuanta|cuantos|cual|cuales|que tanto|en que|saldo|me queda|queda|gaste|gaste|gasto|gastos|ingresos|disponible)\b/.test(text)
+  )
+}
+
 /** Fixed replies: no jokes, no emoji, one concrete next step. */
 export const CALM_REPLIES: Record<CalmKind, { reply: string; followUps: string[] }> = {
   debt: {
