@@ -7,6 +7,7 @@ import { MockProvider } from './providers/mock.provider'
 import { GeminiProvider } from './providers/gemini.provider'
 import { OpenAIProvider } from './providers/openai.provider'
 import { MemoryService } from '../memory/memory.service'
+import { safeErrorCode, statusFromMessage } from '../common/log-safe'
 
 /**
  * Options for a single chat turn. `provider` overrides the global `AI_PROVIDER` env.
@@ -124,18 +125,17 @@ export class AIService {
         return await this.invokeProvider(name, input)
       } catch (err) {
         lastError = err
-        const message = err instanceof Error ? err.message : String(err)
         if (name !== 'mock' && isPermanentProviderError(err)) {
           // Bad key, no credit or retired model: retrying every message only adds latency.
           this.disabledUntil.set(name, Date.now() + PROVIDER_COOLDOWN_MS)
-          this.logger.warn(`Provider ${name} disabled for 10 min (${message.slice(0, 120)})`)
+          this.logger.warn(`Provider ${name} disabled for 10 min (${statusFromMessage(err) ?? safeErrorCode(err)})`)
         } else {
-          this.logger.warn(`Provider ${name} failed (${message.slice(0, 120)}); trying next in chain`)
+          this.logger.warn(`Provider ${name} failed (${statusFromMessage(err) ?? safeErrorCode(err)}); trying next in chain`)
         }
       }
     }
 
-    const final = lastError instanceof Error ? lastError.message : String(lastError)
+    const final = statusFromMessage(lastError) ?? safeErrorCode(lastError)
     throw new Error(`All providers failed. Last error: ${final}`)
   }
 

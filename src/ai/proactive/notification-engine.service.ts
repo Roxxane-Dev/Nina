@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TriggerEvent } from './trigger-engine.service';
+import { hashUserId } from '../../chat/chat-telemetry';
 
 export interface NotificationPayload {
   type: 'insight' | 'warning' | 'goal' | 'anomaly' | 'encouragement';
@@ -16,7 +17,7 @@ export class NotificationEngineService {
    * Prioritizes notifications and manages cooldowns to avoid spam.
    */
   async dispatchNotifications(userId: string, messages: string[], triggers: TriggerEvent[]): Promise<NotificationPayload[]> {
-    this.logger.log(`Prioritizing and dispatching notifications for user ${userId}`);
+    this.logger.log(`Prioritizing and dispatching notifications for user ${hashUserId(userId)}`);
 
     const dispatched: NotificationPayload[] = [];
 
@@ -34,7 +35,7 @@ export class NotificationEngineService {
         metadata: { triggerCount: triggers.length }
       });
       
-      this.logger.log(`Dispatched notification: [${dispatched[0].urgency}] ${dispatched[0].message}`);
+      this.logger.log(`Dispatched notification: [${dispatched[0].urgency}]`);
     } else {
       this.logger.log(`Notification skipped due to cooldown or zero messages.`);
     }
