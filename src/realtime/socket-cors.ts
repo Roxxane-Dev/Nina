@@ -31,6 +31,17 @@ export function httpCorsOptions(origins: string[]) {
   }
 }
 
+/**
+ * Browsers do not apply CORS to WebSocket connections, so the `cors` option alone
+ * does not stop a page on another origin from connecting with transport "websocket".
+ * The server must check the Origin header itself. No Origin header (native clients,
+ * server-to-server) is allowed; a present Origin must be in the allowlist.
+ */
+export function isOriginAllowed(origin: string | undefined | null, allowed: string[]): boolean {
+  if (!origin) return true
+  return allowed.includes(origin.trim().replace(/\/+$/, ''))
+}
+
 /** Socket.IO adapter that applies the allowlist at runtime (after ConfigModule has loaded). */
 export class AllowlistIoAdapter extends IoAdapter {
   private readonly logger = new Logger(AllowlistIoAdapter.name)
@@ -45,6 +56,16 @@ export class AllowlistIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: ServerOptions) {
-    return super.createIOServer(port, { ...options, cors: { origin: this.origins, credentials: false } })
+    return super.createIOServer(port, {
+      ...options,
+      cors: { origin: this.origins, credentials: false },
+      // Covers the websocket transport, which CORS does not (see isOriginAllowed).
+      allowRequest: (req: { headers: { origin?: string } }, callback: (err: string | null | undefined, success: boolean) => void) => {
+        const origin = req.headers.origin
+        if (isOriginAllowed(origin, this.origins)) return callback(null, true)
+        this.logger.warn('WebSocket connection refused: Origin not in CORS_ALLOWED_ORIGINS')
+        return callback('Origin not allowed', false)
+      },
+    })
   }
 }
