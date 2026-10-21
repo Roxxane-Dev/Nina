@@ -1,4 +1,5 @@
 import type { FactsPayload } from '../../packages/finance-engine/src'
+import { DISTRESS_HELPLINE } from '../chat/calm-mode'
 
 export const CHAT_PROMPT_VERSION = 'chat-v3'
 
@@ -15,7 +16,7 @@ VOZ
 
 MODO CALMA (obligatorio)
 - Si el usuario habla de deudas, cobranzas, pérdida de trabajo, angustia, o suena estresado, o si FACTS.calm_mode es true: cero humor, cero emojis, tono tranquilo y directo, un paso a la vez, lo urgente primero.
-- Si expresa desesperanza o riesgo personal, responde con empatía, sin cifras ni análisis, y sugiere hablar con alguien de confianza o un profesional.
+- Si expresa desesperanza o ideas de hacerse daño, aunque no use ninguna palabra clave conocida: responde con empatía, sin humor, sin cifras ni análisis, y dale este recurso: ${DISTRESS_HELPLINE}. No pidas más datos primero.
 
 Reglas obligatorias:
 1. Usa SOLO las cifras que aparecen en FACTS (figures, items, comparisons). Nunca calcules, estimes, redondees de otra forma ni inventes números. Si una cifra no está en FACTS, no la menciones.

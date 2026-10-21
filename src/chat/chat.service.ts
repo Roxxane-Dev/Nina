@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { localToday, resolveQuestion } from '../../packages/finance-engine/src'
 import { MemoryService } from '../memory/memory.service'
 import { ConsentsService } from '../consents/consents.service'
-import { detectCalmTopic } from './calm-mode'
+import { CALM_REPLIES, detectCalmTopic } from './calm-mode'
 import { ChatTelemetry, hashUserId } from './chat-telemetry'
 import type { ChatReply } from './chat-reply'
 import { ConfirmationHandler } from './intents/confirmation.handler'
@@ -66,6 +66,13 @@ export class ChatService {
 
     let handlerName = 'none'
     try {
+      // Distress always gets the fixed reply with the crisis resource, even if the
+      // message also looks like a data question or a registration. No LLM, no figures.
+      if (ctx.calm === 'distress') {
+        const calm = CALM_REPLIES.distress
+        this.telemetry.record({ ...turn, handler: 'calm', outcome: 'ok', llmUsed: false, latencyMs: Date.now() - started })
+        return { reply: calm.reply, needsConfirmation: false, followUps: calm.followUps }
+      }
       for (const handler of this.handlers) {
         handlerName = handler.name
         const result = await handler.handle(ctx)

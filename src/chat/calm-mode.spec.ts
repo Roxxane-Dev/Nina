@@ -1,6 +1,6 @@
 import { buildFactsPayload, localToday, resolveQuestion } from '../../packages/finance-engine/src'
 import { toEngineTransactions } from '../finance-engine/map-transactions'
-import { CALM_PREFIX, CALM_REPLIES, detectCalmTopic, stripEmoji } from './calm-mode'
+import { CALM_PREFIX, CALM_REPLIES, DISTRESS_HELPLINE, DISTRESS_REPLY, detectCalmTopic, stripEmoji } from './calm-mode'
 import { GeneralHandler } from './intents/general.handler'
 import type { ChatContext } from './intents/handler'
 import { QueryResponder } from './intents/query-responder'
@@ -41,6 +41,20 @@ describe('detectCalmTopic (deterministic keywords, PRD-VOX-02)', () => {
     'me pagaron el sueldo',
   ])('does not trigger on "%s"', (message) => {
     expect(detectCalmTopic(message)).toBeNull()
+  })
+})
+
+describe('distress reply (founder-approved text)', () => {
+  it('is exactly the approved text and carries the helpline from one constant', () => {
+    expect(DISTRESS_REPLY).toBe(
+      'Gracias por contármelo. No tienes que resolver todo hoy. Si sientes que esto te supera o piensas en hacerte daño, llama ahora a la Línea 113 del Minsa, salud mental (gratuita, las 24 horas). Aquí sigo, con calma, cuando quieras ver los números.',
+    )
+    expect(DISTRESS_REPLY).toContain(DISTRESS_HELPLINE)
+    expect(CALM_REPLIES.distress.reply).toBe(DISTRESS_REPLY)
+  })
+
+  it('does not hard-code a menu option', () => {
+    expect(DISTRESS_REPLY).not.toMatch(/opci[oó]n|marca el \d|presiona/i)
   })
 })
 
