@@ -2,7 +2,8 @@ import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
 import { Logger } from '@nestjs/common'
 import { AppModule } from './app.module'
-import { AllowlistIoAdapter } from './realtime/socket-cors'
+import { ConfigService } from '@nestjs/config'
+import { AllowlistIoAdapter, httpCorsOptions, parseAllowedOrigins } from './realtime/socket-cors'
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap')
@@ -13,12 +14,10 @@ async function bootstrap() {
     logger: ['log', 'error', 'warn', 'debug'],
   })
 
-  // Enable CORS for Flutter web + emulator
-  app.enableCors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
+  // CORS: same CORS_ALLOWED_ORIGINS allowlist as the WebSocket. Empty = no browser origin.
+  // Native mobile clients send no Origin header and are unaffected.
+  const origins = parseAllowedOrigins(app.get(ConfigService).get<string>('CORS_ALLOWED_ORIGINS'))
+  app.enableCors(httpCorsOptions(origins))
 
   app.useWebSocketAdapter(new AllowlistIoAdapter(app))
 

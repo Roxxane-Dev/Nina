@@ -18,6 +18,19 @@ export function parseAllowedOrigins(raw: string | undefined | null): string[] {
     .filter((o) => o.length > 0 && o !== '*')
 }
 
+/**
+ * CORS options for the HTTP API, from the same allowlist as the WebSocket.
+ * An empty list turns CORS off (no Access-Control-* headers), so browsers on
+ * other origins are refused; native clients send no Origin and are unaffected.
+ */
+export function httpCorsOptions(origins: string[]) {
+  return {
+    origin: origins.length > 0 ? origins : false,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }
+}
+
 /** Socket.IO adapter that applies the allowlist at runtime (after ConfigModule has loaded). */
 export class AllowlistIoAdapter extends IoAdapter {
   private readonly logger = new Logger(AllowlistIoAdapter.name)
