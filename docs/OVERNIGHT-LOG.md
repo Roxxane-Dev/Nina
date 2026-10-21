@@ -89,3 +89,50 @@ In full `npm test` runs, 1-4 suites sometimes fail to run (suite-level failure, 
 - Behavior against the real Supabase auth flow in the app (only SQL-level and unit-level checks were run).
 - Flutter checks after T5 (no Dart changes) and the docs-only branch.
 - The chain applied to a fresh database *starting from production*: only a fresh local database was used.
+
+## Local environment verification (branch `chore/local-seed-verify`)
+Target check: host of `SUPABASE_URL` is `127.0.0.1` (port 54321); only the host was read from `.env`, no keys printed. Backend started with `AI_PROVIDER=mock` and the OpenAI, Gemini and Anthropic keys blanked for that process only, so nothing left the machine. All data is synthetic (`supabase/seed.sql`).
+
+### A. Baseline and schema
+- Baseline task: done earlier (`supabase/migrations_legacy` + `20260101...baseline_prod_snapshot.sql` + re-based migrations `20260102`-`20260107`). `supabase db reset` runs clean, including the seed.
+- Local schema vs `docs/schema-prod-snapshot.sql` (normalized dump comparison): every object in the snapshot is present locally. Differences are only the expected ones:
+  - added: 6 tables (`spaces`, `space_members`, `space_invites`, `category_rules`, `consents`, `accounts`), columns `transactions.shared_space_id` and `transactions.account_id`, function `is_space_member`, and their policies;
+  - changed: `Users update own transactions` now also checks space membership and account ownership;
+  - removed: the legacy INSERT policy "Users can insert their personal and shared transactions.", replaced by "Users insert own transactions".
+- `transactions.date` is `timestamp with time zone`. 19 tables, RLS enabled on all 19.
+
+### B. Seed
+`supabase/seed.sql` (committed once you approve): users A and B (local email + password sign-in), profiles, 4 accounts, 9 system categories, consents, one shared space with only A as member. A has 109-110 movements over 4 months (salary, rent, supermarket, delivery, transport, subscriptions, services, cinema; 8 rows assigned to the shared space), B has 14 over 2 months. Dates are relative to **today in Lima**. A first version used the database's UTC date and created one row dated "tomorrow" in Lima; the API correctly excluded it, which exposed the seed bug, now fixed.
+
+### C. Backend (HTTP checks with real JWTs from local GoTrue)
+| Request | Status | Result |
+|---|---|---|
+| `GET /v1/overview` without token | 401 | guarded |
+| A `GET /v1/overview?period=current` | 200 | income 4800, expenses 2427.44, 21 movements; audit block consistent |
+| A `GET /v1/overview?period=previous` | 200 | income 5400, expenses 2904.50, 30 movements |
+| B `GET /v1/overview?period=previous` | 200 | income 2500, expenses 949, 8 movements |
+| A chat "cuánto gasté el último mes" | 201 | "gastaste S/ 2,904.50 e ingresaste S/ 5,400.00" |
+| A chat "cuánto gasté en el año" | 201 | "gastaste S/ 11,142.65 e ingresaste S/ 19,800.00" |
+| A chat "tengo deudas, cuánto me queda este mes" | 201 | calm mode: "Vamos con calma. ... te quedan S/ 2,372.56." (no LLM, no emoji) |
+
+Direct SQL on the local DB gives the same numbers in every case (previous month 5400.00 / 2904.50 / 30 rows; current month 4800.00 / 2427.44 / 21 rows, counting up to Lima today; year 19800.00 / 11142.65; B previous 2500.00 / 949.00 / 8 rows).
+
+Findings while testing:
+- The date bug is **not present**: timestamptz rows, "último mes" and "en el año" resolve correctly end to end. No code change and no new regression test were needed (end-to-end tests were added earlier in `src/finance-engine/analytics-dates.spec.ts`).
+- My first chat attempt returned "No entendí bien esa pregunta" for both questions. Cause: my shell sent the accented characters in the wrong encoding. With JSON `\u` escapes (what a real client sends) both work. Not a backend bug.
+- Database dates are UTC and the engine uses Lima days. Any SQL used to cross-check a figure must use `(now() at time zone 'America/Lima')::date`.
+
+### D. RLS (local database)
+| Check | Result |
+|---|---|
+| `rls_check.sql` | listing of 50 policies; query 1 (public tables without RLS) returns zero rows |
+| `spaces_rls.sql` | 10 of 10 pass (B sees shared + own; B never sees A's personal row; B sees the space and both members; B cannot read invites; outsider C sees nothing and cannot insert into the space; A sees shared + own; A never sees B's personal row); rolled back |
+| `accounts_rls.sql` | 3 of 3 pass (D2 cannot see or use D1's accounts; D1 uses own); rolled back |
+| PostgREST with real JWTs | B reading A's transactions, accounts, space and shared transactions: 0 rows each. B reads only own 14 rows. A reads own rows, the space and the 8 shared rows. Request without a user token: 0 rows. |
+
+### Not verified
+- No live LLM call (all provider keys blanked); the grounded-LLM path was exercised only through the template fallback and unit tests.
+- Flutter app against the local backend (not run).
+- WebSocket gateway with a real client.
+- Behavior with production data volume.
+- The distress/calm text pending from the founder.
