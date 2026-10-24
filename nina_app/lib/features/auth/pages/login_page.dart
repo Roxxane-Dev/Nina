@@ -47,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
-          context.go('/chat');
+          context.go('/home');
         }
 
         if (state is AuthError) {

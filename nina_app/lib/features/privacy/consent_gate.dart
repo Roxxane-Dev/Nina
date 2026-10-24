@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/network/connection_error.dart';
 import '../../core/theme/design_system.dart';
 import '../../data/services/profile_api_service.dart';
 import 'consent_form.dart';
@@ -37,8 +38,16 @@ class _ConsentGateState extends State<ConsentGate> {
             backgroundColor: NinaColors.background,
             body: Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text('No pude cargar tu configuración de privacidad.',
-                    style: TextStyle(color: NinaColors.textSecondary)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    apiLoadFailedMessage(snap.error,
+                        fallback:
+                            'No pude cargar tu configuración de privacidad.'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: NinaColors.textSecondary),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: () => setState(() {
