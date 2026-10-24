@@ -15,6 +15,7 @@ import { ChatTelemetry } from './chat-telemetry'
 import { ConfirmationTokens, confirmationSecret } from './confirmation-token'
 import { ConfirmationHandler } from './intents/confirmation.handler'
 import { GeneralHandler } from './intents/general.handler'
+import { GoalPlanHandler } from './intents/goal-plan.handler'
 import { BalanceQueryHandler, SpendingQueryHandler } from './intents/query.handlers'
 import { QueryResponder } from './intents/query-responder'
 import {
@@ -42,6 +43,7 @@ import {
     ChatTelemetry,
     QueryResponder,
     ConfirmationHandler,
+    GoalPlanHandler,
     RegisterIncomeHandler,
     RegisterGoalHandler,
     RegisterExpenseHandler,

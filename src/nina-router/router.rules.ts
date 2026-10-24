@@ -32,6 +32,6 @@ export const ROUTER_RULES = {
 } as const
 
 export function taskForFacts(intent: string, periodCount: number): RouterTask {
-  if (periodCount > 2 || intent === 'whatif') return 'chat_answer_complex'
+  if (periodCount > 2 || intent === 'whatif' || intent === 'goal_plan') return 'chat_answer_complex'
   return 'chat_answer'
 }

@@ -1,5 +1,5 @@
 import type { FactsPayload } from '../../packages/finance-engine/src'
-import { extractNumbers, parseLocaleNumber, validateAnswer, type LlmAnswer } from './validator'
+import { extractNumbers, parseLlmAnswer, parseLocaleNumber, templatedAnswer, validateAnswer, type LlmAnswer } from './validator'
 
 const facts: FactsPayload = {
   intent: 'spending_breakdown',
@@ -52,5 +52,38 @@ describe('validateAnswer', () => {
   it('rejects projections when confidence is insufficient', () => {
     const low = { ...facts, confidence: 'insufficient' as const }
     expect(validateAnswer(answer('Terminarás el mes con S/ 3,249.50.'), low).ok).toBe(false)
+  })
+})
+
+describe('parseLlmAnswer: leaked JSON fields', () => {
+  it('cuts "recommendation:" / "follow_ups:" pasted inside the message', () => {
+    const raw = JSON.stringify({
+      message: 'Estás bien, bestie.\n\n**recommendation:** Sigue así.\nfollow_ups: ¿Guardo la meta?',
+      recommendation: 'Sigue así.',
+      follow_ups: [],
+    })
+    expect(parseLlmAnswer(raw)?.message).toBe('Estás bien, bestie.')
+  })
+})
+
+describe('templatedAnswer: goal_plan', () => {
+  const base = {
+    intent: 'goal_plan', period: { from: '2026-10-10', to: '2028-12-31' }, currency: 'PEN', txnCount: 9,
+    confidence: 'high', evidenceTxnIds: [], engineVersion: 'x',
+    context: { periodLabel: 'hasta diciembre 2028', hasHistory: true, goalDeadlineLabel: 'diciembre 2028', categoryLabel: 'Mi meta' },
+  } as const
+
+  it('says what is missing per month when the pace is short', () => {
+    const f = { ...base, figures: { target: 6000, required_per_month: 1200, months_left: 5, avg_monthly_savings: 800, gap_per_month: 400 } }
+    const m = templatedAnswer(f as never).message
+    expect(m).toContain('S/ 1,200.00 al mes durante 5 meses')
+    expect(m).toContain('te faltan S/ 400.00 al mes')
+  })
+
+  it('invents nothing without history', () => {
+    const f = { ...base, context: { ...base.context, hasHistory: false }, figures: { target: 6000, required_per_month: 1200, months_left: 5 } }
+    const m = templatedAnswer(f as never).message
+    expect(m).toContain('S/ 1,200.00')
+    expect(m).toContain('Aún no tengo meses completos')
   })
 })

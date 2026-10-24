@@ -7,6 +7,7 @@ import { ChatTelemetry, hashUserId } from './chat-telemetry'
 import type { ChatReply } from './chat-reply'
 import { ConfirmationHandler } from './intents/confirmation.handler'
 import { GeneralHandler } from './intents/general.handler'
+import { GoalPlanHandler } from './intents/goal-plan.handler'
 import type { ChatContext, ChatIntentHandler } from './intents/handler'
 import { BalanceQueryHandler, SpendingQueryHandler } from './intents/query.handlers'
 import {
@@ -34,6 +35,7 @@ export class ChatService {
 
   constructor(
     confirmation: ConfirmationHandler,
+    goalPlan: GoalPlanHandler,
     registerIncome: RegisterIncomeHandler,
     registerGoal: RegisterGoalHandler,
     registerExpense: RegisterExpenseHandler,
@@ -44,7 +46,7 @@ export class ChatService {
     private readonly telemetry: ChatTelemetry,
     private readonly consents: ConsentsService,
   ) {
-    this.handlers = [confirmation, registerIncome, registerGoal, registerExpense, balanceQuery, spendingQuery, general]
+    this.handlers = [confirmation, goalPlan, registerIncome, registerGoal, registerExpense, balanceQuery, spendingQuery, general]
   }
 
   async handleMessage(

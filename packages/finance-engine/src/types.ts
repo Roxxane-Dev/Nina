@@ -165,6 +165,7 @@ export type FactsIntent =
   | 'whatif'
   | 'subscriptions'
   | 'goal'
+  | 'goal_plan'
   | 'other'
 
 export type FactsPayload = {
@@ -190,6 +191,10 @@ export type FactsContext = {
   hasHistory: boolean
   /** day | week | month | year — or 'all' for the historical balance. */
   granularity?: 'day' | 'week' | 'month' | 'year' | 'all'
+  /** goal_plan: the month the plan runs until, when the user gave a date. */
+  goalDeadlineLabel?: string
+  /** goal_plan: the user named a date that is already over, so no per-month figure exists. */
+  goalDeadlinePast?: boolean
 }
 
 export type ScoreWeights = {

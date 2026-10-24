@@ -34,7 +34,7 @@ describe('CHAT_SYSTEM_PROMPT_V1', () => {
   it('has the Nina voice, calm mode and limits', () => {
     expect(CHAT_SYSTEM_PROMPT_V1).toContain('VOZ')
     expect(CHAT_SYSTEM_PROMPT_V1).toContain('Tutea siempre')
-    expect(CHAT_SYSTEM_PROMPT_V1).toContain('Máximo 1 emoji')
+    expect(CHAT_SYSTEM_PROMPT_V1).toContain('máximo 2 por mensaje')
     expect(CHAT_SYSTEM_PROMPT_V1).toContain('MODO CALMA')
     expect(CHAT_SYSTEM_PROMPT_V1).toContain('cero humor, cero emojis')
     expect(CHAT_SYSTEM_PROMPT_V1).toContain('No eres un banco')
@@ -103,5 +103,18 @@ describe('templatedAnswer period wording', () => {
     ['el año 2026', 'year', 'En el año 2026 gastaste'],
   ])('%s (%s) reads "%s"', (label, granularity, expected) => {
     expect(templatedAnswer(withPeriod(label, granularity)).message).toContain(expected)
+  })
+})
+
+describe('sassy voice + goal plans', () => {
+  it('carries the sassy spec and its guard rails', () => {
+    for (const piece of ['Delulu check', 'bestie', 'reality check', 'jamás de la persona', 'Nunca inventes', 'goal_plan', 'gap_per_month']) {
+      expect(CHAT_SYSTEM_PROMPT_V1).toContain(piece)
+    }
+  })
+
+  it('still lets calm mode override the sass', () => {
+    expect(CHAT_SYSTEM_PROMPT_V1.indexOf('MODO CALMA (obligatorio)')).toBeGreaterThan(CHAT_SYSTEM_PROMPT_V1.indexOf('VOZ'))
+    expect(CHAT_SYSTEM_PROMPT_V1).toContain('cero humor, cero emojis')
   })
 })

@@ -1,5 +1,6 @@
 import type { FactsIntent, FactsPayload } from '../../packages/finance-engine/src'
-export { formatSoles } from '../common/money'
+import { formatSoles } from '../common/money'
+export { formatSoles }
 
 /** Visual result card (FDS §6.4). Built from engine facts only — never from LLM text. */
 export type AnswerCard = {
@@ -82,6 +83,29 @@ export function buildCard(facts: FactsPayload, recent?: RecentItem[]): AnswerCar
           { label: 'Total de gastos del periodo', amount: f.expenses },
         ],
       }
+    case 'goal_plan': {
+      const rows: AnswerCard['rows'] = []
+      if (f.target_usd) rows.push({ label: `Meta en dólares (US$, a S/ ${f.usd_pen_rate})`, amount: f.target_usd })
+      if (f.avg_monthly_savings !== undefined) {
+        rows.push({ label: 'Lo que te sobra al mes (promedio)', amount: f.avg_monthly_savings, tone: f.avg_monthly_savings >= 0 ? 'positive' : 'negative' })
+      }
+      if (f.gap_per_month !== undefined) {
+        rows.push({ label: f.gap_per_month > 0 ? 'Te falta al mes' : 'Te sobra al mes', amount: Math.abs(f.gap_per_month), tone: f.gap_per_month > 0 ? 'negative' : 'positive' })
+      }
+      return {
+        title: `Plan: ${ctx?.categoryLabel ?? 'tu meta'}`,
+        subtitle: ctx?.goalDeadlineLabel ? `Meta de ${formatSoles(f.target)} hasta ${ctx.goalDeadlineLabel}` : `Meta de ${formatSoles(f.target)}, sin fecha`,
+        highlight: f.required_per_month !== undefined
+          ? { label: 'Para llegar, aparta al mes', amount: f.required_per_month, tone: 'neutral' }
+          : { label: 'Meta', amount: f.target, tone: 'neutral' },
+        rows,
+        howCalculated:
+          'Dividí la meta entre los meses que faltan y lo comparé con lo que te sobró (ingresos − gastos) en tus últimos meses completos registrados' +
+          (f.target_usd ? `; los dólares están a un tipo de cambio de referencia de S/ ${f.usd_pen_rate}` : '') +
+          `. Motor ${facts.engineVersion}.`,
+        confidence: facts.confidence,
+      }
+    }
     case 'help':
     case 'other':
     case 'whatif':
@@ -108,6 +132,7 @@ const FOLLOW_UPS: Partial<Record<FactsIntent, string[]>> = {
   balance: ['¿Cuánto gasté este mes?', '¿En qué gasto más?', 'Muéstrame mis últimos gastos'],
   available: ['¿En qué gasto más?', 'Muéstrame mis últimos gastos', '¿Cómo puedo ahorrar más?'],
   recent: ['¿Cuánto gasté este mes?', '¿En qué gasto más?', '¿Cuánto me queda?'],
+  goal_plan: ['¿Cuánto me queda este mes?', '¿En qué gasto más?', '¿Cómo puedo ahorrar más?'],
   help: ['¿Cuánto gasté este mes?', 'Gasté 25 en taxi', 'Me pagaron 3500 de sueldo'],
 }
 

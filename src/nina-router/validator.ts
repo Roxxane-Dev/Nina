@@ -78,7 +78,8 @@ export function parseLlmAnswer(raw: string): LlmAnswer | null {
   if (jsonStart < 0 || jsonEnd < 0) return null
   try {
     const obj = JSON.parse(trimmed.slice(jsonStart, jsonEnd + 1)) as Record<string, unknown>
-    const message = String(obj.message ?? obj.reply ?? '')
+    // The model sometimes pastes the other JSON fields into the text; they have their own slots.
+    const message = String(obj.message ?? obj.reply ?? '').split(/\s*\*{0,2}(?:recommendation|follow_ups)\*{0,2}\s*:/i)[0].trim()
     if (!message) return null
     return {
       message,
@@ -130,7 +131,9 @@ export function templatedAnswer(facts: FactsPayload): LlmAnswer {
   const top = facts.items?.[0]
   let message: string
 
-  if (ctx && !ctx.hasHistory) {
+  if (facts.intent === 'goal_plan') {
+    message = goalPlanMessage(facts)
+  } else if (ctx && !ctx.hasHistory) {
     message = 'Aún no tienes movimientos registrados. Cuéntame uno, por ejemplo: "gasté 25 en taxi".'
   } else if (facts.intent === 'balance') {
     message =
@@ -149,6 +152,34 @@ export function templatedAnswer(facts: FactsPayload): LlmAnswer {
   }
 
   return { message, figuresUsed: Object.keys(f), followUps: [] }
+}
+
+/** Plan sentence built only from engine figures (goal_plan). */
+function goalPlanMessage(facts: FactsPayload): string {
+  const f = facts.figures
+  const ctx = facts.context
+  const usd = f.target_usd ? ` (US$ ${f.target_usd.toLocaleString('en-US')} a S/ ${f.usd_pen_rate} por dólar)` : ''
+  const goal = ctx?.categoryLabel && ctx.categoryLabel !== 'Mi meta' ? `tu meta «${ctx.categoryLabel}»` : 'tu meta'
+  const parts: string[] = []
+  if (f.required_per_month !== undefined) {
+    parts.push(
+      `Para llegar a ${formatSoles(f.target)}${usd} en ${ctx?.goalDeadlineLabel} tienes que apartar ${formatSoles(f.required_per_month)} al mes durante ${f.months_left} meses.`,
+    )
+  } else {
+    parts.push(`${cap(goal)} es de ${formatSoles(f.target)}${usd}, pero no me dijiste para cuándo.`)
+  }
+  if (f.avg_monthly_savings === undefined) {
+    parts.push('Aún no tengo meses completos registrados para decirte si ese ritmo te da.')
+  } else if (f.avg_monthly_savings <= 0) {
+    parts.push('Hoy tus gastos igualan o superan tus ingresos, así que primero hay que liberar plata cada mes.')
+  } else if (f.gap_per_month !== undefined && f.gap_per_month > 0) {
+    parts.push(`Hoy te sobran ${formatSoles(f.avg_monthly_savings)} al mes en promedio: te faltan ${formatSoles(f.gap_per_month)} al mes.`)
+  } else if (f.gap_per_month !== undefined) {
+    parts.push(`Hoy te sobran ${formatSoles(f.avg_monthly_savings)} al mes en promedio: con eso ya llegas.`)
+  } else {
+    parts.push(`A tu ritmo actual (${formatSoles(f.avg_monthly_savings)} al mes) llegarías en ${f.months_at_current_pace} meses.`)
+  }
+  return parts.join(' ')
 }
 
 function cap(s: string): string {

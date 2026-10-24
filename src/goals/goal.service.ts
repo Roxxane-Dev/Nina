@@ -1,50 +1,63 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { localToday, monthLabelEs, parseGoalRequest, DEFAULT_USD_PEN_RATE, type GoalRequest } from '../../packages/finance-engine/src';
 import { createAdminClient } from '../common/supabase.client';
+import { usdPenRate } from '../common/usd-rate';
 
 export type ParsedGoal = {
   name: string;
+  /** Always soles: a goal written in dollars is converted at `usd_pen_rate`. */
   target_amount: number;
+  /** YYYY-MM-DD, last day of the month the user wants to reach the goal. */
+  deadline?: string;
+  original_usd?: number;
+  usd_pen_rate?: number;
 };
 
-export function parseGoal(message: string): ParsedGoal | null {
-  const text = message.trim().toLowerCase();
-  
-  const intentRegex = /\b(?:meta|ahorrar|objetivo)\b/i;
-  if (!intentRegex.test(text)) return null;
+/** Questions ("¿cómo alcanzo mi meta?") are plans to build, never goals to register. */
+const QUESTION = /\?|\b(c[oó]mo|cu[aá]l|cu[aá]nto|cu[aá]nta|qu[eé]|plan)\b/i;
+const GOAL_WORDS = /\b(?:meta|ahorrar|objetivo|juntar)\b/i;
 
-  const amountMatches = [...text.matchAll(/(\d+(?:[.,]\d+)?)/g)];
-  if (amountMatches.length === 0) return null;
+export function parseGoal(message: string, asOf: Date = localToday(new Date()), rate = DEFAULT_USD_PEN_RATE): ParsedGoal | null {
+  if (!GOAL_WORDS.test(message) || QUESTION.test(message)) return null;
+  const req = parseGoalRequest(message, asOf);
+  return req ? goalFromRequest(req, rate) : null;
+}
 
-  let target_amount = -1;
-  
-  const currencyRegex = /(?:s\/|soles|usd|\$|dolares|pesos)\s*(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:s\/|soles|usd|\$|dolares|pesos)/i;
-  const currMatch = text.match(currencyRegex);
-  if (currMatch) {
-    target_amount = parseFloat((currMatch[1] || currMatch[2]).replace(',', '.'));
-  } else {
-    for (const match of amountMatches) {
-      const val = parseFloat(match[1].replace(',', '.'));
-      if (val < 2000 || val > 2100 || match[1].includes('.') || match[1].includes(',')) {
-        target_amount = val;
-        break;
-      }
-    }
-    if (target_amount === -1) {
-      target_amount = parseFloat(amountMatches[0][1].replace(',', '.'));
-    }
+export function goalFromRequest(req: GoalRequest, rate = DEFAULT_USD_PEN_RATE): ParsedGoal {
+  const usd = req.currency === 'USD';
+  const goal: ParsedGoal = {
+    name: req.name,
+    target_amount: Math.round((usd ? req.amount * rate : req.amount) * 100) / 100,
+  };
+  if (usd) {
+    goal.original_usd = req.amount;
+    goal.usd_pen_rate = rate;
   }
-
-  if (target_amount <= 0) return null;
-
-  let name = 'Mi Meta';
-  const nameMatch = text.match(/(?:para|en)\s+([a-záéíóúñ\s]+)/i);
-  if (nameMatch && nameMatch[1].trim().length > 0) {
-    name = nameMatch[1].trim();
+  if (req.deadline) {
+    const last = new Date(Date.UTC(req.deadline.year, req.deadline.month + 1, 0));
+    goal.deadline = last.toISOString().slice(0, 10);
   }
+  return goal;
+}
 
-  return { name, target_amount };
+export function goalConfirmationText(goal: ParsedGoal): string {
+  const money = `S/ ${goal.target_amount.toFixed(2)}`;
+  const usd = goal.original_usd
+    ? ` (US$ ${goal.original_usd.toFixed(2)} al tipo de cambio de referencia S/ ${goal.usd_pen_rate})`
+    : '';
+  const when = goal.deadline
+    ? ` para ${monthLabelEs(Number(goal.deadline.slice(0, 4)), Number(goal.deadline.slice(5, 7)) - 1)}`
+    : '';
+  return `Voy a registrar una meta llamada "${goal.name}" por ${money}${usd}${when}.\n\n¿Confirmas?`;
+}
+
+/** After a plan: offer to save the goal. The confirmation (Sí / No) is the signed token on the reply. */
+export function goalSaveOffer(goal: ParsedGoal): string {
+  return goalConfirmationText(goal)
+    .replace('Voy a registrar una meta llamada', '¿Guardo la meta')
+    .replace('.\n\n¿Confirmas?', '? Así te sigo el paso.')
 }
 
 @Injectable()
@@ -67,11 +80,9 @@ export class GoalService {
     message: string,
     userId: string,
   ): Promise<{ text: string; goal: ParsedGoal } | null> {
-    const parsed = parseGoal(message);
+    const parsed = parseGoal(message, localToday(new Date()), usdPenRate(this.config));
     if (!parsed) return null;
-
-    const text = `Voy a registrar una meta llamada "${parsed.name}" por S/ ${parsed.target_amount.toFixed(2)}.\n\n¿Confirmas?`;
-    return { text, goal: parsed };
+    return { text: goalConfirmationText(parsed), goal: parsed };
   }
 
   async insertGoal(goal: ParsedGoal, userId: string): Promise<{ result: string }> {
@@ -82,6 +93,7 @@ export class GoalService {
       name: goal.name.charAt(0).toUpperCase() + goal.name.slice(1),
       target_amount: goal.target_amount,
       current_amount: 0,
+      deadline: goal.deadline ?? null,
       emoji: '🎯',
       status: 'active',
     });
@@ -91,4 +103,3 @@ export class GoalService {
     return { result: `¡Meta "${goal.name}" registrada exitosamente! 🎯` };
   }
 }
-
