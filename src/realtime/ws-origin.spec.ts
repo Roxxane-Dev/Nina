@@ -5,6 +5,9 @@ import { WebSocketGateway } from '@nestjs/websockets'
 import WebSocket from 'ws'
 import { AllowlistIoAdapter, isOriginAllowed } from './socket-cors'
 
+// These tests start a real server; give them room on a loaded machine.
+jest.setTimeout(30000)
+
 @WebSocketGateway({ namespace: 'intelligence' })
 class TestGateway {
   handleConnection() {

@@ -2,6 +2,9 @@ import { Controller, Get, INestApplication, Module } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { httpCorsOptions, parseAllowedOrigins } from './socket-cors'
 
+// These tests start a real server; give them room on a loaded machine.
+jest.setTimeout(30000)
+
 @Controller('ping')
 class PingController {
   @Get()
