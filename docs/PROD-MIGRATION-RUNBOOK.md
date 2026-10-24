@@ -2,7 +2,7 @@
 
 Status: **draft for the founder. Nothing in this document has been executed against production.** I (Claude) never connect to production; you run these steps yourself in the Supabase SQL Editor of the production project, after reading them.
 
-Scope: migrations `20260102` to `20260107` in `supabase/migrations/`, plus the couple_id check `20260108` (step 7), also in `supabase/migrations/`.
+Scope: migrations `20260102` to `20260107` in `supabase/migrations/`, plus the couple_id check `20260108` (step 7) and the system categories `20260109` (step 8), also in `supabase/migrations/`.
 
 - **Do not run** `20260101000000_baseline_prod_snapshot.sql`: it only mirrors what production already has (it is for fresh local databases).
 - **Never include seed data.** `supabase/seed.sql` is for the local database only. Never run `supabase db push` (with or without `--include-seed`) against any remote; this runbook uses the SQL Editor only.
@@ -21,11 +21,12 @@ Tested on: a fresh local Postgres 17 built from the production snapshot (`docs/s
 |---|---|---|---|
 | 1 | `20260102000000_rls_hardening.sql` | Re-states RLS and policies that production already has by the same names: messages (read/delete own), categories (authenticated read), transactions (update/delete own), and "read own" on `subscriptions` and `ai_insights` when they have `user_id`. Drops and recreates each policy. | Practically nothing: same names and conditions as production. Inside one transaction the drop/create is atomic, so there is no window without a policy. |
 | 2 | `20260103000000_category_rules.sql` | New table `category_rules` (per-user "remember this category") with RLS. | Nothing existing depends on it. The app's correction feature starts working. |
-| 3 | `20260104000000_shared_spaces.sql` | New tables `spaces`, `space_members`, `space_invites`; new column `transactions.shared_space_id`; helper `is_space_member()` (security definer); new policies "Members read shared transactions" and "Users insert/update own transactions". | **Security window:** after this step, and until step 6, production's old permissive INSERT policy lets a user insert into any space. Run steps 1-7 in one transaction. Adding a nullable column is quick but takes a short lock on `transactions`. |
+| 3 | `20260104000000_shared_spaces.sql` | New tables `spaces`, `space_members`, `space_invites`; new column `transactions.shared_space_id`; helper `is_space_member()` (security definer); new policies "Members read shared transactions" and "Users insert/update own transactions". | **Security window:** after this step, and until step 6, production's old permissive INSERT policy lets a user insert into any space. Run steps 1-8 in one transaction. Adding a nullable column is quick but takes a short lock on `transactions`. |
 | 4 | `20260105000000_consents.sql` | New append-only table `consents` with RLS. | The app starts requiring consent before using AI. Users with no consent row see the consent screen once. |
 | 5 | `20260106000000_accounts.sql` | New table `accounts`; new column `transactions.account_id`; replaces the insert/update policies on `transactions` so a movement can only point to the author's own account and to a space the author belongs to. | Same lock note as step 3. Clients that insert with an `account_id` that is not theirs are now rejected (by design). |
 | 6 | `20260107000000_drop_legacy_transaction_insert_policy.sql` | Drops the policy "Users can insert their personal and shared transactions." on `transactions`. | **Couple-based inserts from a user session stop working** (the service role is unaffected). Reading couple rows keeps working. Step 7 restores them safely. |
 | 7 | `20260108000000_require_couple_membership_on_transaction_write.sql` | Replaces the INSERT and UPDATE policies on `transactions` so `couple_id` must be null or belong to a couple the author is part of. | Couple members can insert couple rows from their own session again; non-members cannot. Tested locally with `supabase/tests/couple_insert_rls.sql` (6 of 6 pass; the same test fails without the migration). If you decide couples are retired, skip step 7 and remove its block and the verification check "1b". |
+| 8 | `20260109000000_system_categories.sql` | Inserts the 13 system categories (food, transport, home, services, health, education, entertainment, shopping, subscriptions, debt, salary, freelance, other) into `public.categories` with `on conflict do nothing`. | Nothing existing: the production table is empty (checked: 0 rows). Without these rows, registering any movement from the chat fails with "Category ... not found and no fallback" (found when testing the app). Query 2.9 below shows the current rows. |
 
 Why step 6 exists: policies of the same command are OR-ed. With the old policy still there, a user could insert `shared_space_id = <someone else's space>` or `account_id = <someone else's account>` as long as `user_id` was theirs, bypassing the checks from steps 3 and 5. The local RLS tests (`spaces_rls.sql`, `accounts_rls.sql`) failed until the policy was dropped and pass after.
 
@@ -117,6 +118,12 @@ where tgrelid = 'auth.users'::regclass and not tgisinternal;
 ```
 Unrelated to these migrations; the snapshot could not show whether `handle_new_user` / `create_user_profile` are attached. Note the result for later.
 
+### 2.9 System categories already present?
+```sql
+select normalized_name, name, is_system from public.categories order by normalized_name;
+```
+Expected before: no rows (or only some of the 13). Step 8 is idempotent either way.
+
 ## 3. Decision gates
 - **2.2 / 2.3 show recent couple rows (last 30 days > 0):** something still writes couple rows. Check whether it uses the service role (fine) or a user session. With step 7 included, legitimate couple members keep working, so this is a warning, not a stop. If you skip step 7, stop here until you know.
 - **2.1 shows couples in use:** keep step 7. If couples are retired, you may skip it.
@@ -124,7 +131,7 @@ Unrelated to these migrations; the snapshot could not show whether `handle_new_u
 - **2.4 does not list the legacy INSERT policy:** step 6 is a no-op (`drop policy if exists`); fine.
 - All clear: continue.
 
-## 4. The script (all seven steps, one transaction, verification, default ROLLBACK)
+## 4. The script (all eight steps, one transaction, verification, default ROLLBACK)
 
 How to use it:
 1. Paste the whole block into a **new** SQL Editor tab on production.
@@ -490,6 +497,33 @@ create policy "Users update own transactions"
     ))
   );
 
+-- ════════ 20260109000000_system_categories.sql ════════
+-- System categories: reference data the backend requires.
+--
+-- ExpensesService.resolveCategory looks up public.categories (is_system = true) by the engine's
+-- canonical slug and falls back to 'other'. With no rows there, registering any movement through
+-- the chat fails ('Category "transport" not found and no fallback'). The production snapshot has
+-- zero rows in this table, so the data has to travel with the migrations.
+--
+-- Slugs and labels mirror packages/finance-engine/src/categories.ts (CATEGORY_LABELS_ES).
+-- Idempotent: safe to run on a database that already has some of them.
+
+insert into public.categories (name, normalized_name, type, is_system) values
+  ('Comida',          'food',          'expense', true),
+  ('Transporte',      'transport',     'expense', true),
+  ('Hogar',           'home',          'expense', true),
+  ('Servicios',       'services',      'expense', true),
+  ('Salud',           'health',        'expense', true),
+  ('Educación',       'education',     'expense', true),
+  ('Entretenimiento', 'entertainment', 'expense', true),
+  ('Compras',         'shopping',      'expense', true),
+  ('Suscripciones',   'subscriptions', 'expense', true),
+  ('Deudas',          'debt',          'expense', true),
+  ('Sueldo',          'salary',        'income',  true),
+  ('Ingresos extra',  'freelance',     'income',  true),
+  ('Otros',           'other',         'expense', true)
+on conflict (normalized_name) do nothing;
+
 -- ─── Verification: any failure raises and aborts the whole transaction ───────────
 do $verify$
 declare
@@ -512,6 +546,11 @@ begin
                  and cmd = 'INSERT' and with_check like '%couples%') then
     raise exception 'VERIFY FAILED: INSERT policy does not check couple membership';
   end if;
+
+  -- 1c) Reference data: every canonical system category exists (the chat cannot register movements without them).
+  select count(*) into n from public.categories where is_system and normalized_name in
+    ('food','transport','home','services','health','education','entertainment','shopping','subscriptions','debt','salary','freelance','other');
+  if n <> 13 then raise exception 'VERIFY FAILED: expected 13 system categories, found %', n; end if;
 
   -- 2) New tables exist and have RLS on.
   foreach t in array array['spaces','space_members','space_invites','category_rules','consents','accounts'] loop
