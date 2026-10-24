@@ -55,6 +55,7 @@ Several users see and categorize expenses of a common fund (rent, groceries, uti
 ## Commands
 - API: `npm run lint` (type-check until ESLint is added), `npm run test` (src/ + packages/), `npm run build`, `npm run start:dev`
 - App (from `nina_app/`): `flutter analyze`, `flutter test`, `dart format .`, run with `flutter run --dart-define-from-file=env/dev.json` (env/dev.json is git-ignored)
+- App against the LOCAL backend: `node scripts/make-local-app-env.js` (writes the git-ignored `nina_app/env/local.json` from the local Supabase), then `flutter run --dart-define-from-file=env/local.json`. The app and the backend MUST use the same Supabase project: with `env/dev.json` (hosted project) and a local backend, every API call answers 401 and the app bounces back to the login. The app now detects this through the public `GET /health` and says so.
 - DB: local Supabase (Docker) first: `npx supabase@latest start`, `npx supabase@latest db reset`; RLS checks in `supabase/tests/*.sql`. Dev project only after that; never production.
 
 ## Workflow
