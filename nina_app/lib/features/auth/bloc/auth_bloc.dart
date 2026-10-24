@@ -3,19 +3,22 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
+import '../../../core/network/config_check.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../shared/services/auth_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  AuthBloc({AuthService? auth})
+  AuthBloc({AuthService? auth, Future<String?> Function()? configCheck})
       : _auth = auth ?? AuthService.instance,
+        _configCheck = configCheck ?? configMismatchMessage,
         super(const AuthInitial()) {
     on<AuthCheckRequested>(_onCheckRequested);
     on<AuthSignInRequested>(_onSignIn);
     on<AuthSignUpRequested>(_onSignUp);
     on<AuthSignOutRequested>(_onSignOut);
+    on<AuthApiUnauthorized>(_onApiUnauthorized);
     on<_AuthSessionEnded>(_onSessionEnded);
 
     // Session ended elsewhere (refresh failed, signed out on another tab…).
@@ -25,11 +28,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    // Any API 401 means the session is no longer valid.
-    AuthInterceptor.onUnauthorized = () => add(const AuthSignOutRequested());
+    // Any API 401 means the session is no longer valid (or the app and server disagree on the project).
+    AuthInterceptor.onUnauthorized = () => add(const AuthApiUnauthorized());
   }
 
   final AuthService _auth;
+  final Future<String?> Function() _configCheck;
   late final StreamSubscription<sb.AuthState> _sessionSub;
 
   Future<void> _onCheckRequested(
@@ -82,6 +86,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (state is AuthUnauthenticated) return;
     await _auth.signOut();
     emit(const AuthUnauthenticated());
+  }
+
+  Future<void> _onApiUnauthorized(
+    AuthApiUnauthorized event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (state is AuthUnauthenticated) return;
+    final mismatch = await _configCheck();
+    await _auth.signOut();
+    emit(const AuthUnauthenticated());
+    // Say why instead of silently sending the user back to the login.
+    if (mismatch != null) emit(AuthError(message: mismatch));
   }
 
   void _onSessionEnded(_AuthSessionEnded event, Emitter<AuthState> emit) {

@@ -33,3 +33,9 @@ class AuthSignUpRequested extends AuthEvent {
 class AuthSignOutRequested extends AuthEvent {
   const AuthSignOutRequested();
 }
+
+/// The API answered 401. Usually the session really ended, but it can also mean the app and the
+/// server use different Supabase projects; the bloc checks that before signing the user out.
+class AuthApiUnauthorized extends AuthEvent {
+  const AuthApiUnauthorized();
+}
