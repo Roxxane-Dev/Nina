@@ -4,6 +4,7 @@ import { Logger } from '@nestjs/common'
 import { AppModule } from './app.module'
 import { ConfigService } from '@nestjs/config'
 import { AllowlistIoAdapter, httpCorsOptions, resolveAllowedOrigins } from './realtime/socket-cors'
+import { describeListenError } from './common/listen-error'
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap')
@@ -25,7 +26,16 @@ async function bootstrap() {
   app.useWebSocketAdapter(new AllowlistIoAdapter(app))
 
   const port = process.env.PORT ?? 3000
-  await app.listen(port, '0.0.0.0')
+  try {
+    await app.listen(port, '0.0.0.0')
+  } catch (err) {
+    const hint = describeListenError(err, port)
+    if (hint) {
+      logger.error(hint)
+      process.exit(1)
+    }
+    throw err
+  }
 
   logger.log(`[WS READY]   WebSocket gateway listening on ws://0.0.0.0:${port}/intelligence`)
   logger.log(`[JOBS READY] Scheduled jobs registered`)
