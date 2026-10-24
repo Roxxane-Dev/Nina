@@ -9,6 +9,8 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.dark,
     scaffoldBackgroundColor: NinaColors.background,
+    // Dropdown menus are drawn on the canvas color; the default is not dark-aware here.
+    canvasColor: NinaColors.surface,
 
     colorScheme: const ColorScheme.dark(
       primary: NinaColors.primary,
@@ -31,6 +33,23 @@ class AppTheme {
       titleLarge: GoogleFonts.inter(
         fontSize: 24,
         fontWeight: FontWeight.w600,
+        color: NinaColors.textPrimary,
+      ),
+      // Dropdown items and list titles use titleMedium: without a color they render dark on dark.
+      // AlertDialog titles use headlineSmall.
+      headlineSmall: GoogleFonts.inter(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: NinaColors.textPrimary,
+      ),
+      titleMedium: GoogleFonts.inter(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        color: NinaColors.textPrimary,
+      ),
+      titleSmall: GoogleFonts.inter(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
         color: NinaColors.textPrimary,
       ),
       bodyLarge: GoogleFonts.inter(

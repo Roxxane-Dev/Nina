@@ -43,18 +43,7 @@ insert into public.user_profiles (id, full_name) values
   ('b0000000-0000-4000-8000-00000000000b', 'Usuario B (sintético)')
 on conflict (id) do nothing;
 
--- ─── System categories ───────────────────────────────────────────────────────
-insert into public.categories (name, normalized_name, type, is_system) values
-  ('Comida', 'comida', 'expense', true),
-  ('Transporte', 'transporte', 'expense', true),
-  ('Hogar', 'hogar', 'expense', true),
-  ('Servicios', 'servicios', 'expense', true),
-  ('Suscripciones', 'suscripciones', 'expense', true),
-  ('Entretenimiento', 'entretenimiento', 'expense', true),
-  ('Salud', 'salud', 'expense', true),
-  ('Sueldo', 'sueldo', 'income', true),
-  ('Ingresos extra', 'ingresos extra', 'income', true)
-on conflict (normalized_name) do nothing;
+-- System categories are reference data and come from migration 20260109 (not from this seed).
 
 -- ─── Accounts ────────────────────────────────────────────────────────────────
 insert into public.accounts (id, user_id, name, kind, institution) values
@@ -178,3 +167,44 @@ begin
   end loop;
 end
 $seed$;
+
+-- ─── Developer account: dev@nina.test (same synthetic password) ──────────────
+-- Your own login for the local app. It owns a copy of user A's personal movements (no shared space),
+-- three accounts and the consents, so every screen has something to show.
+do $dev$
+declare
+  dev constant uuid := 'd0000000-0000-4000-8000-00000000000d';
+begin
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change, email_change_token_new
+  ) values (
+    '00000000-0000-0000-0000-000000000000', dev, 'authenticated', 'authenticated',
+    'dev@nina.test', extensions.crypt('nina-local-synthetic-1', extensions.gen_salt('bf')), now(),
+    '{"provider":"email","providers":["email"]}', '{"full_name":"Dev (sintético)"}', now(), now(), '', '', '', ''
+  ) on conflict (id) do nothing;
+
+  insert into auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
+  values (gen_random_uuid(), dev, dev::text, 'email',
+          jsonb_build_object('sub', dev::text, 'email', 'dev@nina.test', 'email_verified', true), now(), now(), now())
+  on conflict do nothing;
+
+  insert into public.profiles (id, email, full_name) values (dev, 'dev@nina.test', 'Dev (sintético)') on conflict (id) do nothing;
+  insert into public.user_profiles (id, full_name) values (dev, 'Dev (sintético)') on conflict (id) do nothing;
+
+  insert into public.accounts (id, user_id, name, kind, institution) values
+    ('d0000000-0000-4000-8000-0000000000c1', dev, 'Cuenta sueldo', 'bank', 'Banco de prueba'),
+    ('d0000000-0000-4000-8000-0000000000c2', dev, 'Tarjeta', 'card', 'Banco de prueba'),
+    ('d0000000-0000-4000-8000-0000000000c3', dev, 'Efectivo', 'cash', null)
+  on conflict (id) do nothing;
+
+  insert into public.consents (user_id, purpose, granted, policy_version)
+  select dev, p, true, '2026-10-v1' from (values ('data_processing'), ('ai_processing')) as v(p);
+
+  insert into public.transactions (user_id, amount, category, description, date, type, source)
+  select dev, amount, category, description, date, type, source
+  from public.transactions
+  where user_id = 'a0000000-0000-4000-8000-00000000000a' and shared_space_id is null;
+end
+$dev$;
