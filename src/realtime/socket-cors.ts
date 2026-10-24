@@ -4,18 +4,61 @@ import { IoAdapter } from '@nestjs/platform-socket.io'
 import type { ServerOptions } from 'socket.io'
 
 /**
- * Origins allowed to open the WebSocket from a browser, from the env variable
- * CORS_ALLOWED_ORIGINS (comma-separated, e.g. "https://app.nina.pe,http://localhost:3000").
+ * Origins allowed to call the API or open the WebSocket from a browser, from the
+ * env variable CORS_ALLOWED_ORIGINS (comma-separated, e.g.
+ * "https://app.nina.pe,http://localhost:*"). An entry may end in ":*" to accept any
+ * port on that host (Flutter web picks a random port in development).
  *
- * Native mobile clients send no Origin header and are not affected. When the
- * variable is empty or unset, browsers from other origins are refused. A bare
- * "*" is ignored on purpose: list the origins explicitly.
+ * Native mobile clients send no Origin header and are not affected. A bare "*" is
+ * ignored on purpose: list the origins explicitly.
  */
 export function parseAllowedOrigins(raw: string | undefined | null): string[] {
   return (raw ?? '')
     .split(',')
     .map((o) => o.trim().replace(/\/+$/, ''))
     .filter((o) => o.length > 0 && o !== '*')
+}
+
+/** Loopback origins on any port: the developer's own machine, used when nothing is configured. */
+export const DEV_LOOPBACK_ORIGINS = ['http://localhost:*', 'http://127.0.0.1:*', 'http://[::1]:*']
+
+/**
+ * The effective allowlist. With CORS_ALLOWED_ORIGINS set, exactly that list. With it
+ * empty: no browser origin when NODE_ENV is "production", otherwise the loopback
+ * origins above, so `flutter run -d chrome` works without extra setup.
+ */
+export function resolveAllowedOrigins(raw: string | undefined | null, nodeEnv: string | undefined | null): string[] {
+  const listed = parseAllowedOrigins(raw)
+  if (listed.length > 0) return listed
+  return nodeEnv === 'production' ? [] : [...DEV_LOOPBACK_ORIGINS]
+}
+
+function originMatches(origin: string, entry: string): boolean {
+  if (entry.endsWith(':*')) {
+    const prefix = entry.slice(0, -1) // keeps "scheme://host:"
+    if (!origin.startsWith(prefix)) return false
+    return /^\d{1,5}$/.test(origin.slice(prefix.length))
+  }
+  return origin === entry
+}
+
+/**
+ * Browsers do not apply CORS to WebSocket connections, so the `cors` option alone
+ * does not stop a page on another origin from connecting with transport "websocket".
+ * The server must check the Origin header itself. No Origin header (native clients,
+ * server-to-server) is allowed; a present Origin must match the allowlist.
+ */
+export function isOriginAllowed(origin: string | undefined | null, allowed: string[]): boolean {
+  if (!origin) return true
+  const clean = origin.trim().replace(/\/+$/, '')
+  return allowed.some((entry) => originMatches(clean, entry))
+}
+
+type OriginCallback = (err: Error | null, allow?: boolean) => void
+
+/** `origin` callback shared by the HTTP CORS middleware and Socket.IO. */
+export function originChecker(allowed: string[]) {
+  return (origin: string | undefined, callback: OriginCallback) => callback(null, isOriginAllowed(origin, allowed))
 }
 
 /**
@@ -25,21 +68,10 @@ export function parseAllowedOrigins(raw: string | undefined | null): string[] {
  */
 export function httpCorsOptions(origins: string[]) {
   return {
-    origin: origins.length > 0 ? origins : false,
+    origin: origins.length > 0 ? originChecker(origins) : false,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }
-}
-
-/**
- * Browsers do not apply CORS to WebSocket connections, so the `cors` option alone
- * does not stop a page on another origin from connecting with transport "websocket".
- * The server must check the Origin header itself. No Origin header (native clients,
- * server-to-server) is allowed; a present Origin must be in the allowlist.
- */
-export function isOriginAllowed(origin: string | undefined | null, allowed: string[]): boolean {
-  if (!origin) return true
-  return allowed.includes(origin.trim().replace(/\/+$/, ''))
 }
 
 /** Socket.IO adapter that applies the allowlist at runtime (after ConfigModule has loaded). */
@@ -49,16 +81,20 @@ export class AllowlistIoAdapter extends IoAdapter {
 
   constructor(app: INestApplicationContext) {
     super(app)
-    this.origins = parseAllowedOrigins(app.get(ConfigService).get<string>('CORS_ALLOWED_ORIGINS'))
+    const config = app.get(ConfigService)
+    this.origins = resolveAllowedOrigins(
+      config.get<string>('CORS_ALLOWED_ORIGINS'),
+      config.get<string>('NODE_ENV') ?? process.env.NODE_ENV,
+    )
     if (this.origins.length === 0) {
-      this.logger.warn('CORS_ALLOWED_ORIGINS is empty: browsers on other origins cannot open the WebSocket')
+      this.logger.warn('CORS_ALLOWED_ORIGINS is empty and NODE_ENV=production: browsers on other origins cannot open the WebSocket')
     }
   }
 
   createIOServer(port: number, options?: ServerOptions) {
     return super.createIOServer(port, {
       ...options,
-      cors: { origin: this.origins, credentials: false },
+      cors: { origin: originChecker(this.origins), credentials: false },
       // Covers the websocket transport, which CORS does not (see isOriginAllowed).
       allowRequest: (req: { headers: { origin?: string } }, callback: (err: string | null | undefined, success: boolean) => void) => {
         const origin = req.headers.origin

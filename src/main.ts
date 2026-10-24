@@ -3,7 +3,7 @@ import { NestFactory } from '@nestjs/core'
 import { Logger } from '@nestjs/common'
 import { AppModule } from './app.module'
 import { ConfigService } from '@nestjs/config'
-import { AllowlistIoAdapter, httpCorsOptions, parseAllowedOrigins } from './realtime/socket-cors'
+import { AllowlistIoAdapter, httpCorsOptions, resolveAllowedOrigins } from './realtime/socket-cors'
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap')
@@ -14,9 +14,12 @@ async function bootstrap() {
     logger: ['log', 'error', 'warn', 'debug'],
   })
 
-  // CORS: same CORS_ALLOWED_ORIGINS allowlist as the WebSocket. Empty = no browser origin.
+  // CORS: same CORS_ALLOWED_ORIGINS allowlist as the WebSocket. Empty = no browser origin in
+  // production; in development loopback origins (localhost, any port) are allowed.
   // Native mobile clients send no Origin header and are unaffected.
-  const origins = parseAllowedOrigins(app.get(ConfigService).get<string>('CORS_ALLOWED_ORIGINS'))
+  const config = app.get(ConfigService)
+  const origins = resolveAllowedOrigins(config.get<string>('CORS_ALLOWED_ORIGINS'), config.get<string>('NODE_ENV') ?? process.env.NODE_ENV)
+  if (origins.length === 0) logger.warn('CORS_ALLOWED_ORIGINS is empty and NODE_ENV=production: no browser origin can call the API')
   app.enableCors(httpCorsOptions(origins))
 
   app.useWebSocketAdapter(new AllowlistIoAdapter(app))
