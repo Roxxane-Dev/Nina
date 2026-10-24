@@ -27,7 +27,7 @@ describe('httpCorsOptions', () => {
   })
 
   it('uses the explicit list, never a wildcard', () => {
-    expect(httpCorsOptions(['https://app.nina.pe']).origin).toEqual(['https://app.nina.pe'])
+    expect(typeof httpCorsOptions(['https://app.nina.pe']).origin).toBe('function')
     expect(httpCorsOptions(parseAllowedOrigins('*')).origin).toBe(false)
   })
 })

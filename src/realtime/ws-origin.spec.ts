@@ -12,9 +12,16 @@ class TestGateway {
   }
 }
 
-async function appWith(allowlist: string) {
+// ConfigService prefers process.env over loaded config, so the tests set NODE_ENV for real.
+const originalNodeEnv = process.env.NODE_ENV
+afterEach(() => {
+  process.env.NODE_ENV = originalNodeEnv
+})
+
+async function appWith(allowlist: string, nodeEnv = 'production') {
+  process.env.NODE_ENV = nodeEnv
   @Module({
-    imports: [ConfigModule.forRoot({ ignoreEnvFile: true, isGlobal: true, load: [() => ({ CORS_ALLOWED_ORIGINS: allowlist })] })],
+    imports: [ConfigModule.forRoot({ ignoreEnvFile: true, isGlobal: true, load: [() => ({ CORS_ALLOWED_ORIGINS: allowlist, NODE_ENV: nodeEnv })] })],
     providers: [TestGateway],
   })
   class TestModule {}
@@ -78,7 +85,17 @@ describe('WebSocket transport honours the allowlist (CORS alone does not)', () =
     }
   })
 
-  it('with an empty allowlist every browser Origin is refused, native still connects', async () => {
+  it('empty allowlist in development: loopback origins connect (Flutter web), others are refused', async () => {
+    const { app, port } = await appWith('', 'development')
+    try {
+      expect(await open(port, 'http://localhost:61234')).toBe('connected')
+      expect(await open(port, 'https://evil.example.com')).toMatch(/^refused (400|403)$/)
+    } finally {
+      await app.close()
+    }
+  })
+
+  it('empty allowlist in production: every browser Origin is refused, native still connects', async () => {
     const { app, port } = await appWith('')
     try {
       expect(await open(port, 'http://localhost:3000')).toMatch(/^refused (400|403)$/)
