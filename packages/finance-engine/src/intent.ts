@@ -1,4 +1,5 @@
 import { detectCategoryInText } from './categories'
+import { GOAL_PLAN_PATTERNS } from './goal-plan'
 import type { FactsIntent } from './types'
 
 // Order matters: the first matching rule wins. Periods ("hoy", "el año"…) are
@@ -11,6 +12,11 @@ const RULES: Array<{ intent: FactsIntent; patterns: RegExp[] }> = [
   {
     intent: 'recent',
     patterns: [/[uú]ltimos (gastos|movimientos|ingresos)/i, /mis movimientos/i, /qu[eé] (he )?registrad/i, /historial/i, /lista de (mis )?gastos/i],
+  },
+  {
+    // "¿cómo alcanzo mi meta?": a plan, not a new goal.
+    intent: 'goal_plan',
+    patterns: GOAL_PLAN_PATTERNS,
   },
   {
     intent: 'whatif',

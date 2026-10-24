@@ -12,6 +12,7 @@ import { FinanceDataUnavailableError } from '../finance-engine/errors'
 import { IncomeService } from '../income/income.service'
 import { ExpensesService } from '../expenses/expenses.service'
 import { GoalService } from '../goals/goal.service'
+import { GoalPlanHandler } from './intents/goal-plan.handler'
 import { ChatService } from './chat.service'
 import { ChatTelemetry } from './chat-telemetry'
 import { ApiExceptionFilter, DATA_UNAVAILABLE_REPLY } from '../common/api-exception.filter'
@@ -68,6 +69,7 @@ function setup(dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: nul
 
   const chat = new ChatService(
     new ConfirmationHandler(tokens, expenses, income, goals),
+    new GoalPlanHandler(engine, responder, tokens, config),
     new RegisterIncomeHandler(tokens, income),
     new RegisterGoalHandler(tokens, goals),
     new RegisterExpenseHandler(tokens, expenses),
@@ -78,7 +80,8 @@ function setup(dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: nul
     telemetry,
     { allowsAi: async () => aiAllowed } as never,
   )
-  return { chat, insertIncome, insertExpenses, record, router, memory }
+  const insertGoal = jest.spyOn(goals, 'insertGoal').mockResolvedValue({ result: 'Meta guardada 🎯' })
+  return { chat, insertIncome, insertExpenses, insertGoal, record, router, memory }
 }
 
 describe('chat regression (real Supabase date format)', () => {
@@ -197,6 +200,67 @@ describe('chat regression (real Supabase date format)', () => {
     await chat.handleMessage('user-1', 'dime cuanto he gastado en el año')
     const logged = JSON.stringify(record.mock.calls)
     expect(logged).not.toMatch(/4500|250\.5|registrar|gastado|user-1/)
+  })
+})
+
+describe('goal plans (a question is answered with a plan, never registered as a goal)', () => {
+  beforeAll(() => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+    jest.setSystemTime(new Date('2026-10-10T15:00:00Z'))
+  })
+  afterAll(() => jest.useRealTimers())
+
+  it('the Japan message: plan in soles converted from dollars, offered for saving with the right name and date', async () => {
+    const { chat, insertGoal } = setup()
+    const r = await chat.handleMessage(
+      'user-1',
+      'dime quiero viajar a japon en 2028 y quiero ahorrar una bolsita de 6000 dolares cual seria mi plan pra llegar a ese ahorro meta',
+    )
+    expect(r.reply).toContain('S/ 22,500.00')
+    expect(r.reply).toContain('US$ 6,000')
+    expect(r.reply).toContain('diciembre 2028')
+    expect(r.reply).toContain('S/ 865.38 al mes durante 26 meses')
+    expect(r.reply).toContain('Viaje a japon')
+    expect(r.reply).not.toContain('Mi Meta')
+    expect(r.needsConfirmation).toBe(true)
+    expect(r.card?.title).toBe('Plan: Viaje a japon')
+    expect(insertGoal).not.toHaveBeenCalled()
+
+    await chat.handleMessage('user-1', 'sí', r.pendingToken)
+    expect(insertGoal).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Viaje a japon', target_amount: 22500, deadline: '2028-12-31', original_usd: 6000, usd_pen_rate: 3.75 }),
+      'user-1',
+    )
+  })
+
+  it('"como alcanzo mi meta de 6000 soles para enero 2028" is a plan, not a goal called "enero"', async () => {
+    const { chat } = setup()
+    const r = await chat.handleMessage('user-1', 'como alcanzo mi meta de 6000 soles para enero 2028')
+    expect(r.reply).toContain('S/ 400.00 al mes durante 15 meses')
+    expect(r.reply).not.toMatch(/llamada "enero"/i)
+    expect(r.grounded?.intent).toBe('goal_plan')
+  })
+
+  it('without an amount it asks for it and offers nothing to save', async () => {
+    const { chat, insertGoal } = setup()
+    const r = await chat.handleMessage('user-1', 'como alcanzo mi meta')
+    expect(r.reply).toContain('de cuánto es la meta')
+    expect(r.needsConfirmation).toBe(false)
+    expect(insertGoal).not.toHaveBeenCalled()
+  })
+
+  it('a date that already passed gets a clear answer, not a made-up plan', async () => {
+    const { chat } = setup()
+    const r = await chat.handleMessage('user-1', 'como alcanzo 3000 soles para enero 2026')
+    expect(r.reply).toContain('ya pasó')
+  })
+
+  it('declaring a goal still asks to register it, now with its date', async () => {
+    const { chat } = setup()
+    const r = await chat.handleMessage('user-1', 'quiero ahorrar 2000 soles para un viaje en diciembre')
+    expect(r.needsConfirmation).toBe(true)
+    expect(r.reply).toContain('S/ 2000.00')
+    expect(r.reply).toContain('diciembre 2026')
   })
 })
 

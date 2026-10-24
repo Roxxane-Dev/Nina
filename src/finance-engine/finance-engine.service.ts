@@ -13,6 +13,8 @@ import {
   type TrendPoint,
   type ResolvedQuestion,
   buildBalanceFacts,
+  buildGoalPlanFacts,
+  type GoalRequest,
   computeHealthScore,
   detectAnomalies,
   detectRecurrence,
@@ -105,6 +107,11 @@ export class FinanceEngineService implements OnModuleInit {
     })
     const recent = q.intent === 'recent' ? recentTransactions(bundle.txs, 8) : undefined
     return { facts, recent }
+  }
+
+  /** Plan for a goal (what to save per month vs. the user's real pace). Numbers come only from the engine. */
+  async goalPlanFacts(userId: string, goal: GoalRequest, asOf = localToday(new Date()), usdPenRate?: number): Promise<FactsPayload> {
+    return buildGoalPlanFacts({ txs: await this.loadTransactions(userId), asOf, goal, usdPenRate })
   }
 
   /** Convenience: resolve + compute in one call. */
