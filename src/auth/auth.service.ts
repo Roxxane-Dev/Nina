@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
@@ -29,6 +29,12 @@ export class AuthService {
       error,
     } = await this.supabase.auth.getUser(token)
 
+    // The auth server could not be reached (restart, network): that is not an invalid token.
+    // 503 lets the client retry instead of treating it as a logout.
+    if (error && isTransportError(error)) {
+      throw new ServiceUnavailableException('Auth service unavailable')
+    }
+
     if (error || !user) {
       throw new UnauthorizedException(
         error?.message ?? 'Invalid or expired token',
@@ -40,4 +46,13 @@ export class AuthService {
       email: user.email,
     }
   }
+}
+
+/** supabase-js reports unreachable servers as AuthRetryableFetchError (status 0) or a "fetch failed" message. */
+export function isTransportError(error: { name?: string; status?: number; message?: string }): boolean {
+  return (
+    error.name === 'AuthRetryableFetchError' ||
+    error.status === 0 ||
+    (error.status === undefined && /fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|network/i.test(error.message ?? ''))
+  )
 }
