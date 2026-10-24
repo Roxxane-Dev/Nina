@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import '../../../core/network/config_check.dart';
 import '../../../core/theme/design_system.dart';
 
 class LoginPage extends StatefulWidget {
@@ -19,6 +20,17 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _obscure = true;
   bool _isSignUp = false;
+
+  /// Set when the app was started against a different Supabase project than the backend uses.
+  String? _configProblem;
+
+  @override
+  void initState() {
+    super.initState();
+    configMismatchMessage().then((message) {
+      if (mounted && message != null) setState(() => _configProblem = message);
+    });
+  }
 
   @override
   void dispose() {
@@ -69,6 +81,23 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 children: [
                   _buildHeader(),
+                  if (_configProblem != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      key: const Key('config-mismatch-banner'),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: NinaColors.error.withAlpha(40),
+                        border: Border.all(color: NinaColors.error),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _configProblem!,
+                        style: const TextStyle(
+                            color: NinaColors.textPrimary, fontSize: 13),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 40),
                   _buildForm(),
                 ],

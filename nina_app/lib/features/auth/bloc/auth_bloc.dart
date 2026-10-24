@@ -57,7 +57,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _auth.signIn(email: event.email, password: event.password);
       emit(AuthAuthenticated(email: event.email));
     } catch (e) {
-      emit(AuthError(message: _parseError(e)));
+      // "Wrong credentials" is often really "this account lives in another Supabase project".
+      final mismatch = await _configCheck();
+      emit(AuthError(message: mismatch ?? _parseError(e)));
     }
   }
 
