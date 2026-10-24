@@ -2,7 +2,7 @@
 
 Status: **draft for the founder. Nothing in this document has been executed against production.** I (Claude) never connect to production; you run these steps yourself in the Supabase SQL Editor of the production project, after reading them.
 
-Scope: migrations `20260102` to `20260107` in `supabase/migrations/`, plus the couple_id fix `20260108` in `supabase/proposed_migrations/` (proposed, not part of the repo chain yet).
+Scope: migrations `20260102` to `20260107` in `supabase/migrations/`, plus the couple_id check `20260108` (step 7), also in `supabase/migrations/`.
 
 - **Do not run** `20260101000000_baseline_prod_snapshot.sql`: it only mirrors what production already has (it is for fresh local databases).
 - **Never include seed data.** `supabase/seed.sql` is for the local database only. Never run `supabase db push` (with or without `--include-seed`) against any remote; this runbook uses the SQL Editor only.
@@ -25,7 +25,7 @@ Tested on: a fresh local Postgres 17 built from the production snapshot (`docs/s
 | 4 | `20260105000000_consents.sql` | New append-only table `consents` with RLS. | The app starts requiring consent before using AI. Users with no consent row see the consent screen once. |
 | 5 | `20260106000000_accounts.sql` | New table `accounts`; new column `transactions.account_id`; replaces the insert/update policies on `transactions` so a movement can only point to the author's own account and to a space the author belongs to. | Same lock note as step 3. Clients that insert with an `account_id` that is not theirs are now rejected (by design). |
 | 6 | `20260107000000_drop_legacy_transaction_insert_policy.sql` | Drops the policy "Users can insert their personal and shared transactions." on `transactions`. | **Couple-based inserts from a user session stop working** (the service role is unaffected). Reading couple rows keeps working. Step 7 restores them safely. |
-| 7 | `20260108000000_require_couple_membership_on_transaction_write.sql` (proposed) | Replaces the INSERT and UPDATE policies on `transactions` so `couple_id` must be null or belong to a couple the author is part of. | Couple members can insert couple rows from their own session again; non-members cannot. Tested locally with `supabase/tests/couple_insert_rls.sql` (6 of 6 pass; the same test fails without the migration). If you decide couples are retired, skip step 7 and remove its block and the verification check "1b". |
+| 7 | `20260108000000_require_couple_membership_on_transaction_write.sql` | Replaces the INSERT and UPDATE policies on `transactions` so `couple_id` must be null or belong to a couple the author is part of. | Couple members can insert couple rows from their own session again; non-members cannot. Tested locally with `supabase/tests/couple_insert_rls.sql` (6 of 6 pass; the same test fails without the migration). If you decide couples are retired, skip step 7 and remove its block and the verification check "1b". |
 
 Why step 6 exists: policies of the same command are OR-ed. With the old policy still there, a user could insert `shared_space_id = <someone else's space>` or `account_id = <someone else's account>` as long as `user_id` was theirs, bypassing the checks from steps 3 and 5. The local RLS tests (`spaces_rls.sql`, `accounts_rls.sql`) failed until the policy was dropped and pass after.
 
@@ -443,10 +443,9 @@ drop policy if exists "Users can insert their personal and shared transactions."
   on public.transactions;
 
 -- ════════ 20260108000000_require_couple_membership_on_transaction_write.sql ════════
--- PROPOSED follow-up, NOT in the active chain and NOT applied anywhere.
--- Lives in supabase/proposed_migrations/ so `supabase db reset` does not run it.
--- Copy it to supabase/migrations/ (keeping the timestamp) only after the founder decides.
--- It is included as the last, optional step of docs/PROD-MIGRATION-RUNBOOK.md.
+-- Couple membership check on transactions (step 7 of docs/PROD-MIGRATION-RUNBOOK.md).
+-- Part of the active chain for local databases. NOT applied to production: the founder runs it
+-- by hand through the runbook, after reading its decision gates.
 --
 -- Why: after 20260107 the only INSERT policy on public.transactions is
 -- "Users insert own transactions", which checks user_id, space membership and

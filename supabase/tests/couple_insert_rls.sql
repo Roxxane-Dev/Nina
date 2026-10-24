@@ -1,11 +1,8 @@
--- RLS test for the PROPOSED couple_id check (supabase/proposed_migrations/20260108...).
--- LOCAL database only. The proposed migration is applied inside the same transaction
--- and everything is rolled back, so nothing is left behind:
+-- RLS test for the couple_id check (migration 20260108). LOCAL database only, after `db reset`
+-- (the migration is part of the local chain). Everything is rolled back:
 --
---   { echo 'begin;'
---     cat supabase/proposed_migrations/20260108000000_require_couple_membership_on_transaction_write.sql
---     cat supabase/tests/couple_insert_rls.sql
---   } | docker exec -i supabase_db_Nina psql -U postgres -d postgres -v ON_ERROR_STOP=1
+--   { echo 'begin;'; cat supabase/tests/couple_insert_rls.sql; } \
+--     | docker exec -i supabase_db_Nina psql -U postgres -d postgres -v ON_ERROR_STOP=1
 --
 -- Users: K1 and K2 form couple 1; K3 is in couple 2; K4 is in no couple.
 -- (The caller supplies `begin;` and the migration first; this file ends with rollback.)

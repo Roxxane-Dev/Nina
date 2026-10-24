@@ -1,7 +1,6 @@
--- PROPOSED follow-up, NOT in the active chain and NOT applied anywhere.
--- Lives in supabase/proposed_migrations/ so `supabase db reset` does not run it.
--- Copy it to supabase/migrations/ (keeping the timestamp) only after the founder decides.
--- It is included as the last, optional step of docs/PROD-MIGRATION-RUNBOOK.md.
+-- Couple membership check on transactions (step 7 of docs/PROD-MIGRATION-RUNBOOK.md).
+-- Part of the active chain for local databases. NOT applied to production: the founder runs it
+-- by hand through the runbook, after reading its decision gates.
 --
 -- Why: after 20260107 the only INSERT policy on public.transactions is
 -- "Users insert own transactions", which checks user_id, space membership and
