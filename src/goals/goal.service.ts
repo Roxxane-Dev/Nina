@@ -4,6 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { localToday, monthLabelEs, parseGoalRequest, DEFAULT_USD_PEN_RATE, type GoalRequest } from '../../packages/finance-engine/src';
 import { createAdminClient } from '../common/supabase.client';
 import { usdPenRate } from '../common/usd-rate';
+import { FinanceDataUnavailableError } from '../finance-engine/errors';
+import type { GoalRow } from './goal-plans';
 
 export type ParsedGoal = {
   name: string;
@@ -101,5 +103,22 @@ export class GoalService {
     if (insertErr) throw insertErr;
 
     return { result: `¡Meta "${goal.name}" registrada exitosamente! 🎯` };
+  }
+
+  /** Metas: the user's active goals, newest first. Read with the service role, filtered by user_id. */
+  async listActive(userId: string): Promise<GoalRow[]> {
+    if (!this.db) return [];
+    const { data, error } = await this.db
+      .from('goals')
+      .select('id, name, target_amount, current_amount, deadline, status, created_at')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) {
+      this.logger.error(`listActive failed: ${error.code ?? 'unknown'}`);
+      throw new FinanceDataUnavailableError(error.code);
+    }
+    return (data ?? []) as GoalRow[];
   }
 }
