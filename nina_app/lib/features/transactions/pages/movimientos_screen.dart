@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/design_system.dart';
-import '../../../core/utils/category_utils.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/utils/transaction_display.dart';
 import '../../../data/repositories/supabase_finance_repository.dart';
@@ -11,6 +10,8 @@ import '../../../data/services/accounts_api_service.dart';
 import '../../../data/services/finance_api_service.dart';
 import '../../../domain/models/overview.dart';
 import '../../../shared/widgets/add_transaction_sheet.dart';
+import '../../../shared/widgets/nina_ui.dart';
+import '../widgets/transaction_row.dart';
 
 enum _PeriodFilter { current, previous, all }
 
@@ -197,24 +198,21 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
         row['type'] == 'income' ? incomeCategories : expenseCategories;
     final picked = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: NinaColors.surface,
       builder: (ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Cambiar categoría',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: NinaColors.textPrimary)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text('Cambiar categoría', style: NinaText.titleL()),
             ),
             for (final e in options.entries)
               ListTile(
                 title: Text(e.value),
+                leading:
+                    Icon(categoryIcon(e.key), color: NinaColors.textSecondary),
                 trailing: categoryLabel(row['category'] as String?) == e.value
-                    ? const Icon(Icons.check, color: NinaColors.accent)
+                    ? const Icon(Icons.check, color: NinaColors.cocoa)
                     : null,
                 onTap: () => Navigator.pop(ctx, e.key),
               ),
@@ -247,61 +245,72 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NinaColors.background,
-      floatingActionButton: FloatingActionButton(
-        key: const Key('movimientos-add'),
-        heroTag: 'movimientos-add',
-        tooltip: 'Agregar movimiento',
-        backgroundColor: NinaColors.accent,
-        foregroundColor: NinaColors.background,
-        onPressed: _add,
-        child: const Icon(Icons.add),
+      floatingActionButton: Padding(
+        // Keep the button above the floating tab bar.
+        padding: const EdgeInsets.only(bottom: 88),
+        child: FloatingActionButton(
+          key: const Key('movimientos-add'),
+          heroTag: 'movimientos-add',
+          tooltip: 'Agregar movimiento',
+          backgroundColor: NinaColors.cocoa,
+          foregroundColor: NinaColors.textInverse,
+          shape: const CircleBorder(),
+          onPressed: _add,
+          child: const Icon(Icons.add),
+        ),
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
             _buildSearch(),
-            _buildChips<_PeriodFilter>(
-              {
+            NinaChipRow<_PeriodFilter>(
+              options: const {
                 _PeriodFilter.current: 'Este mes',
                 _PeriodFilter.previous: 'Mes anterior',
                 _PeriodFilter.all: 'Todo'
               },
-              _period,
-              (v) {
+              selected: _period,
+              onSelect: (v) {
                 setState(() => _period = v);
                 _load();
               },
             ),
-            _buildChips<_TypeFilter>(
-              {
+            const SizedBox(height: 6),
+            NinaChipRow<_TypeFilter>(
+              options: const {
                 _TypeFilter.all: 'Todos',
                 _TypeFilter.income: 'Ingresos',
                 _TypeFilter.expense: 'Gastos'
               },
-              _type,
-              (v) => setState(() => _type = v),
+              selected: _type,
+              onSelect: (v) => setState(() => _type = v),
             ),
-            if (_accounts.isNotEmpty)
-              _buildChips<String?>(
-                {
+            if (_accounts.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              NinaChipRow<String?>(
+                options: {
                   null: 'Todas las cuentas',
                   for (final a in _accounts) a.id: a.name
                 },
-                _accountId,
-                (v) => setState(() => _accountId = v),
+                selected: _accountId,
+                onSelect: (v) => setState(() => _accountId = v),
               ),
-            if (_categoryOptions.length > 1)
-              _buildChips<String?>(
-                {
+            ],
+            if (_categoryOptions.length > 1) ...[
+              const SizedBox(height: 6),
+              NinaChipRow<String?>(
+                options: {
                   null: 'Todas las categorías',
                   for (final c in _categoryOptions) c: c
                 },
-                _category,
-                (v) => setState(() => _category = v),
+                selected: _category,
+                onSelect: (v) => setState(() => _category = v),
               ),
+            ],
+            const SizedBox(height: 8),
             Expanded(child: _buildList()),
           ],
         ),
@@ -315,67 +324,61 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     if (o != null) {
       if (_period == _PeriodFilter.all) {
         figures.add(
-            _Figure('Saldo', formatSoles(o.balance), NinaColors.textSecondary));
+            _Figure('Saldo', formatSoles(o.balance), NinaColors.textPrimary));
       } else {
         figures
           ..add(_Figure(
-              'Gastos', '−${formatSoles(o.expenses)}', NinaColors.errorLight))
+              'Gastos', '−${formatSoles(o.expenses)}', NinaColors.textPrimary))
           ..add(_Figure(
               'Ingresos', '+${formatSoles(o.income)}', NinaColors.success))
           ..add(_Figure('Disponible', formatSoles(o.available),
-              NinaColors.textSecondary));
+              o.available >= 0 ? NinaColors.textPrimary : NinaColors.error));
       }
     }
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      padding:
+          const EdgeInsets.fromLTRB(NinaSpace.gutter, 20, NinaSpace.gutter, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Movimientos',
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w500,
-                  color: NinaColors.textPrimary)),
-          const SizedBox(height: 8),
-          Wrap(spacing: 12, runSpacing: 4, children: figures),
+          Text('Movimientos', style: NinaText.displayL()),
+          Text('Los recibos no mienten.',
+              style: NinaText.bodyS(color: NinaColors.textTertiary)),
+          if (figures.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            NinaCard(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+              child: Row(
+                children: [for (final f in figures) Expanded(child: f)],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildSearch() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.fromLTRB(
+            NinaSpace.gutter, 0, NinaSpace.gutter, 12),
         child: TextField(
           controller: _searchCtrl,
-          decoration: const InputDecoration(
+          style: NinaText.bodyM(color: NinaColors.textPrimary),
+          decoration: InputDecoration(
             isDense: true,
-            prefixIcon: Icon(Icons.search, size: 18),
+            prefixIcon: const Icon(Icons.search,
+                size: 20, color: NinaColors.textTertiary),
             hintText: 'Buscar por nota o categoría',
+            hintStyle: NinaText.bodyM(color: NinaColors.textTertiary),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(NinaRadii.pill),
+                borderSide: const BorderSide(color: NinaColors.border)),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(NinaRadii.pill),
+                borderSide: const BorderSide(color: NinaColors.border)),
           ),
         ),
       );
-
-  Widget _buildChips<T>(
-      Map<T, String> options, T selected, ValueChanged<T> onSelect) {
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          for (final e in options.entries)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(e.value, style: const TextStyle(fontSize: 11)),
-                selected: e.key == selected,
-                onSelected: (_) => onSelect(e.key),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildList() {
     if (_error != null && _rows == null) {
@@ -386,10 +389,13 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(_error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: NinaColors.textSecondary)),
+                  textAlign: TextAlign.center, style: NinaText.bodyM()),
               const SizedBox(height: 12),
-              OutlinedButton(onPressed: _load, child: const Text('Reintentar')),
+              NinaButton(
+                  label: 'Reintentar',
+                  variant: NinaButtonVariant.secondary,
+                  expand: false,
+                  onPressed: _load),
             ],
           ),
         ),
@@ -402,14 +408,21 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
       return Center(
         key: const Key('movimientos-empty'),
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            (_rows ?? const []).isEmpty
-                ? 'Aún no tienes movimientos. Toca + o cuéntaselo a Nina.'
-                : 'No hay movimientos con estos filtros.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: NinaColors.textTertiary),
-          ),
+          padding: const EdgeInsets.all(32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const NinaIconBox(
+                icon: Icons.receipt_long_outlined,
+                size: 56,
+                background: NinaColors.peachSoft),
+            const SizedBox(height: 14),
+            Text(
+              (_rows ?? const []).isEmpty
+                  ? 'Aún no tienes movimientos. Toca + o cuéntaselo a Nina.'
+                  : 'No hay movimientos con estos filtros.',
+              textAlign: TextAlign.center,
+              style: NinaText.bodyM(),
+            ),
+          ]),
         ),
       );
     }
@@ -423,21 +436,23 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
+        padding: const EdgeInsets.fromLTRB(
+            NinaSpace.gutter, 4, NinaSpace.gutter, 180),
         children: [
           for (final g in groups.entries) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                g.key,
-                style: const TextStyle(
-                    color: NinaColors.textTertiary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1),
-              ),
+              padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+              child: Text(g.key, style: NinaText.caps()),
             ),
-            for (final r in g.value) _buildRow(r),
+            NinaCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              child: Column(children: [
+                for (var i = 0; i < g.value.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  _buildRow(g.value[i]),
+                ],
+              ]),
+            ),
           ],
         ],
       ),
@@ -465,39 +480,22 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 16),
-        color: NinaColors.error.withAlpha(60),
-        child: const Icon(Icons.delete_outline, color: NinaColors.errorLight),
+        color: NinaColors.errorSoft,
+        child: const Icon(Icons.delete_outline, color: NinaColors.error),
       ),
-      child: ListTile(
+      child: TransactionRow(
+        title: note?.isNotEmpty == true ? note! : cat,
+        meta: cat,
+        amount: amount,
+        isIncome: isIncome,
+        category: r['category'] as String?,
         onTap: () => _changeCategory(r),
-        contentPadding: EdgeInsets.zero,
-        leading: Text(
-            CategoryUtils.categoryEmoji((r['category'] ?? '').toString()),
-            style: const TextStyle(fontSize: 20)),
-        title: Text(note?.isNotEmpty == true ? note! : cat,
-            style:
-                const TextStyle(fontSize: 13, color: NinaColors.textPrimary)),
-        subtitle: Text(cat,
-            style:
-                const TextStyle(fontSize: 11, color: NinaColors.textTertiary)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${isIncome ? '+' : '−'}${formatSoles(amount)}',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isIncome ? NinaColors.success : NinaColors.errorLight,
-              ),
-            ),
-            IconButton(
-              tooltip: 'Eliminar',
-              icon: const Icon(Icons.delete_outline,
-                  size: 18, color: NinaColors.textTertiary),
-              onPressed: () => _confirmDelete(r),
-            ),
-          ],
+        trailing: IconButton(
+          tooltip: 'Eliminar',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.delete_outline,
+              size: 18, color: NinaColors.textTertiary),
+          onPressed: () => _confirmDelete(r),
         ),
       ),
     );
@@ -511,16 +509,12 @@ class _Figure extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => RichText(
-        text: TextSpan(children: [
-          TextSpan(
-              text: '$label ',
-              style: const TextStyle(
-                  fontSize: 11, color: NinaColors.textTertiary)),
-          TextSpan(
-              text: value,
-              style: TextStyle(
-                  fontSize: 11, color: color, fontWeight: FontWeight.w600)),
-        ]),
-      );
+  Widget build(BuildContext context) => Column(children: [
+        Text(label, style: NinaText.bodyS(color: NinaColors.textTertiary)),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(value, style: NinaText.bodyMStrong(color: color)),
+        ),
+      ]);
 }

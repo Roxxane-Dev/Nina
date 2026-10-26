@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/design_system.dart';
 import '../../../core/utils/money.dart';
 import '../../../domain/models/overview.dart';
+import '../../../shared/widgets/nina_ui.dart';
 
 /// "Cómo calculé esto" (PRD-AUD-06): shows the engine's own explanation of the
 /// available figure. Every number here comes from `Overview.audit`; nothing is
@@ -14,9 +15,6 @@ Future<void> showAuditSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: NinaColors.surface,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (ctx) => AuditSheet(
       audit: audit,
       onViewTransactions: () {
@@ -42,41 +40,58 @@ class AuditSheet extends StatelessWidget {
         : 'Calculado con $count ${count == 1 ? 'movimiento' : 'movimientos'} de ${audit.periodLabel}.';
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Cómo calculé esto',
-                key: Key('audit-title'),
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: NinaColors.textPrimary)),
-            const SizedBox(height: 10),
+            Text('Cómo calculé esto',
+                key: const Key('audit-title'), style: NinaText.displayM()),
+            const SizedBox(height: 8),
             Text(audit.formula,
-                key: const Key('audit-formula'),
-                style: const TextStyle(
-                    fontSize: 14, color: NinaColors.textSecondary)),
-            const SizedBox(height: 16),
-            _Row('Ingresos', audit.income),
-            _Row('Gastos', audit.expenses),
-            const Divider(height: 20),
-            _Row('Disponible', audit.available, bold: true),
-            const SizedBox(height: 12),
-            Text(basis,
-                key: const Key('audit-basis'),
-                style: const TextStyle(
-                    fontSize: 12, color: NinaColors.textSecondary)),
-            if (count > 0) ...[
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  key: const Key('audit-view-transactions'),
-                  onPressed: onViewTransactions,
-                  child: const Text('Ver estos movimientos'),
+                key: const Key('audit-formula'), style: NinaText.bodyM()),
+            const SizedBox(height: 18),
+            NinaCard(
+              padding: const EdgeInsets.all(6),
+              shadow: false,
+              child: Column(children: [
+                _Row(Icons.south_west_rounded, 'Ingresos', audit.income,
+                    color: NinaColors.success),
+                _Row(Icons.receipt_long_outlined, '− Gastos', audit.expenses),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: NinaColors.peachSoft,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(children: [
+                    Expanded(
+                        child: Text('= Disponible',
+                            style: NinaText.bodyMStrong())),
+                    Text(formatSoles(audit.available),
+                        style: NinaText.titleL()),
+                  ]),
                 ),
+              ]),
+            ),
+            const SizedBox(height: 14),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.info_outline,
+                  size: 18, color: NinaColors.textTertiary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(basis,
+                    key: const Key('audit-basis'), style: NinaText.bodyS()),
+              ),
+            ]),
+            if (count > 0) ...[
+              const SizedBox(height: 18),
+              NinaButton(
+                key: const Key('audit-view-transactions'),
+                label: 'Ver estos movimientos',
+                variant: NinaButtonVariant.secondary,
+                onPressed: onViewTransactions,
               ),
             ],
           ],
@@ -87,24 +102,23 @@ class AuditSheet extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row(this.label, this.value, {this.bold = false});
+  const _Row(this.icon, this.label, this.value,
+      {this.color = NinaColors.textPrimary});
+  final IconData icon;
   final String label;
   final double value;
-  final bool bold;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final style = TextStyle(
-        fontSize: 15,
-        fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-        color: NinaColors.textPrimary);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.all(12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: style),
-          Text(formatSoles(value), style: style),
+          NinaIconBox(icon: icon, size: 36),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label, style: NinaText.bodyM())),
+          Text(formatSoles(value), style: NinaText.number(color: color)),
         ],
       ),
     );

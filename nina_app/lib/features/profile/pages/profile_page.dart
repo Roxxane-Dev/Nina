@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/design_system.dart';
 import '../../../data/services/profile_api_service.dart';
+import '../../../shared/widgets/nina_ui.dart';
 
-/// Más: profile (US-40), shared spaces, accounts (US-41), privacy (US-42)
+/// Perfil: profile (US-40), shared spaces, accounts (US-41), privacy (US-42)
 /// and sign out (US-05). Only options that actually work are listed.
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, this.api});
@@ -62,84 +64,129 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NinaColors.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          padding: const EdgeInsets.fromLTRB(
+              NinaSpace.gutter, 16, NinaSpace.gutter, 32),
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('Más',
-                  style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: NinaColors.textPrimary)),
-            ),
-            const SizedBox(height: 16),
-            _header('PERFIL'),
+            Row(children: [
+              if (Navigator.of(context).canPop()) ...[
+                NinaBackButton(onTap: () => context.pop()),
+                const SizedBox(width: 12),
+              ],
+              Text('Perfil', style: NinaText.displayL()),
+            ]),
+            const SizedBox(height: 20),
             FutureBuilder<Profile>(
               future: _profile,
               builder: (context, snap) {
                 final p = snap.data;
-                return Column(children: [
-                  ListTile(
-                    key: const Key('more-name'),
-                    leading: const Icon(Icons.person_outline),
-                    title: Text(p?.fullName?.isNotEmpty == true
-                        ? p!.fullName!
-                        : 'Agrega tu nombre'),
-                    subtitle: Text(p?.email ??
-                        (snap.hasError ? 'No pude cargar tu perfil' : '')),
-                    trailing: const Icon(Icons.edit_outlined, size: 18),
-                    onTap: p == null ? null : () => _editName(p),
-                  ),
-                  const ListTile(
-                    leading: Icon(Icons.payments_outlined),
-                    title: Text('Moneda'),
-                    subtitle:
-                        Text('Soles (S/). Otras monedas llegarán pronto.'),
-                  ),
-                ]);
+                final hasName = p?.fullName?.isNotEmpty == true;
+                return NinaCard(
+                  key: const Key('more-name'),
+                  onTap: p == null ? null : () => _editName(p),
+                  child: Row(children: [
+                    NinaPersonAvatar(
+                        name: hasName ? p!.fullName! : '?', size: 56),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(hasName ? p!.fullName! : 'Agrega tu nombre',
+                                style: NinaText.titleL()),
+                            Text(
+                                p?.email ??
+                                    (snap.hasError
+                                        ? 'No pude cargar tu perfil'
+                                        : ''),
+                                style: NinaText.bodyS()),
+                          ]),
+                    ),
+                    const Icon(Icons.edit_outlined,
+                        size: 18, color: NinaColors.textTertiary),
+                  ]),
+                );
               },
             ),
+            if (AppConstants.pricingPreview) ...[
+              const SizedBox(height: 12),
+              NinaCard(
+                color: NinaColors.peachSoft,
+                border: false,
+                shadow: false,
+                onTap: () => context.push('/pricing'),
+                child: Row(children: [
+                  const NinaMark(size: 36),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Nina Gratis', style: NinaText.bodyMStrong()),
+                          Text('Conoce Nina Plus', style: NinaText.bodyS()),
+                        ]),
+                  ),
+                  const Icon(Icons.chevron_right_rounded),
+                ]),
+              ),
+            ],
+            const SizedBox(height: 24),
             _header('TUS FINANZAS'),
-            ListTile(
-              key: const Key('more-spaces'),
-              leading: const Icon(Icons.home_work_outlined,
-                  color: NinaColors.accent),
-              title: const Text('Espacios compartidos'),
-              subtitle: const Text('Gastos comunes con tu pareja o familia'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/spaces'),
-            ),
-            ListTile(
-              key: const Key('more-accounts'),
-              leading: const Icon(Icons.account_balance_wallet_outlined),
-              title: const Text('Cuentas'),
-              subtitle: const Text('Banco, efectivo, tarjeta, billetera'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/accounts'),
-            ),
-            _header('PRIVACIDAD'),
-            ListTile(
-              key: const Key('more-privacy'),
-              leading: const Icon(Icons.shield_outlined),
-              title: const Text('Privacidad y permisos'),
-              subtitle: const Text('Revisa o cambia lo que aceptaste'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/privacy'),
+            NinaCard(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(children: [
+                const _Row(
+                  icon: Icons.payments_outlined,
+                  title: 'Moneda',
+                  subtitle: 'Soles (S/). Otras monedas llegarán pronto.',
+                ),
+                const Divider(height: 1, indent: 68),
+                _Row(
+                  key: const Key('more-spaces'),
+                  icon: Icons.group_outlined,
+                  title: 'Espacios compartidos',
+                  subtitle: 'Gastos comunes con tu pareja o familia',
+                  onTap: () => context.push('/spaces'),
+                ),
+                const Divider(height: 1, indent: 68),
+                _Row(
+                  key: const Key('more-accounts'),
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'Cuentas',
+                  subtitle: 'Banco, efectivo, tarjeta, billetera',
+                  onTap: () => context.push('/accounts'),
+                ),
+              ]),
             ),
             const SizedBox(height: 24),
-            ListTile(
+            _header('PRIVACIDAD'),
+            NinaCard(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: _Row(
+                key: const Key('more-privacy'),
+                icon: Icons.verified_user_outlined,
+                title: 'Privacidad y permisos',
+                subtitle: 'Revisa o cambia lo que aceptaste',
+                onTap: () => context.push('/privacy'),
+              ),
+            ),
+            const SizedBox(height: 24),
+            NinaButton(
               key: const Key('more-signout'),
-              leading: const Icon(Icons.logout, color: NinaColors.error),
-              title: const Text('Cerrar sesión',
-                  style: TextStyle(
-                      color: NinaColors.error, fontWeight: FontWeight.w600)),
-              onTap: () {
+              label: 'Cerrar sesión',
+              icon: Icons.logout,
+              variant: NinaButtonVariant.secondary,
+              onPressed: () {
                 context.read<AuthBloc>().add(const AuthSignOutRequested());
                 context.go('/login');
               },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Nina no es un banco ni una billetera, y nunca mueve tu dinero.',
+              textAlign: TextAlign.center,
+              style: NinaText.bodyS(color: NinaColors.textTertiary),
             ),
           ],
         ),
@@ -148,12 +195,33 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _header(String title) => Padding(
-        padding: const EdgeInsets.fromLTRB(8, 16, 8, 4),
-        child: Text(title,
-            style: const TextStyle(
-                fontSize: 11,
-                color: NinaColors.textTertiary,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1)),
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+        child: Text(title, style: NinaText.caps()),
+      );
+}
+
+class _Row extends StatelessWidget {
+  const _Row(
+      {super.key,
+      required this.icon,
+      required this.title,
+      required this.subtitle,
+      this.onTap});
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        leading: NinaIconBox(icon: icon, size: 40),
+        title: Text(title, style: NinaText.bodyMStrong()),
+        subtitle: Text(subtitle, style: NinaText.bodyS()),
+        trailing: onTap == null
+            ? null
+            : const Icon(Icons.chevron_right_rounded,
+                color: NinaColors.textTertiary),
       );
 }

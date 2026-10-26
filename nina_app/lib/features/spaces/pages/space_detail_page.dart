@@ -8,14 +8,27 @@ import '../../../core/utils/transaction_display.dart';
 import '../../../data/services/spaces_api_service.dart';
 import '../../../domain/models/overview.dart';
 import '../../../shared/widgets/add_transaction_sheet.dart';
+import '../../../shared/widgets/nina_ui.dart';
+import '../../transactions/widgets/transaction_row.dart';
 
 /// One shared space: its own balance and totals (US-36), who registered what
 /// (US-37), its movements, invite (US-34), add (US-35) and leave (US-38).
 class SpaceDetailPage extends StatefulWidget {
-  const SpaceDetailPage({super.key, required this.spaceId, this.api});
+  const SpaceDetailPage(
+      {super.key,
+      required this.spaceId,
+      this.api,
+      this.embedded = false,
+      this.onLeft});
 
   final String spaceId;
   final SpacesApiService? api;
+
+  /// Shown inside the Espacio tab (no back button, room for the tab bar).
+  final bool embedded;
+
+  /// Embedded only: the user left this space.
+  final VoidCallback? onLeft;
 
   @override
   State<SpaceDetailPage> createState() => _SpaceDetailPageState();
@@ -71,7 +84,7 @@ class _SpaceDetailPageState extends State<SpaceDetailPage> {
                       letterSpacing: 4)),
               const SizedBox(height: 8),
               const Text(
-                  'Compártelo por WhatsApp. Vence en 7 días. La otra persona lo ingresa en Más → Espacios compartidos → Unirme con código.',
+                  'Compártelo por WhatsApp. Vence en 7 días. La otra persona lo ingresa en Espacio → Unirme con código.',
                   textAlign: TextAlign.center),
             ],
           ),
@@ -112,7 +125,12 @@ class _SpaceDetailPageState extends State<SpaceDetailPage> {
     if (ok != true) return;
     try {
       await _api.leave(widget.spaceId);
-      if (mounted) context.pop();
+      if (!mounted) return;
+      if (widget.embedded) {
+        widget.onLeft?.call();
+      } else {
+        context.pop();
+      }
     } catch (e) {
       _snack(spacesErrorMessage(e));
     }
@@ -125,52 +143,99 @@ class _SpaceDetailPageState extends State<SpaceDetailPage> {
       builder: (context, snap) {
         final name = snap.data?.space?.name ?? 'Espacio';
         return Scaffold(
-          backgroundColor: NinaColors.background,
-          appBar: AppBar(
-            title: Text(name),
-            backgroundColor: NinaColors.background,
-            actions: [
-              IconButton(
-                  tooltip: 'Invitar',
-                  onPressed: _invite,
-                  icon: const Icon(Icons.person_add_alt_1)),
-              PopupMenuButton<String>(
-                onSelected: (_) => _leave(name),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(
-                      value: 'leave', child: Text('Salir del espacio'))
-                ],
-              ),
-            ],
+          floatingActionButton: Padding(
+            padding: EdgeInsets.only(bottom: widget.embedded ? 88 : 0),
+            child: FloatingActionButton.extended(
+              heroTag: 'space-add',
+              tooltip: 'Agregar al espacio',
+              backgroundColor: NinaColors.cocoa,
+              foregroundColor: NinaColors.textInverse,
+              onPressed: () async {
+                if (await showAddTransactionSheet(context,
+                    spaceId: widget.spaceId, spaceName: name)) {
+                  _reload();
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: Text('Añadir gasto',
+                  style: NinaText.bodySStrong(color: NinaColors.textInverse)),
+            ),
           ),
-          floatingActionButton: FloatingActionButton(
-            heroTag: 'space-add',
-            tooltip: 'Agregar al espacio',
-            backgroundColor: NinaColors.accent,
-            foregroundColor: NinaColors.background,
-            onPressed: () async {
-              if (await showAddTransactionSheet(context,
-                  spaceId: widget.spaceId, spaceName: name)) _reload();
-            },
-            child: const Icon(Icons.add),
-          ),
-          body: _body(snap),
+          body: SafeArea(bottom: false, child: _body(snap, name)),
         );
       },
     );
   }
 
-  Widget _body(AsyncSnapshot<_Data> snap) {
-    if (snap.connectionState == ConnectionState.waiting)
+  Widget _header(String name, List<MemberContribution> members) {
+    return Row(children: [
+      if (!widget.embedded) ...[
+        NinaBackButton(onTap: () => context.pop()),
+        const SizedBox(width: 12),
+      ],
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name, style: NinaText.displayL()),
+          if (members.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(children: [
+                for (var i = 0; i < members.length && i < 4; i++)
+                  Align(
+                    widthFactor: 0.75,
+                    child: NinaPersonAvatar(
+                      name: members[i].name,
+                      size: 30,
+                      color:
+                          i.isEven ? NinaColors.peach : NinaColors.accentSoft,
+                    ),
+                  ),
+                const SizedBox(width: 12),
+                Text(
+                    '${members.length} miembro${members.length == 1 ? '' : 's'}',
+                    style: NinaText.bodyS()),
+              ]),
+            ),
+        ]),
+      ),
+      NinaCircleButton(
+          icon: Icons.person_add_alt_1_outlined,
+          tooltip: 'Invitar',
+          onTap: _invite),
+      const SizedBox(width: 8),
+      PopupMenuButton<String>(
+        tooltip: 'Más opciones',
+        icon: const Icon(Icons.more_horiz, color: NinaColors.textPrimary),
+        onSelected: (v) {
+          if (v == 'leave') _leave(name);
+          if (v == 'all') context.push('/spaces');
+        },
+        itemBuilder: (_) => [
+          if (widget.embedded)
+            const PopupMenuItem(value: 'all', child: Text('Mis espacios')),
+          const PopupMenuItem(value: 'leave', child: Text('Salir del espacio')),
+        ],
+      ),
+    ]);
+  }
+
+  Widget _body(AsyncSnapshot<_Data> snap, String name) {
+    if (snap.connectionState == ConnectionState.waiting) {
       return const Center(child: CircularProgressIndicator());
+    }
     if (snap.hasError) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(spacesErrorMessage(snap.error!), textAlign: TextAlign.center),
+            Text(spacesErrorMessage(snap.error!),
+                textAlign: TextAlign.center, style: NinaText.bodyM()),
             const SizedBox(height: 12),
-            OutlinedButton(onPressed: _reload, child: const Text('Reintentar')),
+            NinaButton(
+                label: 'Reintentar',
+                variant: NinaButtonVariant.secondary,
+                expand: false,
+                onPressed: _reload),
           ]),
         ),
       );
@@ -180,74 +245,115 @@ class _SpaceDetailPageState extends State<SpaceDetailPage> {
     return RefreshIndicator(
       onRefresh: () async => _reload(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.fromLTRB(
+            NinaSpace.gutter, 16, NinaSpace.gutter, 200),
         children: [
-          SegmentedButton<OverviewPeriod>(
-            segments: [
-              for (final p in OverviewPeriod.values)
-                ButtonSegment(value: p, label: Text(p.label))
-            ],
-            selected: {_period},
-            onSelectionChanged: (s) => setState(() {
-              _period = s.first;
-              _future = _load();
-            }),
-          ),
-          const SizedBox(height: 12),
-          _card(
-            'Saldo del espacio',
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _header(name, d.overview.members),
+          const SizedBox(height: 16),
+          Row(children: [
+            for (final p in OverviewPeriod.values)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: NinaChip(
+                  label: p.label,
+                  selected: _period == p,
+                  onTap: () => setState(() {
+                    _period = p;
+                    _future = _load();
+                  }),
+                ),
+              ),
+          ]),
+          const SizedBox(height: 16),
+          NinaCard(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('SALDO DEL ESPACIO', style: NinaText.caps()),
+              const SizedBox(height: 8),
               Text(formatSoles(o.balance),
                   key: const Key('space-balance'),
-                  style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: NinaColors.textPrimary)),
+                  style: NinaText.hero().copyWith(fontSize: 44)),
               const SizedBox(height: 8),
               Text(
                   '${o.periodLabel}: gastos ${formatSoles(o.expenses)} · aportes ${formatSoles(o.income)}',
-                  style: const TextStyle(
-                      color: NinaColors.textSecondary, fontSize: 12)),
+                  style: NinaText.bodyS()),
             ]),
           ),
-          _card(
-            'Quién registró qué · ${o.periodLabel}',
-            Column(children: [
-              for (final m in d.overview.members)
-                ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                      radius: 14,
-                      child:
-                          Text(m.name.isEmpty ? '?' : m.name[0].toUpperCase())),
-                  title: Text(m.isMe ? '${m.name} (tú)' : m.name),
-                  subtitle:
-                      Text('${m.count} movimiento${m.count == 1 ? '' : 's'}'),
-                  trailing: Text('Gastos ${formatSoles(m.expenses)}'),
+          const SizedBox(height: 12),
+          const NinaNote(
+            icon: Icons.verified_user_outlined,
+            tone: NinaTone.positive,
+            text:
+                'Aquí solo aparece lo que cada uno mandó al espacio. Sus gastos personales siguen privados.',
+          ),
+          const SizedBox(height: 24),
+          NinaSectionHeader(title: 'Quién registró qué · ${o.periodLabel}'),
+          const SizedBox(height: 8),
+          NinaCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(children: [
+              for (var i = 0; i < d.overview.members.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(children: [
+                    NinaPersonAvatar(
+                        name: d.overview.members[i].name,
+                        size: 36,
+                        color: i.isEven
+                            ? NinaColors.peach
+                            : NinaColors.accentSoft),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                d.overview.members[i].isMe
+                                    ? '${d.overview.members[i].name} (tú)'
+                                    : d.overview.members[i].name,
+                                style: NinaText.bodyMStrong()),
+                            Text(
+                                '${d.overview.members[i].count} movimiento${d.overview.members[i].count == 1 ? '' : 's'}',
+                                style: NinaText.bodyS(
+                                    color: NinaColors.textTertiary)),
+                          ]),
+                    ),
+                    Text(
+                        'Gastos ${formatSoles(d.overview.members[i].expenses)}',
+                        style: NinaText.bodySStrong()),
+                  ]),
                 ),
+              ],
             ]),
           ),
-          _card(
-            'Movimientos del espacio',
-            d.movements.isEmpty
-                ? const Text(
-                    'Aún no hay movimientos. Toca + o dile a Nina "pagué 1200 de alquiler, es de la casa".',
-                    style:
-                        TextStyle(color: NinaColors.textTertiary, fontSize: 12))
+          const SizedBox(height: 24),
+          const NinaSectionHeader(title: 'Movimientos del espacio'),
+          const SizedBox(height: 8),
+          NinaCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: d.movements.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                        'Aún no hay movimientos. Toca "Añadir gasto" o dile a Nina "pagué 1200 de alquiler, es de la casa".',
+                        style: NinaText.bodyS()),
+                  )
                 : Column(children: [
-                    for (final t in d.movements)
-                      ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text((t.description?.trim().isNotEmpty ?? false)
-                            ? t.description!
-                            : categoryLabel(t.category)),
-                        subtitle: Text(
-                            '${t.isMine ? 'Tú' : t.author} · ${_day(t.date)} · ${categoryLabel(t.category)}'),
-                        trailing: Text(
-                            '${t.type == 'income' ? '+' : '−'}${formatSoles(t.amount)}'),
+                    for (var i = 0; i < d.movements.length; i++) ...[
+                      if (i > 0) const Divider(height: 1),
+                      TransactionRow(
+                        title: (d.movements[i].description?.trim().isNotEmpty ??
+                                false)
+                            ? d.movements[i].description!
+                            : categoryLabel(d.movements[i].category),
+                        meta:
+                            '${d.movements[i].isMine ? 'Tú' : d.movements[i].author} · ${_day(d.movements[i].date)} · ${categoryLabel(d.movements[i].category)}',
+                        amount: d.movements[i].amount,
+                        isIncome: d.movements[i].type == 'income',
+                        category: d.movements[i].category,
                       ),
+                    ],
                   ]),
           ),
         ],
@@ -259,21 +365,4 @@ class _SpaceDetailPageState extends State<SpaceDetailPage> {
     final d = storedDay(raw);
     return d == null ? '' : DateFormat("d 'de' MMM", 'es').format(d);
   }
-
-  Widget _card(String title, Widget child) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: NinaColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: NinaColors.border, width: 0.5),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, color: NinaColors.textPrimary)),
-          const SizedBox(height: 10),
-          child,
-        ]),
-      );
 }

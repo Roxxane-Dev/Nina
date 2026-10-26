@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/design_system.dart';
-import '../../../core/utils/category_utils.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/utils/transaction_display.dart';
 import '../../../data/repositories/supabase_finance_repository.dart';
@@ -12,6 +11,8 @@ import '../../../data/services/finance_api_service.dart';
 import '../../../domain/models/nina_user_profile.dart';
 import '../../../domain/models/overview.dart';
 import '../../../shared/widgets/add_transaction_sheet.dart';
+import '../../../shared/widgets/nina_ui.dart';
+import '../../transactions/widgets/transaction_row.dart';
 import '../widgets/audit_sheet.dart';
 
 /// Inicio (US-18 to US-21, US-04). Every figure comes from GET /v1/overview
@@ -75,10 +76,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _reload() {
-    if (mounted)
+    if (mounted) {
       setState(() {
         _dataFuture = _loadData();
       });
+    }
   }
 
   Future<void> _refreshProfile() async {
@@ -105,13 +107,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (await showAddTransactionSheet(context, api: _api)) _reload();
   }
 
-  String _greeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Buenos días';
-    if (hour < 18) return 'Buenas tardes';
-    return 'Buenas noches';
-  }
-
   String _displayName() {
     final full = _profile?.fullName?.trim();
     if (full != null && full.isNotEmpty) return full.split(' ').first;
@@ -121,114 +116,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (local.isNotEmpty) return local[0].toUpperCase() + local.substring(1);
     }
     return '';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: NinaColors.background,
-      body: SafeArea(
-        child: RefreshIndicator(
-          color: NinaColors.accent,
-          backgroundColor: NinaColors.surface,
-          onRefresh: () async {
-            await _refreshProfile();
-            _reload();
-            await _dataFuture
-                .catchError((_) => const _HomeData(_emptyOverview, []));
-          },
-          child: FutureBuilder<_HomeData>(
-            future: _dataFuture,
-            builder: (context, snap) {
-              final slivers = <Widget>[
-                SliverToBoxAdapter(child: _buildHeader())
-              ];
-              if (snap.connectionState == ConnectionState.waiting) {
-                slivers.add(const SliverToBoxAdapter(child: _Skeleton()));
-              } else if (snap.hasError) {
-                slivers
-                    .add(SliverToBoxAdapter(child: _buildError(snap.error!)));
-              } else {
-                final data = snap.data!;
-                if (!data.overview.hasHistory) {
-                  slivers.add(SliverToBoxAdapter(child: _buildEmptyState()));
-                } else {
-                  slivers.addAll([
-                    SliverToBoxAdapter(child: _buildPeriodSelector()),
-                    SliverToBoxAdapter(child: _buildHero(data.overview)),
-                    SliverToBoxAdapter(child: _buildCategories(data.overview)),
-                    SliverToBoxAdapter(child: _buildRecent(data.recent)),
-                  ]);
-                }
-              }
-              slivers
-                  .add(const SliverToBoxAdapter(child: SizedBox(height: 120)));
-              return CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: slivers);
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 1. Header: greeting + quick add.
-  Widget _buildHeader() {
-    final name = _displayName();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Text(
-              name.isEmpty ? '${_greeting()} 👋' : '${_greeting()} 👋,\n$name',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: NinaColors.textPrimary,
-                height: 1.15,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ),
-          IconButton(
-            key: const Key('home-spaces'),
-            tooltip: 'Espacios compartidos',
-            onPressed: () => context.push('/spaces'),
-            icon: const Icon(Icons.home_work_outlined,
-                color: NinaColors.textSecondary),
-          ),
-          IconButton.filledTonal(
-            key: const Key('home-add'),
-            tooltip: 'Agregar movimiento',
-            onPressed: _addManually,
-            icon: const Icon(Icons.add, color: NinaColors.accent),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 300.ms);
-  }
-
-  // 2. Period selector (US-20).
-  Widget _buildPeriodSelector() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: SegmentedButton<OverviewPeriod>(
-        segments: [
-          for (final p in OverviewPeriod.values)
-            ButtonSegment(value: p, label: Text(p.label)),
-        ],
-        selected: {_period},
-        onSelectionChanged: (s) {
-          setState(() {
-            _period = s.first;
-            _dataFuture = _loadData();
-          });
-        },
-      ),
-    );
   }
 
   void _openTransactions() {
@@ -241,195 +128,345 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // 3. Hero (US-18): balance, available, income and expenses of the period.
-  Widget _buildHero(Overview o) {
-    final change = o.expensesChange;
-    final changeText = change == 0
-        ? 'Igual que ${o.previousLabel}'
-        : '${change > 0 ? '+' : '−'}${formatSoles(change.abs())} en gastos vs. ${o.previousLabel}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF5C3DCC), Color(0xFF4228A6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          color: NinaColors.cocoa,
+          onRefresh: () async {
+            await _refreshProfile();
+            _reload();
+            await _dataFuture
+                .catchError((_) => const _HomeData(_emptyOverview, []));
+          },
+          child: FutureBuilder<_HomeData>(
+            future: _dataFuture,
+            builder: (context, snap) {
+              final children = <Widget>[_buildHeader()];
+              if (snap.connectionState == ConnectionState.waiting) {
+                children.add(const _Skeleton());
+              } else if (snap.hasError) {
+                children.add(_buildError(snap.error!));
+              } else {
+                final data = snap.data!;
+                if (!data.overview.hasHistory) {
+                  children.addAll([_buildEmptyState(), _buildAskNina()]);
+                } else {
+                  children.addAll([
+                    _buildPeriodSelector(),
+                    _buildHero(data.overview),
+                    _buildAskNina(),
+                    _buildQuickActions(),
+                    _buildCategories(data.overview),
+                    _buildRecent(data.recent),
+                  ]);
+                }
+              }
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                    NinaSpace.gutter, 12, NinaSpace.gutter, 128),
+                children: [
+                  for (final c in children)
+                    Padding(
+                        padding: const EdgeInsets.only(bottom: 20), child: c),
+                ],
+              );
+            },
           ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        padding: const EdgeInsets.all(18),
-        margin: const EdgeInsets.only(bottom: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _HeroLabel('SALDO SEGÚN TUS MOVIMIENTOS'),
-            const SizedBox(height: 6),
-            Text(
-              formatSoles(o.balance),
-              key: const Key('home-balance'),
-              style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  height: 1),
-            ),
-            const SizedBox(height: 14),
-            Container(height: 1, color: Colors.white.withAlpha(40)),
-            const SizedBox(height: 12),
-            _HeroLabel('DISPONIBLE · ${o.periodLabel.toUpperCase()}'),
-            const SizedBox(height: 4),
-            Text(
-              formatSoles(o.available),
-              key: const Key('home-available'),
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: o.available >= 0
-                    ? NinaColors.accent
-                    : NinaColors.errorLight,
-              ),
-            ),
-            if (o.audit != null)
-              TextButton(
-                key: const Key('home-audit'),
-                style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 28),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    alignment: Alignment.centerLeft),
-                onPressed: () => showAuditSheet(
-                  context,
-                  audit: o.audit!,
-                  onViewTransactions: _openTransactions,
-                ),
-                child: Text('Cómo calculé esto',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withAlpha(210),
-                        decoration: TextDecoration.underline)),
-              ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                    child: _HeroFigure(label: 'INGRESOS', value: o.income)),
-                Container(
-                    width: 1, height: 32, color: Colors.white.withAlpha(40)),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 16),
-                    child: _HeroFigure(label: 'GASTOS', value: o.expenses),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(changeText,
-                style: TextStyle(
-                    fontSize: 11, color: Colors.white.withAlpha(190))),
-          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    final name = _displayName();
+    final today = DateFormat("EEEE d 'de' MMMM", 'es').format(DateTime.now());
+    return Row(
+      children: [
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(today[0].toUpperCase() + today.substring(1),
+                style: NinaText.bodyS(color: NinaColors.textTertiary)),
+            const SizedBox(height: 2),
+            Text(name.isEmpty ? 'Hola' : 'Hola, $name',
+                style: NinaText.displayM()),
+          ]),
+        ),
+        GestureDetector(
+          key: const Key('home-profile'),
+          onTap: () => context.push('/profile'),
+          child: NinaPersonAvatar(name: name.isEmpty ? 'N' : name),
+        ),
+      ],
+    ).animate().fadeIn(duration: 300.ms);
+  }
+
+  Widget _buildPeriodSelector() {
+    return Row(children: [
+      for (final p in OverviewPeriod.values)
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: NinaChip(
+            key: Key('home-period-${p.param}'),
+            label: p.label,
+            selected: _period == p,
+            onTap: () => setState(() {
+              _period = p;
+              _dataFuture = _loadData();
+            }),
+          ),
+        ),
+    ]);
+  }
+
+  // Hero (US-18): available of the period, income/expenses and balance.
+  Widget _buildHero(Overview o) {
+    final positive = o.available >= 0;
+    final change = o.expensesChange;
+    final changeText = change == 0
+        ? 'Gastos iguales que en ${o.previousLabel}'
+        : '${change > 0 ? '+' : '−'}${formatSoles(change.abs())} en gastos vs. ${o.previousLabel}';
+    return NinaCard(
+      padding: const EdgeInsets.all(22),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+            child: Text('DISPONIBLE · ${o.periodLabel.toUpperCase()}',
+                style: NinaText.caps()),
+          ),
+          NinaPill(
+            label: positive ? 'En positivo' : 'En rojo',
+            tone: positive ? NinaTone.positive : NinaTone.negative,
+          ),
+        ]),
+        const SizedBox(height: 10),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            formatSoles(o.available),
+            key: const Key('home-available'),
+            style: NinaText.hero(
+                color: positive ? NinaColors.textPrimary : NinaColors.error),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(
+              child: _HeroFigure(
+                  label: 'Ingresos',
+                  value: o.income,
+                  color: NinaColors.success)),
+          Expanded(child: _HeroFigure(label: 'Gastos', value: o.expenses)),
+        ]),
+        const SizedBox(height: 12),
+        Text(changeText, style: NinaText.bodyS(color: NinaColors.textTertiary)),
+        const SizedBox(height: 14),
+        const Divider(height: 1),
+        const SizedBox(height: 12),
+        Row(children: [
+          Text('Saldo según tus movimientos ',
+              style: NinaText.bodyS(color: NinaColors.textTertiary)),
+          Text(formatSoles(o.balance),
+              key: const Key('home-balance'), style: NinaText.bodySStrong()),
+        ]),
+        if (o.audit != null) ...[
+          const SizedBox(height: 6),
+          InkWell(
+            key: const Key('home-audit'),
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => showAuditSheet(
+              context,
+              audit: o.audit!,
+              onViewTransactions: _openTransactions,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(children: [
+                const Icon(Icons.calculate_outlined,
+                    size: 18, color: NinaColors.accent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Cómo calculé esto',
+                      style: NinaText.bodyMStrong(color: NinaColors.accent)),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    size: 20, color: NinaColors.accent),
+              ]),
+            ),
+          ),
+        ],
+      ]),
     ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0);
   }
 
-  // 4. Spend by category (US-19).
-  Widget _buildCategories(Overview o) {
-    return _Section(
-      title: 'En qué gastas · ${o.periodLabel}',
-      child: o.categories.isEmpty
-          ? Text(
-              'No tienes gastos registrados en ${o.periodLabel}.',
-              style:
-                  const TextStyle(color: NinaColors.textTertiary, fontSize: 12),
-            )
-          : Column(
-              children: [
-                for (final c in o.categories.take(5))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Text(CategoryUtils.categoryEmoji(c.slug),
-                                style: const TextStyle(fontSize: 14)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(c.label,
-                                  style: const TextStyle(
-                                      color: NinaColors.textPrimary,
-                                      fontSize: 13)),
-                            ),
-                            Text(
-                              '${formatSoles(c.amount)} · ${c.sharePct}%',
-                              style: const TextStyle(
-                                  color: NinaColors.textSecondary,
-                                  fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: c.sharePct / 100,
-                            minHeight: 6,
-                            backgroundColor: NinaColors.surfaceAlt,
-                            color: NinaColors.primaryLight,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
+  /// Entry point to the chat. No figures here: numbers live in the hero.
+  Widget _buildAskNina() {
+    return NinaCard(
+      color: NinaColors.cocoa,
+      border: false,
+      onTap: () => context.go('/chat'),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const NinaMark(size: 28),
+          const SizedBox(width: 10),
+          Text('Nina', style: NinaText.bodySStrong(color: NinaColors.peach)),
+        ]),
+        const SizedBox(height: 12),
+        Text(
+            '¿Me alcanza para eso que estás pensando? Pregúntame y te respondo con tus números.',
+            style: NinaText.bodyL(color: NinaColors.textInverse)),
+        const SizedBox(height: 14),
+        Container(
+          key: const Key('home-ask'),
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          decoration: BoxDecoration(
+            color: NinaColors.textInverse.withAlpha(26),
+            borderRadius: BorderRadius.circular(NinaRadii.pill),
+          ),
+          child: Row(children: [
+            const NinaSparkle(size: 16),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text('Pregúntale a Nina…',
+                  style: NinaText.bodyM(
+                      color: NinaColors.textInverse.withAlpha(180))),
             ),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                  color: NinaColors.peach, shape: BoxShape.circle),
+              child: const Icon(Icons.arrow_upward_rounded,
+                  size: 16, color: NinaColors.cocoa),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 
-  // 5. Latest movements (list only).
-  Widget _buildRecent(List<Map<String, dynamic>> rows) {
-    return _Section(
-      title: 'Últimos movimientos',
-      trailing: TextButton(
-          onPressed: () => context.go('/transactions'),
-          child: const Text('Ver todos')),
-      child: Column(
-        children: [
-          for (final r in rows)
-            ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: Text(
-                  CategoryUtils.categoryEmoji((r['category'] ?? '').toString()),
-                  style: const TextStyle(fontSize: 18)),
-              title: Text(
-                (r['description'] as String?)?.trim().isNotEmpty == true
-                    ? r['description'] as String
-                    : categoryLabel(r['category'] as String?),
-                style: const TextStyle(
-                    color: NinaColors.textPrimary, fontSize: 13),
-              ),
-              subtitle: Text(
-                _dayLabel(r['date'] as String?),
-                style: const TextStyle(
-                    color: NinaColors.textTertiary, fontSize: 11),
-              ),
-              trailing: Text(
-                '${r['type'] == 'income' ? '+' : '−'}${formatSoles(((r['amount'] as num?) ?? 0).toDouble())}',
-                style: TextStyle(
-                  color: r['type'] == 'income'
-                      ? NinaColors.success
-                      : NinaColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
+  Widget _buildQuickActions() {
+    Widget action(Key key, IconData icon, String label, VoidCallback onTap,
+            {bool primary = false}) =>
+        Expanded(
+          child: Material(
+            color: primary ? NinaColors.peachSoft : NinaColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(
+                  color: primary ? NinaColors.peach : NinaColors.border),
+            ),
+            child: InkWell(
+              key: key,
+              borderRadius: BorderRadius.circular(20),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      NinaIconBox(
+                        icon: icon,
+                        size: 36,
+                        background:
+                            primary ? NinaColors.cocoa : NinaColors.surfaceAlt,
+                        foreground: primary
+                            ? NinaColors.textInverse
+                            : NinaColors.textPrimary,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(label, style: NinaText.bodySStrong()),
+                    ]),
               ),
             ),
-        ],
+          ),
+        );
+    return Row(children: [
+      action(const Key('home-add'), Icons.add, 'Añadir gasto', _addManually,
+          primary: true),
+      const SizedBox(width: 10),
+      action(const Key('home-spaces'), Icons.group_outlined, 'Espacio',
+          () => context.go('/space')),
+      const SizedBox(width: 10),
+      action(const Key('home-goals'), Icons.track_changes_outlined, 'Metas',
+          () => context.go('/goals')),
+    ]);
+  }
+
+  // Spend by category (US-19).
+  Widget _buildCategories(Overview o) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      NinaSectionHeader(title: '¿En qué se va? · ${o.periodLabel}'),
+      const SizedBox(height: 8),
+      NinaCard(
+        child: o.categories.isEmpty
+            ? Text('No tienes gastos registrados en ${o.periodLabel}.',
+                style: NinaText.bodyS())
+            : Column(children: [
+                for (final c in o.categories.take(5))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(children: [
+                      Row(children: [
+                        Icon(categoryIcon(c.slug),
+                            size: 18, color: NinaColors.textSecondary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                            child:
+                                Text(c.label, style: NinaText.bodyMStrong())),
+                        Text('${formatSoles(c.amount)} · ${c.sharePct}%',
+                            style: NinaText.bodySStrong()),
+                      ]),
+                      const SizedBox(height: 8),
+                      NinaProgressBar(value: c.sharePct / 100, height: 6),
+                    ]),
+                  ),
+              ]),
       ),
-    );
+    ]);
+  }
+
+  // Latest movements (list only).
+  Widget _buildRecent(List<Map<String, dynamic>> rows) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      NinaSectionHeader(
+        title: 'Últimos movimientos',
+        action: 'Ver todos',
+        onAction: () => context.go('/transactions'),
+      ),
+      const SizedBox(height: 8),
+      NinaCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: rows.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child:
+                    Text('Sin movimientos recientes.', style: NinaText.bodyS()))
+            : Column(children: [
+                for (var i = 0; i < rows.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  TransactionRow(
+                    title: (rows[i]['description'] as String?)
+                                ?.trim()
+                                .isNotEmpty ==
+                            true
+                        ? rows[i]['description'] as String
+                        : categoryLabel(rows[i]['category'] as String?),
+                    meta:
+                        '${categoryLabel(rows[i]['category'] as String?)} · ${_dayLabel(rows[i]['date'] as String?)}',
+                    amount: ((rows[i]['amount'] as num?) ?? 0).toDouble(),
+                    isIncome: rows[i]['type'] == 'income',
+                    category: rows[i]['category'] as String?,
+                  ),
+                ],
+              ]),
+      ),
+    ]);
   }
 
   String _dayLabel(String? raw) {
@@ -439,63 +476,50 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Empty state (US-21, US-04): invite to the first movement.
   Widget _buildEmptyState() {
-    return Padding(
+    return NinaCard(
       key: const Key('home-empty'),
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: NinaColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: NinaColors.border),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const NinaIconBox(
+            icon: Icons.receipt_long_outlined,
+            size: 56,
+            background: NinaColors.peachSoft),
+        const SizedBox(height: 16),
+        Text('Aún no tienes movimientos', style: NinaText.titleL()),
+        const SizedBox(height: 8),
+        Text(
+          'Registra tu primer ingreso o gasto y Nina empezará a mostrarte en qué se va tu plata. '
+          'Puedes contárselo como a una amiga: "me pagaron 3500" o "gasté 25 en taxi".',
+          style: NinaText.bodyM(),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Aún no tienes movimientos',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: NinaColors.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Registra tu primer ingreso o gasto y Nina empezará a mostrarte en qué se va tu plata. '
-              'Puedes contárselo como a una amiga: "me pagaron 3500" o "gasté 25 en taxi".',
-              style: TextStyle(color: NinaColors.textSecondary, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => context.go('/chat'),
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Contárselo a Nina'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _addManually,
-              icon: const Icon(Icons.edit_note),
-              label: const Text('Agregar manualmente'),
-            ),
-          ],
+        const SizedBox(height: 16),
+        NinaButton(
+          label: 'Contárselo a Nina',
+          icon: Icons.auto_awesome_outlined,
+          onPressed: () => context.go('/chat'),
         ),
-      ),
+        const SizedBox(height: 8),
+        NinaButton(
+          key: const Key('home-add'),
+          label: 'Agregar manualmente',
+          variant: NinaButtonVariant.secondary,
+          onPressed: _addManually,
+        ),
+      ]),
     );
   }
 
   Widget _buildError(Object error) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Text(financeErrorMessage(error),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: NinaColors.textSecondary)),
-          const SizedBox(height: 12),
-          OutlinedButton(onPressed: _reload, child: const Text('Reintentar')),
-        ],
-      ),
-    );
+    return Column(children: [
+      const SizedBox(height: 40),
+      Text(financeErrorMessage(error),
+          textAlign: TextAlign.center, style: NinaText.bodyM()),
+      const SizedBox(height: 12),
+      NinaButton(
+          label: 'Reintentar',
+          variant: NinaButtonVariant.secondary,
+          expand: false,
+          onPressed: _reload),
+    ]);
   }
 }
 
@@ -515,97 +539,38 @@ const _emptyOverview = Overview(
   expensesChange: 0,
 );
 
-class _HeroLabel extends StatelessWidget {
-  const _HeroLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: const TextStyle(
-            fontSize: 10,
-            color: Color(0xB3E2DDF5),
-            letterSpacing: 0.8,
-            fontWeight: FontWeight.w600),
-      );
-}
-
 class _HeroFigure extends StatelessWidget {
-  const _HeroFigure({required this.label, required this.value});
+  const _HeroFigure(
+      {required this.label,
+      required this.value,
+      this.color = NinaColors.textPrimary});
   final String label;
   final double value;
+  final Color color;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _HeroLabel(label),
-          const SizedBox(height: 4),
-          Text(formatSoles(value),
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white)),
-        ],
-      );
-}
-
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child, this.trailing});
-  final String title;
-  final Widget child;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: NinaColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: NinaColors.border, width: 0.5),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(title,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: NinaColors.textPrimary)),
-                  ),
-                  if (trailing != null) trailing!,
-                ],
-              ),
-              const SizedBox(height: 8),
-              child,
-            ],
-          ),
-        ),
-      );
+  Widget build(BuildContext context) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: NinaText.bodyS()),
+        const SizedBox(height: 2),
+        Text(formatSoles(value), style: NinaText.number(color: color)),
+      ]);
 }
 
 class _Skeleton extends StatelessWidget {
   const _Skeleton();
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            for (final h in [180.0, 140.0, 120.0])
-              Container(
-                height: h,
-                margin: const EdgeInsets.only(bottom: 14),
-                decoration: BoxDecoration(
-                    color: NinaColors.surface,
-                    borderRadius: BorderRadius.circular(16)),
-              ),
-          ],
-        ),
+  Widget build(BuildContext context) => Column(
+        children: [
+          for (final h in [220.0, 150.0, 120.0])
+            Container(
+              height: h,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                  color: NinaColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(NinaRadii.lg)),
+            ),
+        ],
       );
 }

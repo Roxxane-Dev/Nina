@@ -6,6 +6,7 @@ import '../bloc/chat_message.dart';
 export '../../../core/utils/money.dart' show formatSoles;
 
 /// Figures card under Nina's answer (FDS §6.4) with "Cómo lo calculé".
+/// Every number comes from the backend card (engine), never from LLM text.
 class AnswerCardView extends StatelessWidget {
   const AnswerCardView({super.key, required this.card});
 
@@ -16,7 +17,7 @@ class AnswerCardView extends StatelessWidget {
       case 'positive':
         return NinaColors.success;
       case 'negative':
-        return NinaColors.errorLight;
+        return NinaColors.error;
       default:
         return NinaColors.textPrimary;
     }
@@ -26,38 +27,29 @@ class AnswerCardView extends StatelessWidget {
   Widget build(BuildContext context) {
     final highlight = card.highlight;
     return Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(16),
       constraints: const BoxConstraints(maxWidth: 340),
       decoration: BoxDecoration(
-        color: NinaColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: NinaColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(NinaRadii.md),
         border: Border.all(color: NinaColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(card.title,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: NinaColors.textPrimary)),
+          Text(card.title, style: NinaText.bodyMStrong()),
           const SizedBox(height: 2),
           Text(card.subtitle,
-              style: const TextStyle(
-                  fontSize: 11, color: NinaColors.textTertiary)),
+              style: NinaText.bodyS(color: NinaColors.textTertiary)),
           if (highlight != null) ...[
-            const SizedBox(height: 10),
-            Text(highlight.label,
-                style: const TextStyle(
-                    fontSize: 11, color: NinaColors.textSecondary)),
+            const SizedBox(height: 12),
+            Text(highlight.label, style: NinaText.bodyS()),
             Text(
               formatSoles(highlight.amount),
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
+              style: NinaText.displayM(
                 color: highlight.tone == 'neutral'
-                    ? NinaColors.accent
+                    ? NinaColors.textPrimary
                     : _tone(highlight.tone),
               ),
             ),
@@ -65,28 +57,21 @@ class AnswerCardView extends StatelessWidget {
           if (card.rows.isNotEmpty) const SizedBox(height: 8),
           for (final row in card.rows)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
-                  Expanded(
-                    child: Text(row.label,
-                        style: const TextStyle(
-                            fontSize: 12, color: NinaColors.textSecondary)),
-                  ),
+                  Expanded(child: Text(row.label, style: NinaText.bodyS())),
                   Text(formatSoles(row.amount),
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _tone(row.tone))),
+                      style: NinaText.bodySStrong(color: _tone(row.tone))),
                 ],
               ),
             ),
           if (card.confidence == 'low' || card.confidence == 'insufficient')
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
               child: Text(
                 'Pocos movimientos registrados: las cifras pueden cambiar.',
-                style: TextStyle(fontSize: 11, color: NinaColors.warning),
+                style: NinaText.bodyS(color: NinaColors.warning),
               ),
             ),
           Theme(
@@ -95,15 +80,16 @@ class AnswerCardView extends StatelessWidget {
               tilePadding: EdgeInsets.zero,
               childrenPadding: const EdgeInsets.only(bottom: 4),
               dense: true,
-              title: const Text('Cómo lo calculé',
-                  style:
-                      TextStyle(fontSize: 11, color: NinaColors.primaryLight)),
+              leading: const Icon(Icons.calculate_outlined,
+                  size: 18, color: NinaColors.accent),
+              title: Text('Cómo lo calculé',
+                  style: NinaText.bodySStrong(color: NinaColors.accent)),
               children: [
-                Text(card.howCalculated,
-                    style: const TextStyle(
-                        fontSize: 11,
-                        color: NinaColors.textTertiary,
-                        height: 1.4)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(card.howCalculated,
+                      style: NinaText.bodyS(color: NinaColors.textSecondary)),
+                ),
               ],
             ),
           ),

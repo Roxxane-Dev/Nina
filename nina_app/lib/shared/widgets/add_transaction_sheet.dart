@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/design_system.dart';
+import '../../core/utils/transaction_display.dart';
 import '../../data/services/accounts_api_service.dart';
 import '../../data/services/finance_api_service.dart';
+import '../../data/services/spaces_api_service.dart';
+import 'nina_ui.dart';
 
 /// Canonical engine categories (packages/finance-engine/src/categories.ts).
 const expenseCategories = <String, String>{
@@ -32,10 +35,6 @@ Future<bool> showAddTransactionSheet(BuildContext context,
   final saved = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: NinaColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (_) => AddTransactionSheet(
       api: api ?? FinanceApiService.instance,
       spaceId: spaceId,
@@ -51,17 +50,22 @@ class AddTransactionSheet extends StatefulWidget {
       required this.api,
       this.spaceId,
       this.spaceName,
-      this.loadAccounts});
+      this.loadAccounts,
+      this.loadSpaces});
 
   final FinanceApiService api;
 
-  /// When set, the movement goes to this shared space (US-35/36).
+  /// When set, the movement goes to this shared space (US-35/36) and the
+  /// Personal/space switch is hidden.
   final String? spaceId;
   final String? spaceName;
 
   /// US-41 account options; injectable for tests. Errors (e.g. accounts not
   /// enabled yet) simply hide the field.
   final Future<List<Account>> Function()? loadAccounts;
+
+  /// Spaces the user belongs to, for "¿Dónde va?". Errors hide the switch.
+  final Future<List<SpaceSummary>> Function()? loadSpaces;
 
   @override
   State<AddTransactionSheet> createState() => _AddTransactionSheetState();
@@ -77,15 +81,24 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   String? _error;
   List<Account> _accounts = const [];
   String? _accountId;
+  List<SpaceSummary> _spaces = const [];
+  String? _targetSpaceId; // null = Personal
 
   @override
   void initState() {
     super.initState();
     final load = widget.loadAccounts ?? AccountsApiService.instance.list;
     load().then((list) {
-      if (mounted)
+      if (mounted) {
         setState(() => _accounts = list.where((a) => !a.archived).toList());
+      }
     }).catchError((_) {});
+    if (widget.spaceId == null) {
+      final loadSpaces = widget.loadSpaces ?? SpacesApiService.instance.list;
+      loadSpaces().then((list) {
+        if (mounted) setState(() => _spaces = list);
+      }).catchError((_) {});
+    }
   }
 
   Map<String, String> get _categories =>
@@ -132,7 +145,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
         category: _category,
         date: DateFormat('yyyy-MM-dd').format(_date),
         note: _note.text,
-        spaceId: widget.spaceId,
+        spaceId: widget.spaceId ?? _targetSpaceId,
         accountId: _accountId,
       );
       if (mounted) Navigator.of(context).pop(true);
@@ -146,102 +159,219 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
     }
   }
 
+  String _dateLabel() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(_date.year, _date.month, _date.day);
+    if (d == today) return 'Hoy';
+    if (d == today.subtract(const Duration(days: 1))) return 'Ayer';
+    return DateFormat("d 'de' MMMM yyyy", 'es').format(_date);
+  }
+
   @override
   Widget build(BuildContext context) {
     final inset = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + inset),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            widget.spaceName == null
-                ? 'Nuevo movimiento'
-                : 'Nuevo movimiento · ${widget.spaceName}',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: NinaColors.textPrimary),
-          ),
-          const SizedBox(height: 16),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'expense', label: Text('Gasto')),
-              ButtonSegment(value: 'income', label: Text('Ingreso')),
-            ],
-            selected: {_type},
-            onSelectionChanged: (s) => setState(() {
-              _type = s.first;
-              _category = _type == 'expense' ? 'food' : 'salary';
-            }),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('amount'),
-            controller: _amount,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
-            ],
-            decoration:
-                const InputDecoration(labelText: 'Monto', prefixText: 'S/ '),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            key: ValueKey(_type),
-            initialValue: _category,
-            decoration: const InputDecoration(labelText: 'Categoría'),
-            items: [
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(24, 0, 24, 20 + inset),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              widget.spaceName == null
+                  ? 'Nuevo movimiento'
+                  : 'Nuevo movimiento · ${widget.spaceName}',
+              style: NinaText.displayM(),
+            ),
+            const SizedBox(height: 16),
+            _TypeSwitch(
+              value: _type,
+              onChanged: (v) => setState(() {
+                _type = v;
+                _category = v == 'expense' ? 'food' : 'salary';
+              }),
+            ),
+            const SizedBox(height: 16),
+            // Big amount (Figma 3.4).
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: NinaColors.surface,
+                borderRadius: BorderRadius.circular(NinaRadii.lg),
+                border: Border.all(color: NinaColors.border),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text('S/ ',
+                      style: NinaText.displayM(color: NinaColors.textTertiary)),
+                  Expanded(
+                    child: TextField(
+                      key: const Key('amount'),
+                      controller: _amount,
+                      autofocus: true,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
+                      ],
+                      style: NinaText.hero().copyWith(fontSize: 44),
+                      decoration: InputDecoration(
+                        hintText: '0.00',
+                        hintStyle: NinaText.hero(color: NinaColors.borderStrong)
+                            .copyWith(fontSize: 44),
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            NinaField(
+              label: 'Descripción (opcional)',
+              controller: _note,
+              hint: _type == 'expense' ? 'Ej. Tambo, almuerzo' : 'Ej. Sueldo',
+              maxLength: 140,
+            ),
+            const SizedBox(height: 16),
+            Text('Categoría',
+                style: NinaText.bodySStrong(color: NinaColors.textSecondary)),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: [
               for (final e in _categories.entries)
-                DropdownMenuItem(value: e.key, child: Text(e.value)),
+                NinaChip(
+                  key: Key('category-${e.key}'),
+                  label: e.value,
+                  icon: categoryIcon(e.key),
+                  selected: _category == e.key,
+                  onTap: () => setState(() => _category = e.key),
+                ),
+            ]),
+            if (widget.spaceId == null && _spaces.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text('¿Dónde va?',
+                  style: NinaText.bodySStrong(color: NinaColors.textSecondary)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                NinaChip(
+                  key: const Key('target-personal'),
+                  label: 'Personal',
+                  icon: Icons.lock_outline,
+                  selected: _targetSpaceId == null,
+                  onTap: () => setState(() => _targetSpaceId = null),
+                ),
+                for (final s in _spaces)
+                  NinaChip(
+                    key: Key('target-${s.id}'),
+                    label: s.name,
+                    icon: Icons.group_outlined,
+                    selected: _targetSpaceId == s.id,
+                    onTap: () => setState(() => _targetSpaceId = s.id),
+                  ),
+              ]),
+              const SizedBox(height: 6),
+              Text(
+                _targetSpaceId == null
+                    ? 'Solo lo ves tú.'
+                    : 'Lo ven los miembros del espacio.',
+                style: NinaText.bodyS(color: NinaColors.textTertiary),
+              ),
             ],
-            onChanged: (v) => setState(() => _category = v ?? _category),
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: _pickDate,
-            child: InputDecorator(
-              decoration: const InputDecoration(labelText: 'Fecha'),
-              child: Text(DateFormat("d 'de' MMMM yyyy", 'es').format(_date)),
+            const SizedBox(height: 16),
+            Material(
+              color: NinaColors.surface,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(NinaRadii.md),
+                  side: const BorderSide(color: NinaColors.border)),
+              child: ListTile(
+                key: const Key('date'),
+                onTap: _pickDate,
+                leading: const Icon(Icons.calendar_today_outlined,
+                    size: 20, color: NinaColors.textSecondary),
+                title: Text('Fecha', style: NinaText.bodyS()),
+                trailing: Text(_dateLabel(), style: NinaText.bodyMStrong()),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          if (_accounts.isNotEmpty) ...[
-            DropdownButtonFormField<String?>(
-              key: const Key('account'),
-              initialValue: _accountId,
-              decoration: const InputDecoration(labelText: 'Cuenta (opcional)'),
-              items: [
-                const DropdownMenuItem<String?>(
-                    value: null, child: Text('Sin cuenta')),
-                for (final a in _accounts)
-                  DropdownMenuItem<String?>(value: a.id, child: Text(a.name)),
-              ],
-              onChanged: (v) => setState(() => _accountId = v),
+            if (_accounts.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String?>(
+                key: const Key('account'),
+                initialValue: _accountId,
+                decoration:
+                    const InputDecoration(labelText: 'Cuenta (opcional)'),
+                items: [
+                  const DropdownMenuItem<String?>(
+                      value: null, child: Text('Sin cuenta')),
+                  for (final a in _accounts)
+                    DropdownMenuItem<String?>(value: a.id, child: Text(a.name)),
+                ],
+                onChanged: (v) => setState(() => _accountId = v),
+              ),
+            ],
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(_error!,
+                    style: NinaText.bodyS(color: NinaColors.error)),
+              ),
+            const SizedBox(height: 20),
+            NinaButton(
+              key: const Key('save'),
+              label: 'Guardar',
+              loading: _saving,
+              onPressed: _save,
             ),
-            const SizedBox(height: 12),
           ],
-          TextField(
-            controller: _note,
-            maxLength: 140,
-            decoration: const InputDecoration(labelText: 'Nota (opcional)'),
-          ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(_error!,
-                  style: const TextStyle(
-                      color: NinaColors.errorLight, fontSize: 12)),
-            ),
-          FilledButton(
-            key: const Key('save'),
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'Guardando…' : 'Guardar'),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
+
+class _TypeSwitch extends StatelessWidget {
+  const _TypeSwitch({required this.value, required this.onChanged});
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+            color: NinaColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(NinaRadii.pill)),
+        child: Row(children: [
+          for (final (v, label) in const [
+            ('expense', 'Gasto'),
+            ('income', 'Ingreso')
+          ])
+            Expanded(
+              child: GestureDetector(
+                key: Key('type-$v'),
+                onTap: () => onChanged(v),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: value == v ? NinaColors.surface : null,
+                    borderRadius: BorderRadius.circular(NinaRadii.pill),
+                    boxShadow: value == v ? NinaShadows.card : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(label,
+                      style: NinaText.bodySStrong(
+                          color: value == v
+                              ? NinaColors.textPrimary
+                              : NinaColors.textSecondary)),
+                ),
+              ),
+            ),
+        ]),
+      );
 }

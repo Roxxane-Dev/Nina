@@ -5,6 +5,7 @@ import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_message.dart';
 import '../../../core/theme/design_system.dart';
+import '../../../shared/widgets/nina_ui.dart';
 import 'answer_card.dart';
 
 class MessageBubble extends StatelessWidget {
@@ -15,7 +16,7 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         mainAxisAlignment:
             message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -30,8 +31,8 @@ class MessageBubble extends StatelessWidget {
                 _buildBubble(context),
                 if (message.card != null) AnswerCardView(card: message.card!),
                 if (message.isConfirmation)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
                     child: _ConfirmationButtons(),
                   ),
               ],
@@ -46,99 +47,75 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildBubble(BuildContext context) {
-    // Nina's messages: Asymmetric bubble (rounded except top-left)
     if (!message.isUser) {
       return Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: const BoxConstraints(maxWidth: 340),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1535),
+          color: NinaColors.surface,
+          border: Border.all(color: NinaColors.border),
+          boxShadow: NinaShadows.card,
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(4),
-            topRight: Radius.circular(14),
-            bottomLeft: Radius.circular(14),
-            bottomRight: Radius.circular(14),
+            topLeft: Radius.circular(NinaRadii.bubble),
+            topRight: Radius.circular(NinaRadii.bubble),
+            bottomLeft: Radius.circular(6),
+            bottomRight: Radius.circular(NinaRadii.bubble),
           ),
         ),
-        child: Text(
-          message.text,
-          style: const TextStyle(
-            fontSize: 12,
-            color: NinaColors.textSecondary,
-            height: 1.5,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              const NinaMark(size: 20),
+              const SizedBox(width: 8),
+              Text('Nina', style: NinaText.bodySStrong()),
+            ]),
+            const SizedBox(height: 8),
+            Text(message.text,
+                style: NinaText.bodyL(color: NinaColors.textPrimary)),
+          ],
         ),
       );
     }
 
-    // User messages: Primary bubble, asymmetric (rounded except top-right)
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: NinaColors.primary,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(14),
-          topRight: Radius.circular(4),
-          bottomLeft: Radius.circular(14),
-          bottomRight: Radius.circular(14),
+      constraints: const BoxConstraints(maxWidth: 300),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: NinaColors.userBubble,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(NinaRadii.bubble),
+          topRight: Radius.circular(NinaRadii.bubble),
+          bottomLeft: Radius.circular(NinaRadii.bubble),
+          bottomRight: Radius.circular(6),
         ),
       ),
-      child: Text(
-        message.text,
-        style: const TextStyle(
-          fontSize: 12,
-          color: Colors.white,
-          height: 1.5,
-        ),
-      ),
+      child: Text(message.text,
+          style: NinaText.bodyM(color: NinaColors.textInverse)),
     );
   }
 }
 
 class _ConfirmationButtons extends StatelessWidget {
+  const _ConfirmationButtons();
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: NinaColors.surface,
-        borderRadius: BorderRadius.circular(NinaRadii.card),
-        border: Border.all(color: NinaColors.divider),
+    return Wrap(spacing: 8, runSpacing: 8, children: [
+      NinaSmallAction(
+        key: const Key('chat-confirm'),
+        label: 'Sí, dale',
+        icon: Icons.check_rounded,
+        filled: true,
+        onTap: () =>
+            context.read<ChatBloc>().add(const ChatConfirmationAccepted()),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            '¿Lo registro?',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => context
-                      .read<ChatBloc>()
-                      .add(const ChatConfirmationAccepted()),
-                  child: const Text('Confirmar'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => context
-                      .read<ChatBloc>()
-                      .add(const ChatConfirmationRejected()),
-                  child: const Text('Cancelar'),
-                ),
-              ),
-            ],
-          ),
-        ],
+      NinaSmallAction(
+        key: const Key('chat-reject'),
+        label: 'No, gracias',
+        onTap: () =>
+            context.read<ChatBloc>().add(const ChatConfirmationRejected()),
       ),
-    );
+    ]);
   }
 }

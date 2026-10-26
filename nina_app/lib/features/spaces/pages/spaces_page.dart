@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/design_system.dart';
 import '../../../data/services/spaces_api_service.dart';
+import '../../../shared/widgets/nina_ui.dart';
 
 /// Shared spaces list: create (US-33) and join with a code (US-34).
+/// In the Espacio tab ([embedded]) it is the empty state.
 class SpacesPage extends StatefulWidget {
-  const SpacesPage({super.key, this.api});
+  const SpacesPage(
+      {super.key, this.api, this.embedded = false, this.onChanged});
 
   final SpacesApiService? api;
+  final bool embedded;
+
+  /// Embedded only: a space was created or joined.
+  final VoidCallback? onChanged;
 
   @override
   State<SpacesPage> createState() => _SpacesPageState();
@@ -69,6 +76,10 @@ class _SpacesPageState extends State<SpacesPage> {
     if (ok != true || name.text.trim().isEmpty) return;
     try {
       final s = await _api.create(name.text.trim(), type);
+      if (widget.embedded) {
+        widget.onChanged?.call();
+        return;
+      }
       _reload();
       if (mounted) context.push('/spaces/${s.id}');
     } catch (e) {
@@ -103,8 +114,12 @@ class _SpacesPageState extends State<SpacesPage> {
     if (ok != true) return;
     try {
       final s = await _api.join(code.text);
-      _reload();
       _snack('Te uniste a «${s.name}».');
+      if (widget.embedded) {
+        widget.onChanged?.call();
+      } else {
+        _reload();
+      }
     } catch (e) {
       _snack(spacesErrorMessage(e));
     }
@@ -112,80 +127,114 @@ class _SpacesPageState extends State<SpacesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: NinaColors.background,
-      appBar: AppBar(
-          title: const Text('Espacios compartidos'),
-          backgroundColor: NinaColors.background),
-      body: FutureBuilder<List<SpaceSummary>>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting)
-            return const Center(child: CircularProgressIndicator());
-          final children = <Widget>[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Text(
-                'Gestiona los gastos comunes (alquiler, mercado, servicios) con tu pareja o familia. '
-                'Tus movimientos personales nunca se comparten.',
-                style: TextStyle(color: NinaColors.textSecondary, height: 1.4),
-              ),
+    final body = FutureBuilder<List<SpaceSummary>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final children = <Widget>[
+          Row(children: [
+            if (!widget.embedded) ...[
+              NinaBackButton(onTap: () => context.pop()),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Text(widget.embedded ? 'Espacio' : 'Espacios compartidos',
+                  style: NinaText.displayL()),
             ),
-          ];
-          if (snap.hasError) {
+          ]),
+          const SizedBox(height: 20),
+          Container(
+            height: 120,
+            decoration: BoxDecoration(
+              gradient: NinaColors.stageGradient,
+              borderRadius: BorderRadius.circular(NinaRadii.lg),
+            ),
+            alignment: Alignment.center,
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              NinaPersonAvatar(name: 'Tú', size: 60),
+              SizedBox(width: 10),
+              Icon(Icons.add, color: NinaColors.textTertiary),
+              SizedBox(width: 10),
+              NinaPersonAvatar(
+                  name: '?', size: 60, color: NinaColors.accentSoft),
+            ]),
+          ),
+          const SizedBox(height: 20),
+          Text('Gastos en común, sin enredos', style: NinaText.titleL()),
+          const SizedBox(height: 6),
+          Text(
+            'Gestiona los gastos comunes (alquiler, mercado, servicios) con tu pareja o familia. '
+            'Tus movimientos personales nunca se comparten.',
+            style: NinaText.bodyM(),
+          ),
+          const SizedBox(height: 20),
+        ];
+        if (snap.hasError) {
+          children.add(Text(spacesErrorMessage(snap.error!),
+              style: NinaText.bodyS(color: NinaColors.error)));
+        } else if (snap.data!.isEmpty) {
+          children.add(Padding(
+            key: const Key('spaces-empty'),
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+                'Aún no tienes espacios. Crea uno o únete con el código que te compartieron.',
+                style: NinaText.bodyS(color: NinaColors.textTertiary)),
+          ));
+        } else {
+          for (final s in snap.data!) {
             children.add(Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(spacesErrorMessage(snap.error!),
-                  style: const TextStyle(color: NinaColors.errorLight)),
-            ));
-          } else if (snap.data!.isEmpty) {
-            children.add(const Padding(
-              key: Key('spaces-empty'),
-              padding: EdgeInsets.all(16),
-              child: Text(
-                  'Aún no tienes espacios. Crea uno o únete con el código que te compartieron.',
-                  style: TextStyle(color: NinaColors.textTertiary)),
-            ));
-          } else {
-            for (final s in snap.data!) {
-              children.add(ListTile(
-                leading: const Icon(Icons.home_work_outlined,
-                    color: NinaColors.accent),
-                title: Text(s.name,
-                    style: const TextStyle(color: NinaColors.textPrimary)),
-                subtitle: Text(
-                    '${s.memberCount} miembro${s.memberCount == 1 ? '' : 's'}${s.isOwner ? ' · Creado por ti' : ''}'),
-                trailing: const Icon(Icons.chevron_right),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: NinaCard(
                 onTap: () async {
                   await context.push('/spaces/${s.id}');
                   _reload();
                 },
-              ));
-            }
+                padding: const EdgeInsets.all(16),
+                child: Row(children: [
+                  const NinaIconBox(
+                      icon: Icons.group_outlined,
+                      background: NinaColors.peachSoft),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.name, style: NinaText.bodyMStrong()),
+                          Text(
+                              '${s.memberCount} miembro${s.memberCount == 1 ? '' : 's'}${s.isOwner ? ' · Creado por ti' : ''}',
+                              style: NinaText.bodyS()),
+                        ]),
+                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: NinaColors.textTertiary),
+                ]),
+              ),
+            ));
           }
-          children.addAll([
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: FilledButton.icon(
-                  onPressed: _create,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Crear espacio')),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: OutlinedButton.icon(
-                  onPressed: _join,
-                  icon: const Icon(Icons.group_add_outlined),
-                  label: const Text('Unirme con código')),
-            ),
-          ]);
-          return RefreshIndicator(
-              onRefresh: () async => _reload(),
-              child: ListView(children: children));
-        },
-      ),
+        }
+        children.addAll([
+          const SizedBox(height: 8),
+          NinaButton(
+              label: 'Crear espacio', icon: Icons.add, onPressed: _create),
+          const SizedBox(height: 8),
+          NinaButton(
+              label: 'Unirme con código',
+              icon: Icons.group_add_outlined,
+              variant: NinaButtonVariant.secondary,
+              onPressed: _join),
+        ]);
+        return RefreshIndicator(
+          onRefresh: () async => _reload(),
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(NinaSpace.gutter, 16, NinaSpace.gutter,
+                widget.embedded ? 140 : 32),
+            children: children,
+          ),
+        );
+      },
     );
+    return Scaffold(body: SafeArea(bottom: false, child: body));
   }
 }
