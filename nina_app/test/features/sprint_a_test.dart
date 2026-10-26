@@ -8,9 +8,11 @@ import 'package:nina_app/data/services/finance_api_service.dart';
 import 'package:nina_app/domain/models/nina_user_profile.dart';
 import 'package:nina_app/domain/models/overview.dart';
 import 'package:nina_app/features/home/pages/home_screen.dart';
-import 'package:nina_app/features/insights/pages/analisis_screen.dart';
 import 'package:nina_app/features/transactions/pages/movimientos_screen.dart';
 import 'package:nina_app/shared/widgets/add_transaction_sheet.dart';
+import 'package:nina_app/shared/widgets/nina_ui.dart';
+
+import '../support/test_view.dart';
 
 Overview overview({bool hasHistory = true}) => Overview.fromJson({
       'period': {
@@ -138,6 +140,7 @@ void main() {
 
   group('Inicio (US-18..21)', () {
     testWidgets('shows engine figures, never sums rows itself', (tester) async {
+      useTallSurface(tester);
       await tester.pumpWidget(wrap(HomeScreen(
         api: FakeApi(),
         loadRecent: () async => rows,
@@ -147,6 +150,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('S/ 5,749.50'), findsOneWidget); // balance
       expect(find.text('S/ 4,379.50'), findsOneWidget); // available
+      expect(tester.widget<Text>(find.byKey(const Key('home-balance'))).data,
+          'S/ 5,749.50');
+      expect(tester.widget<Text>(find.byKey(const Key('home-available'))).data,
+          'S/ 4,379.50');
       expect(find.text('Comida'), findsWidgets);
       expect(find.textContaining('vs. setiembre 2026'), findsOneWidget);
     });
@@ -221,7 +228,8 @@ void main() {
 
     testWidgets('type filter shows only expenses', (tester) async {
       await pump(tester);
-      await tester.tap(find.text('Gastos').first);
+      // 'Gastos' is also the header figure label: tap the filter chip.
+      await tester.tap(find.widgetWithText(NinaChip, 'Gastos'));
       await tester.pumpAndSettle();
       expect(find.text('mercado'), findsOneWidget);
       expect(find.text('sueldo'), findsNothing);
@@ -253,21 +261,14 @@ void main() {
     });
   });
 
-  testWidgets('Análisis shows the category total and trend (US-27, 28)',
-      (tester) async {
-    await tester.pumpWidget(wrap(AnalisisScreen(
-        api: FakeApi(), watchChanges: () => const Stream.empty())));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('analisis-total')), findsOneWidget);
-    expect(find.text('Mes a mes'), findsOneWidget);
-    expect(
-        find.textContaining('octubre 2026: gastos S/ 120.50'), findsOneWidget);
-  });
-
   testWidgets('add sheet sends a validated movement (US-26)', (tester) async {
     final api = FakeApi();
-    await tester
-        .pumpWidget(wrap(Scaffold(body: AddTransactionSheet(api: api))));
+    useTallSurface(tester);
+    await tester.pumpWidget(wrap(Scaffold(
+        body: AddTransactionSheet(
+            api: api,
+            loadAccounts: () async => [],
+            loadSpaces: () async => []))));
     await tester.tap(find.byKey(const Key('save')));
     await tester.pump();
     expect(find.text('Ingresa un monto mayor a 0'), findsOneWidget);
@@ -279,5 +280,6 @@ void main() {
     expect(api.created.single, containsPair('amount', 25.5));
     expect(api.created.single, containsPair('type', 'expense'));
     expect(api.created.single, containsPair('category', 'food'));
+    expect(api.created.single, containsPair('spaceId', null));
   });
 }

@@ -127,13 +127,20 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
           body: AddTransactionSheet(
-              api: finance, loadAccounts: () async => [bcp, yape])),
+              api: finance,
+              loadAccounts: () async => [bcp, yape],
+              loadSpaces: () async => [])),
     ));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('amount')), '30');
+    // The v2 sheet is taller than the 800x600 test view.
+    await tester.ensureVisible(find.byKey(const Key('account')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('account')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Yape').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('save')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('save')));
     await tester.pumpAndSettle();

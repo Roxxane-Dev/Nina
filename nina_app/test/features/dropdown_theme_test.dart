@@ -7,10 +7,10 @@ import 'package:nina_app/core/theme/design_system.dart';
 /// surface, so the options were invisible. Found by clicking through the running app.
 void main() {
   testWidgets(
-      'dropdown menu items use the primary text color on the dark canvas',
+      'dropdown menu items use the primary text color on the light canvas',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
       home: Scaffold(
         body: Center(
           child: DropdownButtonFormField<String>(
@@ -40,7 +40,7 @@ void main() {
       'dialog titles use the primary text color (delete confirmation was unreadable)',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
       home: const Scaffold(
         body: AlertDialog(
           title: Text('Eliminar movimiento'),
@@ -55,10 +55,10 @@ void main() {
   });
 
   test('theme defines the colors dropdowns and list titles inherit', () {
-    expect(AppTheme.dark.canvasColor, NinaColors.surface);
-    expect(AppTheme.dark.textTheme.titleMedium?.color, NinaColors.textPrimary);
-    expect(AppTheme.dark.textTheme.titleSmall?.color, NinaColors.textPrimary);
+    expect(AppTheme.light.canvasColor, NinaColors.surface);
+    expect(AppTheme.light.textTheme.titleMedium?.color, NinaColors.textPrimary);
+    expect(AppTheme.light.textTheme.titleSmall?.color, NinaColors.textPrimary);
     expect(
-        AppTheme.dark.textTheme.headlineSmall?.color, NinaColors.textPrimary);
+        AppTheme.light.textTheme.headlineSmall?.color, NinaColors.textPrimary);
   });
 }

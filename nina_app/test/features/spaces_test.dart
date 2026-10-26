@@ -4,7 +4,10 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:nina_app/data/services/spaces_api_service.dart';
 import 'package:nina_app/domain/models/overview.dart';
 import 'package:nina_app/features/spaces/pages/space_detail_page.dart';
+import 'package:nina_app/features/spaces/pages/space_tab_page.dart';
 import 'package:nina_app/features/spaces/pages/spaces_page.dart';
+
+import '../support/test_view.dart';
 
 class FakeSpacesApi extends SpacesApiService {
   FakeSpacesApi({this.spaces = const []}) : super(dio: null);
@@ -121,17 +124,13 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Unirme'));
     await tester.pumpAndSettle();
     expect(api.joined, ['abcd2345']);
-    debugPrint('TEXTS: ' +
-        tester
-            .widgetList<Text>(find.byType(Text))
-            .map((t) => t.data)
-            .join(' | '));
     expect(find.text('Te uniste a «Casa».'), findsOneWidget);
   });
 
   testWidgets(
       'space detail: own balance, who registered what, movements with author (US-36/37)',
       (tester) async {
+    useTallSurface(tester); // lay out the movements list too
     final api = FakeSpacesApi(spaces: const [
       SpaceSummary(
           id: 's1', name: 'Casa', type: 'pareja', role: 'owner', memberCount: 2)
@@ -144,6 +143,7 @@ void main() {
     expect(find.text('Ana (tú)'), findsOneWidget);
     expect(find.text('Beto'), findsOneWidget);
     expect(find.textContaining('Beto · '), findsOneWidget); // movement author
+    expect(find.textContaining('Tú · '), findsOneWidget); // own movement
   });
 
   testWidgets('invite shows the code to share (US-34)', (tester) async {
@@ -158,5 +158,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('invite-code')), findsOneWidget);
     expect(find.text('ABCD2345'), findsOneWidget);
+  });
+
+  testWidgets('Espacio tab with no spaces shows the create/join empty state',
+      (tester) async {
+    await tester
+        .pumpWidget(MaterialApp(home: SpaceTabPage(api: FakeSpacesApi())));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('spaces-empty')), findsOneWidget);
+    expect(find.text('Crear espacio'), findsOneWidget);
+    expect(find.text('Unirme con código'), findsOneWidget);
+    expect(find.byKey(const Key('space-balance')), findsNothing);
+  });
+
+  testWidgets('Espacio tab with a space opens its detail', (tester) async {
+    useTallSurface(tester);
+    await tester.pumpWidget(MaterialApp(
+        home: SpaceTabPage(
+            api: FakeSpacesApi(spaces: const [
+      SpaceSummary(
+          id: 's1', name: 'Casa', type: 'pareja', role: 'owner', memberCount: 2)
+    ]))));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('spaces-empty')), findsNothing);
+    expect(find.byKey(const Key('space-balance')), findsOneWidget);
   });
 }

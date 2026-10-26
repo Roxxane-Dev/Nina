@@ -67,7 +67,8 @@ void main() {
     await bloc.close();
   });
 
-  test('sign up that needs email confirmation explains it', () async {
+  test('sign up that needs email confirmation asks for the code (not an error)',
+      () async {
     final bloc = AuthBloc(
       auth: FakeAuthService(signUpError: const EmailConfirmationRequired()),
     );
@@ -77,8 +78,8 @@ void main() {
       bloc.stream,
       emitsInOrder([
         isA<AuthLoading>(),
-        isA<AuthError>()
-            .having((s) => s.message, 'message', contains('correo')),
+        isA<AuthNeedsEmailConfirmation>()
+            .having((s) => s.email, 'email', 'ana@example.com'),
       ]),
     );
     await bloc.close();
