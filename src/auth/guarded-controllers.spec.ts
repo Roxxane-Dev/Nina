@@ -8,6 +8,7 @@ import { SpacesController } from '../spaces/spaces.controller'
 import { ConsentsController } from '../consents/consents.controller'
 import { MeController } from '../me/me.controller'
 import { AccountsController } from '../accounts/accounts.controller'
+import { GoalsController } from '../goals/goals.controller'
 
 // Every HTTP controller that touches user data must be guarded by the JWT guard.
 describe('controller guards', () => {
@@ -20,6 +21,7 @@ describe('controller guards', () => {
     ConsentsController,
     MeController,
     AccountsController,
+    GoalsController,
   ])('%p is guarded by SupabaseAuthGuard', (controller) => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, controller) ?? []
     expect(guards).toContain(SupabaseAuthGuard)
