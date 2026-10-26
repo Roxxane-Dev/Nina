@@ -37,7 +37,7 @@ class _NinaAppState extends State<NinaApp> {
       child: MaterialApp.router(
         title: 'Nina',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark, // ← dark AI theme
+        theme: AppTheme.light,
         routerConfig: _router,
       ),
     );

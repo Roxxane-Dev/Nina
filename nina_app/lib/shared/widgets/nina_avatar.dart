@@ -15,7 +15,7 @@ class NinaAvatar extends StatelessWidget {
           width: size,
           height: size,
           decoration: BoxDecoration(
-            gradient: NinaColors.ninaAura,
+            gradient: NinaColors.markGradient,
             borderRadius: BorderRadius.circular(size / 2),
           ),
           child: Center(

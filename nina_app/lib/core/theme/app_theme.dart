@@ -5,70 +5,40 @@ import 'design_system.dart';
 class AppTheme {
   AppTheme._();
 
-  static final ThemeData dark = ThemeData(
+  static final ThemeData light = ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: Brightness.light,
     scaffoldBackgroundColor: NinaColors.background,
-    // Dropdown menus are drawn on the canvas color; the default is not dark-aware here.
     canvasColor: NinaColors.surface,
-
-    colorScheme: const ColorScheme.dark(
+    splashFactory: InkSparkle.splashFactory,
+    colorScheme: const ColorScheme.light(
       primary: NinaColors.primary,
       secondary: NinaColors.accent,
       surface: NinaColors.surface,
       error: NinaColors.error,
-      onPrimary: Colors.white,
-      onSecondary: Colors.black,
+      onPrimary: NinaColors.textInverse,
+      onSecondary: NinaColors.textInverse,
       onSurface: NinaColors.textPrimary,
-      onError: Colors.white,
+      onError: NinaColors.textInverse,
+      outline: NinaColors.border,
     ),
-
-    // 🧠 TYPOGRAPHY = CLARIDAD
     textTheme: GoogleFonts.interTextTheme().copyWith(
-      displayLarge: GoogleFonts.inter(
-        fontSize: 36,
-        fontWeight: FontWeight.w700,
-        color: NinaColors.textPrimary,
-      ),
-      titleLarge: GoogleFonts.inter(
-        fontSize: 24,
-        fontWeight: FontWeight.w600,
-        color: NinaColors.textPrimary,
-      ),
-      // Dropdown items and list titles use titleMedium: without a color they render dark on dark.
-      // AlertDialog titles use headlineSmall.
-      headlineSmall: GoogleFonts.inter(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: NinaColors.textPrimary,
-      ),
+      displayLarge: NinaText.displayL(),
+      titleLarge: NinaText.displayM(),
+      headlineSmall: NinaText.titleL(),
       titleMedium: GoogleFonts.inter(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: NinaColors.textPrimary,
-      ),
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: NinaColors.textPrimary),
       titleSmall: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: NinaColors.textPrimary,
-      ),
-      bodyLarge: GoogleFonts.inter(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: NinaColors.textPrimary,
-      ),
-      bodyMedium: GoogleFonts.inter(
-        fontSize: 15,
-        fontWeight: FontWeight.w400,
-        color: NinaColors.textSecondary,
-      ),
-      labelMedium: GoogleFonts.inter(
-        fontSize: 13,
-        color: NinaColors.textTertiary,
-      ),
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: NinaColors.textPrimary),
+      bodyLarge: GoogleFonts.inter(fontSize: 16, color: NinaColors.textPrimary),
+      bodyMedium: NinaText.bodyM(),
+      bodySmall: NinaText.bodyS(),
+      labelMedium: NinaText.bodyS(color: NinaColors.textTertiary),
     ),
-
-    // 🧾 CARDS = DASHBOARD
     cardTheme: CardThemeData(
       color: NinaColors.surface,
       elevation: 0,
@@ -77,63 +47,115 @@ class AppTheme {
         side: const BorderSide(color: NinaColors.border),
       ),
     ),
-
-    // 🔝 APP BAR
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: NinaColors.background,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
-      iconTheme: IconThemeData(color: NinaColors.textPrimary),
-      titleTextStyle: TextStyle(
-        color: NinaColors.textPrimary,
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-      ),
+      iconTheme: const IconThemeData(color: NinaColors.textPrimary),
+      titleTextStyle: NinaText.titleM(),
     ),
-
-    // 🚀 PRIMARY BUTTON (ACCIÓN)
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: NinaColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: NinaColors.textInverse,
         elevation: 0,
         minimumSize: const Size(double.infinity, 56),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(NinaRadii.button),
-        ),
-        textStyle: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
+        shape: const StadiumBorder(),
+        textStyle: NinaText.button(),
       ),
     ),
-
-    // ⚡ ACCENT BUTTON (DECISIONES IMPORTANTES)
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: NinaColors.primary,
+        foregroundColor: NinaColors.textInverse,
+        minimumSize: const Size(64, 52),
+        shape: const StadiumBorder(),
+        textStyle: NinaText.button(),
+      ),
+    ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: NinaColors.accent,
-        side: const BorderSide(color: NinaColors.accent),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(NinaRadii.button),
-        ),
+        foregroundColor: NinaColors.textPrimary,
+        backgroundColor: NinaColors.surface,
+        minimumSize: const Size(64, 52),
+        side: const BorderSide(color: NinaColors.border),
+        shape: const StadiumBorder(),
+        textStyle: NinaText.button(color: NinaColors.textPrimary),
       ),
     ),
-
-    // 🧠 INPUTS
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: NinaColors.accent,
+        textStyle: NinaText.bodySStrong(color: NinaColors.accent),
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? NinaColors.surface
+                : NinaColors.surfaceAlt),
+        foregroundColor: WidgetStateProperty.all(NinaColors.textPrimary),
+        side:
+            WidgetStateProperty.all(const BorderSide(color: NinaColors.border)),
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: NinaColors.surface,
+      selectedColor: NinaColors.cocoa,
+      side: const BorderSide(color: NinaColors.border),
+      shape: const StadiumBorder(),
+      labelStyle: NinaText.bodySStrong(),
+      secondaryLabelStyle: NinaText.bodySStrong(color: NinaColors.textInverse),
+      checkmarkColor: NinaColors.textInverse,
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: NinaColors.surfaceAlt,
-      hintStyle: const TextStyle(color: NinaColors.textTertiary),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      fillColor: NinaColors.surface,
+      hintStyle: NinaText.bodyL(color: NinaColors.textTertiary),
+      labelStyle: NinaText.bodyS(),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(NinaRadii.input),
+        borderSide: const BorderSide(color: NinaColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(NinaRadii.input),
         borderSide: const BorderSide(color: NinaColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(NinaRadii.input),
-        borderSide: const BorderSide(color: NinaColors.primary, width: 2),
+        borderSide: const BorderSide(color: NinaColors.accent, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(NinaRadii.input),
+        borderSide: const BorderSide(color: NinaColors.error, width: 2),
       ),
     ),
-
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: NinaColors.background,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(NinaRadii.xl))),
+      showDragHandle: true,
+      dragHandleColor: NinaColors.borderStrong,
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: NinaColors.background,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(NinaRadii.lg)),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: NinaColors.cocoa,
+      contentTextStyle: NinaText.bodyS(color: NinaColors.textInverse),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(NinaRadii.md)),
+    ),
+    progressIndicatorTheme:
+        const ProgressIndicatorThemeData(color: NinaColors.cocoa),
     dividerTheme: const DividerThemeData(
       color: NinaColors.divider,
       thickness: 1,

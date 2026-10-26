@@ -2,6 +2,8 @@
 /// Display only: totals always come from the backend engine.
 library;
 
+import 'package:flutter/material.dart';
+
 /// Same aliases as packages/finance-engine/src/categories.ts → es-PE label.
 const _aliases = <String, String>{
   'food': 'Comida',
@@ -51,6 +53,23 @@ const _aliases = <String, String>{
 
 String categoryLabel(String? raw) =>
     _aliases[(raw ?? '').trim().toLowerCase()] ?? 'Otros';
+
+/// Line icon for a category (by its es-PE label, so aliases resolve too).
+IconData categoryIcon(String? raw) => switch (categoryLabel(raw)) {
+      'Comida' => Icons.restaurant_outlined,
+      'Transporte' => Icons.directions_car_outlined,
+      'Hogar' => Icons.home_outlined,
+      'Servicios' => Icons.bolt_outlined,
+      'Salud' => Icons.favorite_outline,
+      'Educación' => Icons.school_outlined,
+      'Entretenimiento' => Icons.movie_outlined,
+      'Compras' => Icons.shopping_bag_outlined,
+      'Suscripciones' => Icons.subscriptions_outlined,
+      'Deudas' => Icons.credit_card_outlined,
+      'Sueldo' => Icons.south_west_rounded,
+      'Ingresos extra' => Icons.south_west_rounded,
+      _ => Icons.receipt_long_outlined,
+    };
 
 final _midnightUtc =
     RegExp(r'^(\d{4}-\d{2}-\d{2})T00:00:00(?:\.0+)?(?:Z|[+-]00(?::?00)?)$');

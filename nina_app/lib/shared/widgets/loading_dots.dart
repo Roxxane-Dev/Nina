@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/design_system.dart';
+import 'nina_ui.dart';
 
 /// Animated thinking indicator shown while Nina is generating a response
 class LoadingDots extends StatelessWidget {
@@ -10,30 +11,17 @@ class LoadingDots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 16,
-            height: 16,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: NinaColors.ninaAura,
-            ),
-          )
+          const NinaMark(size: 24)
               .animate(onPlay: (c) => c.repeat(reverse: true))
-              .fade(duration: 800.ms, begin: 1.0, end: 0.3),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: NinaColors.textSecondary,
-                  fontStyle: FontStyle.italic,
-                ),
-          )
+              .fade(duration: 800.ms, begin: 1.0, end: 0.4),
+          const SizedBox(width: 10),
+          Text(label, style: NinaText.bodyS(color: NinaColors.textTertiary))
               .animate(onPlay: (c) => c.repeat())
-              .shimmer(duration: 1500.ms, color: NinaColors.primaryLight),
+              .shimmer(duration: 1500.ms, color: NinaColors.accentSoft),
         ],
       ),
     );
