@@ -20,6 +20,10 @@ class AppConstants {
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
+  /// Pricing screen preview (example prices, no payments). Off unless the
+  /// build passes --dart-define=NINA_PRICING_PREVIEW=true.
+  static const pricingPreview = bool.fromEnvironment('NINA_PRICING_PREVIEW');
+
   // Secure storage keys
   static const jwtTokenKey = 'nina_jwt_token';
   static const userEmailKey = 'nina_user_email';

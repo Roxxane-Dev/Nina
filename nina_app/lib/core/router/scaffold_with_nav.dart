@@ -1,93 +1,61 @@
 part of 'app_router.dart';
 
+/// Floating tab bar: Inicio · Movimientos · Nina · Metas · Espacio.
+/// Nina sits in the middle because asking is the main action.
 class _ScaffoldWithNav extends StatelessWidget {
   const _ScaffoldWithNav({required this.child});
   final Widget child;
 
+  static const _tabs = [
+    _Tab('/home', 'Inicio', Icons.home_outlined, Icons.home_rounded),
+    _Tab('/transactions', 'Movimientos', Icons.receipt_long_outlined,
+        Icons.receipt_long_rounded),
+    _Tab('/chat', 'Nina', Icons.auto_awesome_outlined, Icons.auto_awesome),
+    _Tab('/goals', 'Metas', Icons.track_changes_outlined,
+        Icons.track_changes_rounded),
+    _Tab('/space', 'Espacio', Icons.group_outlined, Icons.group_rounded),
+  ];
+
   int _tabIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
-    if (loc.startsWith('/transactions')) return 1;
-    if (loc.startsWith('/insights')) return 2;
-    if (loc.startsWith('/mas') || loc.startsWith('/profile')) return 3;
-    return 0; // /home
+    final i = _tabs.indexWhere((t) => loc.startsWith(t.path));
+    return i < 0 ? 0 : i;
   }
 
   @override
   Widget build(BuildContext context) {
     final idx = _tabIndex(context);
-
     return Scaffold(
       backgroundColor: NinaColors.background,
+      extendBody: true,
       body: child,
-      floatingActionButton: Container(
-        height: 52,
-        width: 52,
-        margin: const EdgeInsets.only(top: 28),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: NinaColors.accent,
-          boxShadow: [
-            BoxShadow(
-              color: NinaColors.accent.withAlpha(100),
-              blurRadius: 16,
-              spreadRadius: 2,
-              offset: const Offset(0, 4),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 8),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          child: Container(
+            height: 72,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: NinaColors.surface.withAlpha(245),
+              borderRadius: BorderRadius.circular(NinaRadii.pill),
+              border: Border.all(color: NinaColors.border),
+              boxShadow: NinaShadows.float,
             ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: () => context.push('/chat'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          highlightElevation: 0,
-          child: const Icon(
-            Icons.auto_awesome_rounded,
-            color: NinaColors.background,
-            size: 22,
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: Container(
-        height: 72,
-        decoration: BoxDecoration(
-          color: NinaColors.background,
-          border: Border(
-              top: BorderSide(
-                  color: NinaColors.border.withAlpha(128), width: 0.5)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _NavItem(
-                  icon: Icons.home_rounded,
-                  label: 'Inicio',
-                  isSelected: idx == 0,
-                  onTap: () => context.go('/home'),
-                ),
-                _NavItem(
-                  icon: Icons.swap_vert_rounded,
-                  label: 'Movimientos',
-                  isSelected: idx == 1,
-                  onTap: () => context.go('/transactions'),
-                ),
-                const SizedBox(width: 52),
-                _NavItem(
-                  icon: Icons.donut_large_rounded,
-                  label: 'Análisis',
-                  isSelected: idx == 2,
-                  onTap: () => context.go('/insights'),
-                ),
-                _NavItem(
-                  icon: Icons.apps_rounded,
-                  label: 'Más',
-                  isSelected: idx == 3,
-                  onTap: () => context.go('/mas'),
-                ),
+                for (var i = 0; i < _tabs.length; i++)
+                  i == 2
+                      ? _NinaTab(
+                          selected: idx == 2,
+                          onTap: () => context.go(_tabs[2].path))
+                      : _NavItem(
+                          tab: _tabs[i],
+                          isSelected: idx == i,
+                          onTap: () => context.go(_tabs[i].path),
+                        ),
               ],
             ),
           ),
@@ -97,57 +65,85 @@ class _ScaffoldWithNav extends StatelessWidget {
   }
 }
 
-class _NavItem extends StatelessWidget {
-  final IconData icon;
+class _Tab {
+  const _Tab(this.path, this.label, this.icon, this.selectedIcon);
+  final String path;
   final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+}
+
+class _NinaTab extends StatelessWidget {
+  const _NinaTab({required this.selected, required this.onTap});
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: 'Nina',
+        selected: selected,
+        child: GestureDetector(
+          key: const Key('tab-nina'),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: selected ? NinaColors.accent : NinaColors.cocoa,
+              shape: BoxShape.circle,
+              boxShadow: const [
+                BoxShadow(
+                    color: Color(0x47270C0A),
+                    blurRadius: 16,
+                    offset: Offset(0, 6)),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const NinaSparkle(size: 24),
+          ),
+        ),
+      );
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem(
+      {required this.tab, required this.isSelected, required this.onTap});
+  final _Tab tab;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final color = isSelected ? NinaColors.accent : NinaColors.textTertiary;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 72,
-        height: 72,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (isSelected)
-              Container(
-                width: 24,
-                height: 2,
-                margin: const EdgeInsets.only(bottom: 6),
-                decoration: BoxDecoration(
-                  color: NinaColors.accent,
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              )
-            else
-              const SizedBox(height: 8),
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: color,
+    final color = isSelected ? NinaColors.textPrimary : NinaColors.textTertiary;
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      child: GestureDetector(
+        key: Key('tab-${tab.path.substring(1)}'),
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 64,
+          height: 56,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(isSelected ? tab.selectedIcon : tab.icon,
+                  color: color, size: 22),
+              const SizedBox(height: 4),
+              Text(
+                tab.label,
+                style: NinaText.bodySStrong(color: color).copyWith(
+                    fontSize: 10.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500),
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

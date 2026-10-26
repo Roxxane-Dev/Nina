@@ -72,10 +72,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _auth.signUp(email: event.email, password: event.password);
       emit(AuthAuthenticated(email: event.email));
     } on EmailConfirmationRequired {
-      emit(const AuthError(
-        message:
-            'Te enviamos un correo para confirmar tu cuenta. Confírmalo y luego inicia sesión.',
-      ));
+      emit(AuthNeedsEmailConfirmation(email: event.email));
     } catch (e) {
       emit(AuthError(message: _parseError(e)));
     }
@@ -116,7 +113,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return 'Ese correo ya tiene una cuenta. Inicia sesión.';
     }
     if (msg.contains('password')) {
-      return 'La contraseña debe tener al menos 6 caracteres';
+      return 'La contraseña debe tener al menos 8 caracteres';
     }
     if (msg.contains('network') || msg.contains('socket')) {
       return 'Sin conexión. Revisa tu internet';

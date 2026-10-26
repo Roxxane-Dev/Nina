@@ -68,16 +68,11 @@ class _ConsentGateState extends State<ConsentGate> {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                const Text('Antes de empezar',
-                    style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: NinaColors.textPrimary)),
+                Text('Antes de empezar', style: NinaText.displayL()),
                 const SizedBox(height: 8),
-                const Text(
-                  'Elige qué permites. Puedes cambiarlo cuando quieras en Más → Privacidad.',
-                  style:
-                      TextStyle(color: NinaColors.textSecondary, height: 1.4),
+                Text(
+                  'Elige qué permites. Puedes cambiarlo cuando quieras en Perfil → Privacidad.',
+                  style: NinaText.bodyL(),
                 ),
                 const SizedBox(height: 20),
                 ConsentForm(

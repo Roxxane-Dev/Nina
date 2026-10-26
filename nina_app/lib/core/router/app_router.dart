@@ -3,28 +3,52 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_state.dart';
+import '../../features/auth/pages/forgot_password_page.dart';
 import '../../features/auth/pages/login_page.dart';
+import '../../features/auth/pages/signup_page.dart';
+import '../../features/auth/pages/verify_email_page.dart';
 import '../../features/chat/pages/chat_page.dart';
 import '../../features/chat/bloc/chat_bloc.dart';
+import '../../features/goals/pages/goals_screen.dart';
 import '../../features/spaces/pages/space_detail_page.dart';
+import '../../features/spaces/pages/space_tab_page.dart';
 import '../../features/spaces/pages/spaces_page.dart';
 import '../../features/privacy/consent_gate.dart';
 import '../../features/privacy/privacy_page.dart';
 import '../../features/accounts/accounts_page.dart';
-
-// NEW SCREENS
 import '../../features/home/pages/home_screen.dart';
 import '../../features/transactions/pages/movimientos_screen.dart';
-import '../../features/insights/pages/analisis_screen.dart';
-import '../../features/subscriptions/pages/presupuesto_screen.dart';
-
 import '../../features/onboarding/pages/splash_page.dart';
-import '../../features/onboarding/pages/onboarding_page.dart';
+import '../../features/onboarding/pages/welcome_page.dart';
+import '../../features/pricing/pricing_page.dart';
 import '../../features/profile/pages/profile_page.dart';
-
+import '../../features/setup/pages/setup_page.dart';
+import '../../shared/widgets/nina_ui.dart';
 import '../../core/theme/design_system.dart';
 
 part 'scaffold_with_nav.dart';
+
+/// Routes anyone can open without a session.
+const publicRoutes = {
+  '/splash',
+  '/welcome',
+  '/login',
+  '/signup',
+  '/verify',
+  '/forgot',
+};
+
+/// Redirect rules, kept pure so they can be tested without a router.
+String? authRedirect(AuthState authState, String loc) {
+  final isPublic = publicRoutes.contains(loc);
+  if (authState is AuthUnauthenticated && !isPublic) return '/login';
+  if (authState is AuthAuthenticated) {
+    if (loc == '/login' || loc == '/welcome') return '/home';
+    // A fresh account goes through "Primeros pasos".
+    if (loc == '/signup' || loc == '/verify') return '/setup';
+  }
+  return null;
+}
 
 GoRouter buildRouter(AuthBloc authBloc) {
   final notifier = _AuthChangeNotifier(authBloc);
@@ -32,24 +56,27 @@ GoRouter buildRouter(AuthBloc authBloc) {
   return GoRouter(
     initialLocation: '/splash',
     refreshListenable: notifier,
-    redirect: (context, state) {
-      final authState = authBloc.state;
-      final loc = state.matchedLocation;
-      final isPublic =
-          loc == '/login' || loc == '/splash' || loc == '/onboarding';
-
-      if (authState is AuthUnauthenticated && !isPublic) return '/login';
-      if (authState is AuthAuthenticated && loc == '/login') return '/home';
-      if (authState is AuthAuthenticated && loc == '/onboarding')
-        return '/home';
-      return null;
-    },
+    redirect: (context, state) =>
+        authRedirect(authBloc.state, state.matchedLocation),
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
-      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingPage()),
+      GoRoute(path: '/welcome', builder: (_, __) => const WelcomePage()),
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
+      GoRoute(path: '/signup', builder: (_, __) => const SignupPage()),
+      GoRoute(
+        path: '/verify',
+        builder: (_, state) =>
+            VerifyEmailPage(email: state.uri.queryParameters['email'] ?? ''),
+      ),
+      GoRoute(path: '/forgot', builder: (_, __) => const ForgotPasswordPage()),
 
-      // Full-screen modal routes (outside shell)
+      // First steps also need the data consent (US-03) before saving anything.
+      GoRoute(
+          path: '/setup',
+          builder: (_, __) => const ConsentGate(child: SetupPage())),
+      GoRoute(path: '/pricing', builder: (_, __) => const PricingPage()),
+
+      // Full-screen routes (outside the shell)
       GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
       GoRoute(path: '/spaces', builder: (_, __) => const SpacesPage()),
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyPage()),
@@ -60,9 +87,9 @@ GoRouter buildRouter(AuthBloc authBloc) {
             SpaceDetailPage(spaceId: state.pathParameters['id']!),
       ),
 
-      // Shell with bottom nav
+      // Shell with the floating tab bar
       ShellRoute(
-        // US-03: nothing behind the bottom nav is reachable before consenting.
+        // US-03: nothing behind the tab bar is reachable before consenting.
         builder: (context, state, child) =>
             ConsentGate(child: _ScaffoldWithNav(child: child)),
         routes: [
@@ -73,17 +100,13 @@ GoRouter buildRouter(AuthBloc authBloc) {
                   initialPeriod: state.uri.queryParameters['period'])),
           GoRoute(
             path: '/chat',
-            builder: (_, __) => BlocProvider(
+            builder: (_, state) => BlocProvider(
               create: (_) => ChatBloc(),
-              child: const ChatPage(),
+              child: ChatPage(draft: state.uri.queryParameters['draft']),
             ),
           ),
-          GoRoute(
-              path: '/insights', builder: (_, __) => const AnalisisScreen()),
-          GoRoute(
-              path: '/presupuesto',
-              builder: (_, __) => const PresupuestoScreen()),
-          GoRoute(path: '/mas', builder: (_, __) => const ProfilePage()),
+          GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),
+          GoRoute(path: '/space', builder: (_, __) => const SpaceTabPage()),
         ],
       ),
     ],

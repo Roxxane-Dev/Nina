@@ -41,6 +41,20 @@ class AuthService {
     return response;
   }
 
+  /// Confirms the sign-up with the 6-digit code from the email.
+  Future<AuthResponse> verifySignupCode({
+    required String email,
+    required String code,
+  }) {
+    return _auth.verifyOTP(type: OtpType.signup, email: email, token: code);
+  }
+
+  Future<void> resendSignupCode(String email) =>
+      _auth.resend(type: OtpType.signup, email: email);
+
+  Future<void> sendPasswordReset(String email) =>
+      _auth.resetPasswordForEmail(email);
+
   Future<void> signOut() async {
     await _auth.signOut();
     // Clean up tokens stored by older app versions.

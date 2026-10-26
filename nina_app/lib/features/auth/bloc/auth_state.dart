@@ -28,6 +28,15 @@ class AuthUnauthenticated extends AuthState {
   const AuthUnauthenticated();
 }
 
+/// Sign-up worked but Supabase wants the email confirmed (code) first.
+class AuthNeedsEmailConfirmation extends AuthState {
+  const AuthNeedsEmailConfirmation({required this.email});
+  final String email;
+
+  @override
+  List<Object?> get props => [email];
+}
+
 class AuthError extends AuthState {
   const AuthError({required this.message});
   final String message;
