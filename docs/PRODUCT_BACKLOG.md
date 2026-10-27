@@ -95,7 +95,7 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | SEC-02 | Revisar y hacer merge de las ramas pendientes (calm-mode-final, log-hygiene, remove-unwired-behavioral, prod-runbook, local-seed-verify) | P1 | Needs Verification | Revisión del founder. |
 | SEC-03 | Rotar las claves pendientes (weekly-log) | P0 | Needs Verification | Confirmar con el founder. |
 | SEC-04 | Exportar y borrar mis datos | P2 | Todo (noviembre) |
-| SEC-05 | El texto del consentimiento de IA debe decir que también se envía el mensaje del usuario (sin datos personales), no solo cifras | P0 | Blocked | Texto legal: lo aprueba el founder (QA_REPORT Q-10). |
+| SEC-05 | El texto del consentimiento de IA debe decir que también se envía el mensaje del usuario (sin datos personales), no solo cifras | P0 | Done | D-014: texto aprobado, política `2026-10-v2` e IA solo con consentimiento vigente. Tests en `consents.spec.ts` y `consent_test.dart`; revisado en pantalla. Falta que el founder confirme la configuración de entrenamiento en OpenAI. |
 
 ## 9. Pruebas y confiabilidad
 

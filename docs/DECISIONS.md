@@ -4,6 +4,23 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-014 · Texto nuevo del consentimiento de IA y política 2026-10-v2 (SEC-05)
+**Fecha:** 2026-10-27 (texto aprobado por el founder)
+**Decisión:** el consentimiento "Respuestas con IA" dice lo que el código hace de verdad:
+- Se envía al proveedor de IA el mensaje del chat, sin correo, teléfono, DNI, RUC, cuentas ni tarjetas.
+- Si la pregunta es sobre la plata, también se envían las cifras que Nina ya calculó; nunca los movimientos uno por uno.
+- El proveedor no usa estos datos para entrenar.
+- Nina guarda las conversaciones en la cuenta.
+
+La política sube a `2026-10-v2`: todos vuelven a ver el consentimiento, sin nada preseleccionado. Además, `allowsAi` solo cuenta un consentimiento dado bajo la versión vigente, así que no se llama al LLM hasta que la persona responda de nuevo.
+
+**Por qué:** el texto anterior ("solo cifras ya calculadas… no se guardan") no reflejaba que se envía el mensaje ni que Nina guarda el chat (QA_REPORT Q-10).
+
+**Consecuencias:**
+- El historial v1 se conserva: la tabla es de solo inserción.
+- El seed local quedó en v2, para que las cuentas sintéticas sigan entrando sin pasos extra.
+- **Pendiente del founder:** confirmar que la cuenta del proveedor (OpenAI) no tiene activado el uso de datos para entrenamiento. Si lo tuviera, hay que quitar esa frase y subir la versión otra vez.
+
 ## D-013 · Conversación abierta con LLM, sin cifras (CI-01)
 **Fecha:** 2026-10-27 (aprobada por el founder)
 **Decisión:** cuando ningún handler determinista responde (saludos, educación financiera, temas que no son de plata), Nina puede responder con el LLM usando el prompt `chat-open-v1`, con cuatro condiciones:

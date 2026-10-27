@@ -2,6 +2,16 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-10-27 — Consentimiento de IA, política 2026-10-v2 (SEC-05)
+- "Explicaciones con IA" pasa a ser **"Respuestas con IA"**, con un texto que dice lo que de verdad se envía (el mensaje sin datos personales y, si aplica, las cifras del motor) y que Nina guarda las conversaciones.
+- `POLICY_VERSION` sube a `2026-10-v2`: todos vuelven a decidir, sin nada preseleccionado.
+- `allowsAi` exige un consentimiento de la versión vigente.
+- El seed local pasa a v2.
+- **Verificación:**
+  - jest 507/507 (nuevo test de cambio de versión).
+  - Flutter 99/99 (nuevo test del texto).
+  - En pantalla, la cuenta de prueba que aceptó la v1 vuelve a ver el consentimiento con el texto nuevo.
+
 ## 2026-10-27 — Revisión visual QA-01 (rama `feature/chat-conversational`)
 
 **Arreglos visibles**

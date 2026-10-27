@@ -31,7 +31,7 @@
 | Q-7 | Meta sin fecha decía "Sin ritmo todavía" aunque sí hay ahorro real | Corregido: "Sin fecha" |
 | Q-8 | El botón "Calculado con N movimientos · ver cómo" del primer número casi no se leía | Corregido: pastilla translúcida sobre cacao |
 | Q-9 | Perfil abierto desde un enlace no tenía forma de volver | Corregido: la flecha lleva a Inicio |
-| Q-10 | **El texto del consentimiento de IA dice que solo se envían "cifras ya calculadas y anonimizadas", pero el chat también envía el mensaje del usuario (sin datos personales).** Ya pasaba antes de CI-01 | **Abierto (P0, SEC-05):** el texto de consentimiento lo decide el founder |
+| Q-10 | **El texto del consentimiento de IA dice que solo se envían "cifras ya calculadas y anonimizadas", pero el chat también envía el mensaje del usuario (sin datos personales).** Ya pasaba antes de CI-01 | **Corregido (SEC-05, D-014):** texto nuevo aprobado y política `2026-10-v2`; revisado en pantalla |
 | Q-11 | En Movimientos, los nombres largos se cortan ("Supermerc…") por el ícono de borrar | Abierto (P3): se puede borrar deslizando, así que el ícono podría quitarse |
 
 ## Limitaciones

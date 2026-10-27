@@ -38,21 +38,20 @@ MVP "Claridad de tu plata", con el chat como prioridad.
 ## Defectos conocidos
 - CI-04: "compré algo que no necesitaba" se registra como Otros, no como Compras.
 - CI-05: los nombres de lugares pierden la tilde ("Japon").
-- SEC-05 (P0): el texto del consentimiento de IA no menciona que se envía el mensaje del usuario.
 - Q-11: en Movimientos, los nombres largos se cortan.
 
 ## Bloqueos
 - **Decisiones del founder:**
   - CI-02: memoria entre sesiones.
   - INS-06: número después de una compra, que es what-if.
-  - SEC-05: texto del consentimiento de IA.
+  - Confirmar que la cuenta de OpenAI no usa los datos para entrenar (D-014).
 - **Figma (FIG-01):** límite del plan Starter; se retoma en noviembre.
 - **Producción (SEC-01):** las migraciones las aplica el founder.
 
 ## Próximas tareas recomendadas
-1. **SEC-05:** el founder aprueba el texto nuevo del consentimiento de IA.
-2. **HOME-02:** registrar avances en una meta. Sin esto, el progreso de las metas nunca se mueve.
-3. **D-2 del reporte de pruebas:** ajustar el prompt de las respuestas con cifras (recomendar sobre la categoría más alta, sin errores de gramática).
+1. **HOME-02:** registrar avances en una meta. Sin esto, el progreso de las metas nunca se mueve.
+2. **D-2 del reporte de pruebas:** ajustar el prompt de las respuestas con cifras (recomendar sobre la categoría más alta, sin errores de gramática).
+3. **QA-02:** probar en un teléfono real, con el correo de confirmación activo.
 
 ## Cómo correr todo en local
 Ver `docs/LOCAL-DEV.md`. Escenarios del chat: `node scripts/chat-scenarios.js . <etiqueta>`, con el backend local corriendo.
