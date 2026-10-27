@@ -6,7 +6,7 @@
  * returns rows exactly as the real timestamptz column does. Only the LLM is
  * replaced (by the engine-only template) so every figure is deterministic.
  */
-import { templatedAnswer } from '../nina-router/validator'
+import { looseAnswer, templatedAnswer } from '../nina-router/validator'
 import { FinanceEngineService } from '../finance-engine/finance-engine.service'
 import { FinanceDataUnavailableError } from '../finance-engine/errors'
 import { IncomeService } from '../income/income.service'
@@ -17,6 +17,10 @@ import { ChatService } from './chat.service'
 import { ChatTelemetry } from './chat-telemetry'
 import { ApiExceptionFilter, DATA_UNAVAILABLE_REPLY } from '../common/api-exception.filter'
 import { ConfirmationTokens } from './confirmation-token'
+import { ContextTokens } from './conversation-context'
+import { ConversationHandler } from './intents/conversation.handler'
+import { WORRY_PREFIX } from './calm-mode'
+import type { GoalRow } from '../goals/goal-plans'
 import { ConfirmationHandler } from './intents/confirmation.handler'
 import { GeneralHandler, UNRECOGNIZED_REPLY } from './intents/general.handler'
 import { BalanceQueryHandler, SpendingQueryHandler } from './intents/query.handlers'
@@ -41,7 +45,11 @@ function fakeDb(result: { data: unknown[] | null; error: { code: string; message
   return { from: () => chain }
 }
 
-function setup(dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: null }, aiAllowed = true) {
+function setup(
+  dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: null },
+  aiAllowed = true,
+  conversational?: { goals?: GoalRow[] },
+) {
   const config = { get: () => undefined } as never
   const engine = new FinanceEngineService(config)
   ;(engine as unknown as { db: unknown }).db = fakeDb(dbResult)
@@ -52,6 +60,7 @@ function setup(dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: nul
   const insertExpenses = jest.spyOn(expenses, 'insertExpenses').mockResolvedValue({ result: 'Listo, gastos registrados ✅' })
   jest.spyOn(expenses, 'updateUserProfile').mockResolvedValue(null as never)
   const goals = new GoalService(config)
+  const listActive = jest.spyOn(goals, 'listActive').mockResolvedValue(conversational?.goals ?? [])
 
   // LLM replaced by the engine-only answer: every figure comes from FACTS.
   const router = {
@@ -79,9 +88,11 @@ function setup(dbResult: Parameters<typeof fakeDb>[0] = { data: ROWS, error: nul
     memory as never,
     telemetry,
     { allowsAi: async () => aiAllowed } as never,
+    conversational ? new ConversationHandler(engine, responder, goals) : undefined,
+    conversational ? new ContextTokens('test-context-secret') : undefined,
   )
   const insertGoal = jest.spyOn(goals, 'insertGoal').mockResolvedValue({ result: 'Meta guardada 🎯' })
-  return { chat, insertIncome, insertExpenses, insertGoal, record, router, memory }
+  return { chat, insertIncome, insertExpenses, insertGoal, record, router, memory, listActive }
 }
 
 describe('chat regression (real Supabase date format)', () => {
@@ -261,6 +272,147 @@ describe('goal plans (a question is answered with a plan, never registered as a 
     expect(r.needsConfirmation).toBe(true)
     expect(r.reply).toContain('S/ 2,000.00')
     expect(r.reply).toContain('diciembre 2026')
+  })
+})
+
+/** Every "S/ x" amount in a reply, as numbers. */
+function solesIn(text: string): number[] {
+  return [...text.matchAll(/S\/\s?(-?[\d,]+(?:\.\d+)?)/g)].map((m) => parseFloat(m[1].replace(/,/g, '')))
+}
+
+describe('multi-turn conversation (signed context)', () => {
+  beforeAll(() => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+    jest.setSystemTime(new Date('2026-10-10T15:00:00Z')) // October: income 4500, no expenses yet
+  })
+  afterAll(() => jest.useRealTimers())
+
+  const conversational = { goals: [] as GoalRow[] }
+
+  it('(a) Japan question asks for the budget; "7000 dolares" with the context returns the plan and the save offer', async () => {
+    const { chat, insertGoal } = setup(undefined, true, conversational)
+    const ask = await chat.handleMessage('user-1', 'dime quiero viajar a japon en enero 2028 crees que sea buena idea?')
+    expect(ask.reply).toContain('Viaje a Japon para enero 2028')
+    expect(ask.reply).toContain('¿De cuánto es el presupuesto?')
+    expect(ask.needsConfirmation).toBe(false)
+    expect(ask.context).toEqual(expect.any(String))
+
+    const plan = await chat.handleMessage('user-1', '7000 dolares', undefined, 'local', ask.context)
+    expect(plan.grounded?.intent).toBe('goal_plan')
+    expect(plan.card?.title).toBe('Plan: Viaje a Japon')
+    expect(plan.reply).toContain('US$ 7,000')
+    expect(plan.reply).toContain('S/ 26,250.00')
+    expect(plan.reply).toContain('S/ 1,750.00 al mes durante 15 meses')
+    expect(plan.needsConfirmation).toBe(true)
+    expect(plan.pendingToken).toEqual(expect.any(String))
+    expect(insertGoal).not.toHaveBeenCalled()
+
+    await chat.handleMessage('user-1', 'sí', plan.pendingToken, 'local', plan.context)
+    expect(insertGoal).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Viaje a Japon', target_amount: 26250, deadline: '2028-01-31', original_usd: 7000 }),
+      'user-1',
+    )
+  })
+
+  it('(a\') "7000 dolares" without the context is not a plan', async () => {
+    const { chat } = setup(undefined, true, conversational)
+    const r = await chat.handleMessage('user-1', '7000 dolares')
+    expect(r.grounded?.intent).not.toBe('goal_plan')
+    expect(r.needsConfirmation).toBe(false)
+  })
+
+  it('a context signed for another user is ignored', async () => {
+    const { chat } = setup(undefined, true, conversational)
+    const ask = await chat.handleMessage('user-1', 'dime quiero viajar a japon en enero 2028 crees que sea buena idea?')
+    const r = await chat.handleMessage('user-2', '7000 dolares', undefined, 'local', ask.context)
+    expect(r.grounded?.intent).not.toBe('goal_plan')
+  })
+
+  it('(b) shoes: asks the price, then answers with the engine available figure and the price, never available − price', async () => {
+    const goal: GoalRow = { id: 'g1', name: 'Viaje a Japon', target_amount: 26250, current_amount: 0, deadline: '2028-01-31', status: 'active' }
+    const { chat, listActive } = setup(undefined, true, { goals: [goal] })
+    const ask = await chat.handleMessage('user-1', 'Quiero comprarme unas zapatillas')
+    expect(ask.reply).toContain('unas zapatillas')
+    expect(ask.reply).toContain('¿Cuánto cuestan?')
+    expect(ask.card).toBeUndefined()
+    expect(ask.context).toEqual(expect.any(String))
+
+    const r = await chat.handleMessage('user-1', 'Cuestan 350 soles', undefined, 'local', ask.context)
+    expect(listActive).toHaveBeenCalledWith('user-1')
+    expect(r.reply).toContain('S/ 350.00')
+    expect(r.reply).toContain('te quedan S/ 4,500.00') // engine available for October (4500 − 0)
+    expect(r.reply).toContain('«Viaje a Japon»')
+    expect(r.card).toBeDefined()
+    expect(r.card?.highlight?.amount).toBe(4500)
+    expect(r.grounded?.intent).toBe('available')
+    expect(r.grounded?.usedLlm).toBe(false)
+    // No simulation: the difference is never computed or shown.
+    expect(r.reply).not.toMatch(/4,?150/)
+    expect(solesIn(r.reply)).not.toContain(4150)
+    expect(r.needsConfirmation).toBe(false)
+  })
+
+  it('(c) "¿Cuánto me queda?" then "no entiendo, más simple" re-explains the same engine figures', async () => {
+    const { chat } = setup(undefined, true, conversational)
+    const first = await chat.handleMessage('user-1', '¿Cuánto me queda?')
+    expect(first.grounded?.intent).toBe('available')
+    const firstFigures = solesIn(first.reply)
+    expect(firstFigures).toContain(4500)
+
+    const simple = await chat.handleMessage('user-1', 'no entiendo, más simple', undefined, 'local', first.context)
+    expect(simple.reply.startsWith('Va, en simple')).toBe(true)
+    expect(simple.grounded?.intent).toBe('available')
+    expect(solesIn(simple.reply).sort()).toEqual(firstFigures.sort())
+    expect(simple.card?.highlight?.amount).toBe(first.card?.highlight?.amount)
+  })
+
+  it('(c\') "más simple" without context asks what was unclear, with no figures', async () => {
+    const { chat } = setup(undefined, true, conversational)
+    const r = await chat.handleMessage('user-1', 'no entiendo, más simple')
+    expect(r.reply).not.toContain('S/')
+    expect(r.grounded).toBeUndefined()
+  })
+
+  it('(d) worry gets WORRY_PREFIX and the engine figures, no emoji, no LLM', async () => {
+    const { chat, router } = setup(undefined, true, conversational)
+    const r = await chat.handleMessage('user-1', 'me preocupa no llegar a fin de mes')
+    expect(r.reply.startsWith(WORRY_PREFIX)).toBe(true)
+    expect(r.reply).toContain('S/ 4,500.00')
+    expect(/\p{Extended_Pictographic}/u.test(r.reply)).toBe(false)
+    expect(r.grounded?.intent).toBe('available')
+    expect(router.explainFacts).not.toHaveBeenCalled()
+  })
+
+  it('(e) distress still gets the fixed reply with the helpline, even with conversation wired', async () => {
+    const { chat, router } = setup(undefined, true, conversational)
+    const r = await chat.handleMessage('user-1', 'ya no puedo más, ¿cuánto gasté este mes?')
+    expect(r.reply).toContain('Línea 113 del Minsa')
+    expect(r.reply).not.toContain('S/')
+    expect(r.context).toBeUndefined()
+    expect(router.explainFacts).not.toHaveBeenCalled()
+  })
+
+  it('(f) a forecast question says projections are not ready and shows only what is known', async () => {
+    const { chat, router } = setup(undefined, true, conversational)
+    const r = await chat.handleMessage('user-1', '¿cuánta plata voy a tener el próximo mes?')
+    expect(r.reply.startsWith('Todavía no te proyecto')).toBe(true)
+    expect(r.grounded?.intent).toBe('available')
+    // Only this month's engine figures (income 4500, expenses 0, available 4500): nothing projected.
+    for (const n of solesIn(r.reply)) expect([0, 4500]).toContain(n)
+    expect(r.card?.highlight?.amount).toBe(4500)
+    expect(router.explainFacts).not.toHaveBeenCalled()
+  })
+
+  it('(g) looseAnswer strips "recommendation:/follow_ups:" labels from plain-text LLM output', () => {
+    const a = looseAnswer(
+      'Este mes te quedan S/ 4,500.00. **recommendation:** Aparta una parte apenas cobres. follow_ups: ["¿En qué gasto más?"]',
+      ['available'],
+    )
+    expect(a.message).toBe('Este mes te quedan S/ 4,500.00.')
+    expect(a.recommendation).toBe('Aparta una parte apenas cobres.')
+    expect(a.message).not.toMatch(/recommendation|follow_ups/i)
+    expect(a.followUps).toEqual([])
+    expect(looseAnswer('Solo texto.', []).message).toBe('Solo texto.')
   })
 })
 
