@@ -36,7 +36,7 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | CHAT-04 | Sugerencias para empezar | P1 | Done | Chips de principiante en el saludo. | `chat_bloc.dart`. |
 | CHAT-05 | Sugerencias según los datos del usuario (sin datos → registrar primero) | P2 | Todo | Los chips cambian si no hay movimientos, si hay una meta, etc. | Depende de un endpoint liviano de "estado". |
 | CHAT-06 | Respuesta en streaming | P2 | Todo | El texto aparece mientras llega. | Hoy es REST. Se necesita SSE/WebSocket en `/chat` y validar las cifras al final. |
-| CHAT-07 | Verificación visual del chat en la app | P1 | Needs Verification | Se ven las burbujas, tarjetas, reintento y chips. | El panel del navegador estaba oculto (QA-01). |
+| CHAT-07 | Verificación visual del chat en la app | P1 | Done | Se ven las burbujas, tarjetas, confirmación y chips. | `QA_REPORT.md`. El reintento solo está cubierto por tests. |
 | CHAT-08 | Acciones dentro de las tarjetas (ver movimientos, guardar meta) | P2 | Todo | Cada tarjeta trae una acción útil. | Diseño en Figma pendiente (FIG-01). |
 
 ## 3. Inteligencia conversacional
@@ -95,12 +95,13 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | SEC-02 | Revisar y hacer merge de las ramas pendientes (calm-mode-final, log-hygiene, remove-unwired-behavioral, prod-runbook, local-seed-verify) | P1 | Needs Verification | Revisión del founder. |
 | SEC-03 | Rotar las claves pendientes (weekly-log) | P0 | Needs Verification | Confirmar con el founder. |
 | SEC-04 | Exportar y borrar mis datos | P2 | Todo (noviembre) |
+| SEC-05 | El texto del consentimiento de IA debe decir que también se envía el mensaje del usuario (sin datos personales), no solo cifras | P0 | Blocked | Texto legal: lo aprueba el founder (QA_REPORT Q-10). |
 
 ## 9. Pruebas y confiabilidad
 
 | ID | Título | Prioridad | Estado | Siguiente acción |
 |---|---|---|---|---|
-| QA-01 | Recorrido visual completo de la app en el navegador o dispositivo | P1 | Blocked | El panel del navegador de la app de Claude estaba oculto. Abrirlo (Ctrl+Shift+B) o probar en un emulador. |
+| QA-01 | Recorrido visual completo de la app en el navegador o dispositivo | P1 | Done | `docs/QA_REPORT.md`: 9 defectos corregidos y 2 abiertos (Q-10, Q-11). Falta un dispositivo real. |
 | QA-02 | Correo de confirmación real en el dispositivo | P1 | Todo | Supabase de desarrollo con confirmación activa. |
 | QA-03 | Escenarios de principiante automatizados | P1 | Done | `scripts/chat-scenarios.js` + `CHAT_TEST_REPORT.md`. |
 

@@ -2,6 +2,20 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-10-27 — Revisión visual QA-01 (rama `feature/chat-conversational`)
+
+**Arreglos visibles**
+- "Movimientos" ya no se corta en la barra.
+- Las acciones rápidas de Inicio tienen el mismo alto.
+- Las hojas (Cómo calculé, Filtros, Añadir) quedan encima de la barra, y "Guardar" se ve.
+- El campo del chat tiene un solo borde y sigue activo mientras Nina responde.
+- Al confirmar se muestra "Sí, dale" / "No, gracias".
+- Una meta sin fecha dice "Sin fecha".
+- El botón "ver cómo" del primer número se lee bien.
+- Perfil abierto desde un enlace tiene flecha a Inicio.
+
+**Verificación:** recorrido en pantalla (ver `QA_REPORT.md`) y `flutter test` 98/98.
+
 ## 2026-10-27 — Conversación abierta sin cifras (CI-01, rama `feature/chat-conversational`)
 
 **Lo que nota el usuario**
