@@ -179,7 +179,12 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
+    // Account chips live in the Filtros sheet.
+    await tester.tap(find.byKey(const Key('movimientos-filters')));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Yape'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('filters-apply')));
     await tester.pumpAndSettle();
     expect(find.text('combi'), findsOneWidget);
     expect(find.text('menú'), findsNothing);

@@ -10,7 +10,6 @@ import 'package:nina_app/domain/models/overview.dart';
 import 'package:nina_app/features/home/pages/home_screen.dart';
 import 'package:nina_app/features/transactions/pages/movimientos_screen.dart';
 import 'package:nina_app/shared/widgets/add_transaction_sheet.dart';
-import 'package:nina_app/shared/widgets/nina_ui.dart';
 
 import '../support/test_view.dart';
 
@@ -158,6 +157,31 @@ void main() {
       expect(find.textContaining('vs. setiembre 2026'), findsOneWidget);
     });
 
+    testWidgets('greets with "Hey, <name>"', (tester) async {
+      await tester.pumpWidget(wrap(HomeScreen(
+        api: FakeApi(),
+        loadRecent: () async => rows,
+        loadProfile: () async =>
+            const NinaUserProfile(fullName: 'Lucía Torres'),
+        watchChanges: () => const Stream.empty(),
+      )));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Text>(find.byKey(const Key('home-greeting'))).data,
+          'Hey, Lucía');
+    });
+
+    testWidgets('without a name it still says Hey', (tester) async {
+      await tester.pumpWidget(wrap(HomeScreen(
+        api: FakeApi(),
+        loadRecent: () async => rows,
+        loadProfile: () async => const NinaUserProfile(),
+        watchChanges: () => const Stream.empty(),
+      )));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Text>(find.byKey(const Key('home-greeting'))).data,
+          startsWith('Hey'));
+    });
+
     testWidgets(
         'period selector asks the engine for the previous month (US-20)',
         (tester) async {
@@ -226,13 +250,58 @@ void main() {
       expect(find.text('+S/ 4,500.00'), findsWidgets);
     });
 
-    testWidgets('type filter shows only expenses', (tester) async {
-      await pump(tester);
-      // 'Gastos' is also the header figure label: tap the filter chip.
-      await tester.tap(find.widgetWithText(NinaChip, 'Gastos'));
+    Future<void> openFilters(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('movimientos-filters')));
       await tester.pumpAndSettle();
+    }
+
+    Badge filtersBadge(WidgetTester tester) => tester.widget<Badge>(find
+        .ancestor(
+            of: find.byKey(const Key('movimientos-filters')),
+            matching: find.byType(Badge))
+        .first);
+
+    testWidgets('type filter (in the Filtros sheet) shows only expenses',
+        (tester) async {
+      await pump(tester);
+      expect(filtersBadge(tester).isLabelVisible, isFalse);
+      await openFilters(tester);
+      await tester.tap(find.byKey(const Key('filter-type-expense')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('filters-apply')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('filters-apply')), findsNothing);
       expect(find.text('mercado'), findsOneWidget);
       expect(find.text('sueldo'), findsNothing);
+      // Header figures still come from the engine, not from the filtered rows.
+      expect(find.text('+S/ 4,500.00'), findsWidgets);
+    });
+
+    testWidgets('an active filter shows a badge with its count; Limpiar resets',
+        (tester) async {
+      await pump(tester);
+      await openFilters(tester);
+      expect(find.byKey(const Key('filters-clear')), findsNothing);
+      await tester.tap(find.byKey(const Key('filter-type-income')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('filters-apply')));
+      await tester.pumpAndSettle();
+      expect(filtersBadge(tester).isLabelVisible, isTrue);
+      expect(
+          find.descendant(
+              of: find.byType(Badge).first, matching: find.text('1')),
+          findsOneWidget);
+      expect(find.text('sueldo'), findsOneWidget);
+      expect(find.text('mercado'), findsNothing);
+
+      await openFilters(tester);
+      await tester.tap(find.byKey(const Key('filters-clear')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('filters-apply')));
+      await tester.pumpAndSettle();
+      expect(filtersBadge(tester).isLabelVisible, isFalse);
+      expect(find.text('sueldo'), findsOneWidget);
+      expect(find.text('mercado'), findsOneWidget);
     });
 
     testWidgets(
