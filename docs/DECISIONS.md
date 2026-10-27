@@ -4,6 +4,21 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-013 · Conversación abierta con LLM, sin cifras (CI-01)
+**Fecha:** 2026-10-27 (aprobada por el founder)
+**Decisión:** cuando ningún handler determinista responde (saludos, educación financiera, temas que no son de plata), Nina puede responder con el LLM usando el prompt `chat-open-v1`, con cuatro condiciones:
+- Solo con consentimiento de IA y fuera del modo calma.
+- Al LLM solo va el mensaje del usuario, redactado y marcado como no confiable. No van hechos del motor, memoria ni contexto, y no se guarda la conversación.
+- `open-validator.ts` rechaza cualquier dígito, `S/`, `$`, `US$`, `%`, número escrito (cien, mil, millón, lucas), consejo prohibido (invertir, cripto, préstamos, garantías, "muevo tu dinero") o fuga de instrucciones.
+- Hay un reintento. Si falla o no hay LLM, vuelve la respuesta determinista (fail-closed).
+
+**Por qué:** las respuestas fijas se sentían robóticas para saludos y dudas básicas. Este camino envía menos datos que las consultas con cifras, que además mandan los hechos del motor.
+
+**Consecuencias:**
+- La ayuda ("¿qué puedes hacer?") sigue siendo determinista.
+- Una pregunta que solo menciona un periodo ("¿quién ganó el partido ayer?") ya no se lee como pregunta de gastos.
+- Las sugerencias del LLM se limitan a lo que Nina sabe responder.
+
 ## D-012 · El chat recuerda la conversación con un token firmado, no con memoria del servidor
 **Fecha:** 2026-10-26
 **Decisión:** cada respuesta del chat incluye un `context` firmado (HMAC, 30 min, atado al usuario) con lo que Nina pidió (monto, precio, detalles de meta), la última pregunta de datos y la meta mencionada en la conversación. La app lo devuelve con el siguiente mensaje.

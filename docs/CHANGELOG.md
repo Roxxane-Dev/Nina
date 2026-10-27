@@ -2,6 +2,26 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-10-27 — Conversación abierta sin cifras (CI-01, rama `feature/chat-conversational`)
+
+**Lo que nota el usuario**
+- Saludos, preguntas de educación financiera ("¿qué es el interés?"), temas que no son de plata e intentos de saltarse las reglas reciben una respuesta natural de Nina, en vez de "Eso se me escapa". Solo pasa con consentimiento de IA y nunca en modo calma.
+- "¿Quién ganó el partido ayer?" ya no responde "no tengo movimientos ayer".
+
+**Técnico**
+- `src/nina-router/open-validator.ts` rechaza cualquier dígito, moneda, %, número escrito, consejo prohibido o fuga de instrucciones.
+- Prompt `CHAT_OPEN_PROMPT_V1` (`chat-open-v1`).
+- `NinaRouterService.converse()`:
+  - Envía solo el mensaje redactado y marcado como no confiable.
+  - No usa memoria ni guarda la conversación.
+  - Reintenta una vez; si no valida, es fail-closed.
+- `GeneralHandler` lo usa para `other` y `unknown_finance`. Sin respuesta validada, vuelve a la respuesta determinista.
+- Motor: un periodo dentro de una pregunta larga que no es de plata ya no se convierte en una pregunta de gastos.
+
+**Verificación**
+- jest 506/506, incluye `open-conversation.spec.ts` con 34 tests.
+- 21 escenarios contra el chat real local (`CHAT_TEST_REPORT.md`).
+
 ## 2026-10-26 — Chat conversacional (rama `feature/chat-conversational`)
 
 **Lo que nota el usuario**

@@ -4,7 +4,7 @@ Estados: **Done** · **In Progress** · **Todo** · **Blocked** · **Needs Verif
 Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 "Done" exige evidencia (test o prueba registrada); que exista una pantalla no basta.
 
-Última revisión: 2026-10-26 (rama `feature/chat-conversational`, sin merge).
+Última revisión: 2026-10-27 (rama `feature/chat-conversational`, sin merge).
 
 ---
 
@@ -43,7 +43,7 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 
 | ID | Título | Prioridad | Estado | Siguiente acción |
 |---|---|---|---|---|
-| CI-01 | Conversación abierta con LLM, sin cifras (validador que rechace números) | P1 | Blocked | Cambia el flujo de datos al LLM. Necesita la decisión del founder (D-011). |
+| CI-01 | Conversación abierta con LLM, sin cifras (validador que rechace números) | P1 | Done | Aprobada (D-013). `open-conversation.spec.ts` (34 tests) y escenarios N–U en `CHAT_TEST_REPORT.md`. Falta verla en la UI (QA-01). |
 | CI-02 | Memoria entre sesiones (metas mencionadas, estilo preferido) | P2 | Blocked | Requiere migración, consentimiento y decisión del founder (D-012). |
 | CI-03 | Banco de frases reales como tests de regresión | P1 | In Progress | Ya existe `scripts/chat-scenarios.js`. Falta sumar cada fallo nuevo. |
 | CI-04 | "Compré algo que no necesitaba" se registra como Otros, no Compras | P2 | Todo | Revisar el alias "compras" en el parser de gastos. |
