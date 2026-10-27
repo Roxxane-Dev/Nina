@@ -386,7 +386,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
         );
-    return Row(children: [
+    // Same height for the three tiles even when a label wraps.
+    return IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       action(const Key('home-add'), Icons.add, 'Añadir gasto', _addManually,
           primary: true),
       const SizedBox(width: 10),
@@ -395,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       const SizedBox(width: 10),
       action(const Key('home-goals'), Icons.track_changes_outlined, 'Metas',
           () => context.go('/goals')),
-    ]);
+    ]));
   }
 
   // Spend by category (US-19).

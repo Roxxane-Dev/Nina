@@ -13,6 +13,7 @@ Future<void> showAuditSheet(
   required VoidCallback onViewTransactions,
 }) {
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     builder: (ctx) => AuditSheet(

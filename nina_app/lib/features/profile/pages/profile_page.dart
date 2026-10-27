@@ -70,10 +70,12 @@ class _ProfilePageState extends State<ProfilePage> {
               NinaSpace.gutter, 16, NinaSpace.gutter, 32),
           children: [
             Row(children: [
-              if (Navigator.of(context).canPop()) ...[
-                NinaBackButton(onTap: () => context.pop()),
-                const SizedBox(width: 12),
-              ],
+              // Opened from a link there is nothing to pop: go to Inicio instead.
+              NinaBackButton(
+                  onTap: () => Navigator.of(context).canPop()
+                      ? context.pop()
+                      : context.go('/home')),
+              const SizedBox(width: 12),
               Text('Perfil', style: NinaText.displayL()),
             ]),
             const SizedBox(height: 20),

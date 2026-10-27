@@ -36,7 +36,7 @@ class _ScaffoldWithNav extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
           child: Container(
             height: 72,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 6),
             decoration: BoxDecoration(
               color: NinaColors.surface.withAlpha(245),
               borderRadius: BorderRadius.circular(NinaRadii.pill),
@@ -51,10 +51,13 @@ class _ScaffoldWithNav extends StatelessWidget {
                       ? _NinaTab(
                           selected: idx == 2,
                           onTap: () => context.go(_tabs[2].path))
-                      : _NavItem(
-                          tab: _tabs[i],
-                          isSelected: idx == i,
-                          onTap: () => context.go(_tabs[i].path),
+                      // Each tab takes its share of the width, so labels never run under Nina.
+                      : Expanded(
+                          child: _NavItem(
+                            tab: _tabs[i],
+                            isSelected: idx == i,
+                            onTap: () => context.go(_tabs[i].path),
+                          ),
                         ),
               ],
             ),
@@ -125,7 +128,7 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: SizedBox(
-          width: 64,
+          width: double.infinity,
           height: 56,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -133,14 +136,18 @@ class _NavItem extends StatelessWidget {
               Icon(isSelected ? tab.selectedIcon : tab.icon,
                   color: color, size: 22),
               const SizedBox(height: 4),
-              Text(
-                tab.label,
-                style: NinaText.bodySStrong(color: color).copyWith(
-                    fontSize: 10.5,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500),
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                softWrap: false,
+              // "Movimientos" must fit whole on narrow phones.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  tab.label,
+                  style: NinaText.bodySStrong(color: color).copyWith(
+                      fontSize: 10.5,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500),
+                  maxLines: 1,
+                  softWrap: false,
+                ),
               ),
             ],
           ),

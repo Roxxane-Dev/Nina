@@ -33,6 +33,7 @@ const incomeCategories = <String, String>{
 Future<bool> showAddTransactionSheet(BuildContext context,
     {FinanceApiService? api, String? spaceId, String? spaceName}) async {
   final saved = await showModalBottomSheet<bool>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     builder: (_) => AddTransactionSheet(

@@ -512,18 +512,31 @@ class _SetupPageState extends State<SetupPage> {
                     style: NinaText.bodyL(color: NinaColors.textInverse)),
                 if (o.audit != null) ...[
                   const SizedBox(height: 18),
-                  ActionChip(
-                    key: const Key('setup-audit'),
-                    backgroundColor: NinaColors.textInverse.withAlpha(26),
-                    side: BorderSide.none,
-                    avatar: const Icon(Icons.calculate_outlined,
-                        size: 16, color: NinaColors.peach),
-                    label: Text(
-                        'Calculado con ${o.audit!.txnCount} ${o.audit!.txnCount == 1 ? 'movimiento' : 'movimientos'} · ver cómo',
-                        style: NinaText.bodySStrong(color: NinaColors.peach)),
-                    onPressed: () => showAuditSheet(context,
-                        audit: o.audit!,
-                        onViewTransactions: () => context.go('/transactions')),
+                  // Translucent pill on cocoa: readable, unlike a themed chip.
+                  Material(
+                    color: NinaColors.textInverse.withAlpha(26),
+                    shape: const StadiumBorder(),
+                    child: InkWell(
+                      key: const Key('setup-audit'),
+                      customBorder: const StadiumBorder(),
+                      onTap: () => showAuditSheet(context,
+                          audit: o.audit!,
+                          onViewTransactions: () =>
+                              context.go('/transactions')),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.calculate_outlined,
+                              size: 16, color: NinaColors.peach),
+                          const SizedBox(width: 8),
+                          Text(
+                              'Calculado con ${o.audit!.txnCount} ${o.audit!.txnCount == 1 ? 'movimiento' : 'movimientos'} · ver cómo',
+                              style: NinaText.bodySStrong(
+                                  color: NinaColors.peach)),
+                        ]),
+                      ),
+                    ),
                   ),
                 ],
               ] else

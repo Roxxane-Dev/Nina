@@ -80,12 +80,18 @@ class _InputBarState extends State<InputBar> {
                 key: const Key('chat-input'),
                 controller: _ctrl,
                 focusNode: _focusNode,
-                enabled: widget.enabled,
+                // Stays enabled while Nina answers so the user keeps typing;
+                // only sending waits (see _send).
                 maxLines: 1,
                 textCapitalization: TextCapitalization.sentences,
                 textInputAction: TextInputAction.send,
                 style: NinaText.bodyM(color: NinaColors.textPrimary),
-                decoration: InputDecoration.collapsed(
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                   hintText: 'Pregúntale lo que sea…',
                   hintStyle: NinaText.bodyM(color: NinaColors.textTertiary),
                 ),

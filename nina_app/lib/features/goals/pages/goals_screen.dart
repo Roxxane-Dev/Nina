@@ -115,14 +115,16 @@ class _GoalCard extends StatelessWidget {
         ? ('¡Lograda!', NinaTone.positive)
         : goal.deadlinePast
             ? ('La fecha ya pasó', NinaTone.neutral)
-            : p.gapPerMonth == null
-                ? ('Sin ritmo todavía', NinaTone.neutral)
-                : p.gapPerMonth! > 0
-                    ? (
-                        'Te faltan ${formatSoles(p.gapPerMonth!)} al mes',
-                        NinaTone.warning
-                      )
-                    : ('En ritmo', NinaTone.positive);
+            : goal.deadlineLabel == null
+                ? ('Sin fecha', NinaTone.neutral)
+                : p.gapPerMonth == null
+                    ? ('Sin ritmo todavía', NinaTone.neutral)
+                    : p.gapPerMonth! > 0
+                        ? (
+                            'Te faltan ${formatSoles(p.gapPerMonth!)} al mes',
+                            NinaTone.warning
+                          )
+                        : ('En ritmo', NinaTone.positive);
     return NinaCard(
       key: Key('goal-${goal.id}'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

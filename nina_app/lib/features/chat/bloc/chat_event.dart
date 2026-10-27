@@ -9,11 +9,15 @@ abstract class ChatEvent extends Equatable {
 }
 
 class ChatMessageSent extends ChatEvent {
-  const ChatMessageSent({required this.message});
+  const ChatMessageSent({required this.message, this.displayText});
   final String message;
 
+  /// What the user's bubble shows when it differs from what is sent
+  /// ("Sí, dale" is sent as "confirmar").
+  final String? displayText;
+
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, displayText];
 }
 
 /// Sends again a message whose request failed, keeping the conversation.

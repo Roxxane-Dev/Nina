@@ -197,6 +197,7 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     final options =
         row['type'] == 'income' ? incomeCategories : expenseCategories;
     final picked = await showModalBottomSheet<String>(
+      useRootNavigator: true,
       context: context,
       builder: (ctx) => SafeArea(
         child: ListView(
@@ -338,6 +339,7 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
   /// Type, account and category live in a sheet so the list keeps the screen.
   Future<void> _openFilters() async {
     await showModalBottomSheet<void>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(

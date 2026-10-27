@@ -55,7 +55,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     final userMsg = ChatMessage(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
-      text: event.message,
+      text: event.displayText ?? event.message,
       isUser: true,
     );
     await _send(event.message, [...state.messages, userMsg], emit);
@@ -138,7 +138,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         .map((m) => m.isConfirmation ? m.copyWith(isConfirmation: false) : m)
         .toList();
     emit(ChatSending(messages: resolved));
-    add(const ChatMessageSent(message: 'confirmar'));
+    add(const ChatMessageSent(message: 'confirmar', displayText: 'Sí, dale'));
   }
 
   Future<void> _onConfirmRejected(
@@ -149,7 +149,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         .map((m) => m.isConfirmation ? m.copyWith(isConfirmation: false) : m)
         .toList();
     emit(ChatSending(messages: resolved));
-    add(const ChatMessageSent(message: 'cancelar'));
+    add(const ChatMessageSent(message: 'cancelar', displayText: 'No, gracias'));
   }
 
   bool _isRetryable(Exception e) =>
