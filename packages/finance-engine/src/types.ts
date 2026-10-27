@@ -17,6 +17,8 @@ export type EngineTransaction = {
   authorId?: string
   /** Shared space it belongs to; undefined = personal. */
   sharedSpaceId?: string
+  /** Goal this outflow was set aside for (HOME-02): not spending, but not available either. */
+  goalId?: string
 }
 
 export type RecurringItemInput = {
@@ -49,6 +51,8 @@ export type PeriodTotals = {
   income: number
   expenses: number
   byCategory: Record<string, number>
+  /** Outflows set aside for a goal: kept out of expenses and categories. */
+  setAside: number
   count: number
 }
 

@@ -1,4 +1,4 @@
-import { monthlyTotals, monthToDateSpendByCategory, signedFlows } from './aggregates'
+import { isSetAside, monthlyTotals, monthToDateSpendByCategory, signedFlows } from './aggregates'
 import { dayOfMonthCutoff } from './period'
 import { mean, median, stdev } from './stats'
 import { ENGINE_VERSION } from './version'
@@ -18,6 +18,7 @@ function monthToDateCategorySpend(
       (t) =>
         t.categorySlug === category &&
         t.amount < 0 &&
+        !isSetAside(t) &&
         t.postedAt >= from &&
         t.postedAt <= cutoff,
     )
@@ -77,7 +78,7 @@ export function detectAnomalies(
 
   const unusual = []
   const groups = new Map<string, EngineTransaction[]>()
-  for (const t of signedFlows(txs).filter((t) => t.amount < 0)) {
+  for (const t of signedFlows(txs).filter((t) => t.amount < 0 && !isSetAside(t))) {
     const key = t.merchantNormalized || t.categorySlug
     const list = groups.get(key) ?? []
     list.push(t)

@@ -13,6 +13,7 @@ describe('golden: overview (user Ana)', () => {
       txnCount: 5,
       income: 5100,
       expenses: 1870.3,
+      setAside: 0,
       available: 3229.7,
       balance: 5969.3,
       categories: [
@@ -28,6 +29,7 @@ describe('golden: overview (user Ana)', () => {
         period: { from: '2026-08-01', to: '2026-08-31', label: 'agosto 2026' },
         income: 5100,
         expenses: 1870.3,
+        setAside: 0,
         available: 3229.7,
         txnCount: 5,
         evidenceTxnIds: expect.any(Array),

@@ -20,6 +20,8 @@ export type OverviewAudit = {
   period: { from: string; to: string; label: string }
   income: number
   expenses: number
+  /** Set aside for goals in the period (HOME-02). */
+  setAside: number
   available: number
   txnCount: number
   /** Ids of the movements that make up the figure (transfers are not counted). */
@@ -33,7 +35,9 @@ export type Overview = {
   txnCount: number
   income: number
   expenses: number
-  /** income − expenses of the period. */
+  /** Set aside for goals in the period: saved, not spent (HOME-02). */
+  setAside: number
+  /** income − expenses − setAside of the period. */
   available: number
   /** Historical balance: all incomes − all expenses registered (same as chat "saldo"). */
   balance: number
@@ -51,6 +55,7 @@ export function buildOverview(txs: EngineTransaction[], range: PeriodRange, asOf
   const prevRange = previousRange(range)
   const prev = periodTotals(flows, prevRange.from, prevRange.to)
   const firstDay = flows.reduce<Date | null>((min, t) => (!min || t.postedAt < min ? t.postedAt : min), null)
+  const available = round(current.income - current.expenses - current.setAside)
   const all = firstDay ? periodTotals(flows, firstDay, asOf) : { income: 0, expenses: 0 }
 
   const evidenceTxnIds = flows.filter((t) => inPeriod(t.postedAt, range.from, range.to)).map((t) => t.id)
@@ -69,18 +74,23 @@ export function buildOverview(txs: EngineTransaction[], range: PeriodRange, asOf
     txnCount: current.count,
     income: round(current.income),
     expenses: round(current.expenses),
-    available: round(current.income - current.expenses),
+    setAside: round(current.setAside),
+    available,
     balance: round(all.income - all.expenses),
     categories,
     previous: { label: prevRange.label, income: round(prev.income), expenses: round(prev.expenses) },
     expensesChange: round(current.expenses - prev.expenses),
     audit: {
       metric: 'available',
-      formula: `Disponible = ingresos de ${range.label} − gastos de ${range.label}. Las transferencias entre tus cuentas no se cuentan.`,
+      formula:
+        current.setAside > 0
+          ? `Disponible = ingresos de ${range.label} − gastos de ${range.label} − lo apartado para tus metas. Las transferencias entre tus cuentas no se cuentan.`
+          : `Disponible = ingresos de ${range.label} − gastos de ${range.label}. Las transferencias entre tus cuentas no se cuentan.`,
       period: { from: isoDate(range.from), to: isoDate(range.to), label: range.label },
       income: round(current.income),
       expenses: round(current.expenses),
-      available: round(current.income - current.expenses),
+      setAside: round(current.setAside),
+      available,
       txnCount: current.count,
       evidenceTxnIds,
     },

@@ -1,4 +1,4 @@
-import { signedFlows } from './aggregates'
+import { isSetAside, signedFlows } from './aggregates'
 import { percentile } from './stats'
 import { addMonths, daysBetween, endOfMonth, isoDate, startOfMonth } from './period'
 import { ENGINE_VERSION } from './version'
@@ -41,6 +41,7 @@ export function computeForecast(
   const disc = signedFlows(txs).filter(
     (t) =>
       t.amount < 0 &&
+      !isSetAside(t) &&
       t.postedAt >= from60 &&
       t.postedAt <= asOf &&
       !recMerchants.has(t.merchantNormalized),

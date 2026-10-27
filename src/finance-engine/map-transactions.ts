@@ -15,6 +15,7 @@ export type TransactionRow = {
   posted_at?: string | null
   is_transfer?: boolean
   account_id?: string
+  goal_id?: string | null
 }
 
 /**
@@ -39,6 +40,7 @@ export function toEngineTransaction(row: TransactionRow): EngineTransaction | nu
     merchantNormalized: (row.description ?? '').trim().toUpperCase(),
     isTransfer,
     accountId: row.account_id,
+    goalId: row.goal_id ?? undefined,
   }
 }
 

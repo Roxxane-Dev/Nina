@@ -51,13 +51,14 @@ export function buildFactsPayload(input: {
   const figures: Record<string, number> = {
     income: round(current.income),
     expenses: round(current.expenses),
-    available: round(current.income - current.expenses),
+    available: round(current.income - current.expenses - current.setAside),
     txn_count: current.count,
     prev_income: round(prev.income),
     prev_expenses: round(prev.expenses),
     // Differences are computed here so the LLM never has to subtract.
     expenses_change: round(current.expenses - prev.expenses),
   }
+  if (current.setAside > 0) figures.set_aside = round(current.setAside)
   if (current.income > 0) {
     figures.savings_rate_pct = Math.round(((current.income - current.expenses) / current.income) * 100)
   }

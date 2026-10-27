@@ -11,6 +11,11 @@ export function signedFlows(txs: EngineTransaction[]): EngineTransaction[] {
   return usableTransactions(txs).filter((t) => !t.isTransfer)
 }
 
+/** Money set aside for a goal (HOME-02). It is saved, not spent. */
+export function isSetAside(t: EngineTransaction): boolean {
+  return t.goalId != null && t.amount < 0
+}
+
 export function monthlyTotals(
   txs: EngineTransaction[],
   year: number,
@@ -26,15 +31,17 @@ export function periodTotals(txs: EngineTransaction[], from: Date, to: Date): Pe
   const byCategory: Record<string, number> = {}
   let income = 0
   let expenses = 0
+  let setAside = 0
   for (const t of rows) {
     if (t.amount > 0) income += t.amount
+    else if (isSetAside(t)) setAside += -t.amount
     else {
       const spend = -t.amount
       expenses += spend
       byCategory[t.categorySlug] = (byCategory[t.categorySlug] ?? 0) + spend
     }
   }
-  return { income, expenses, byCategory, count: rows.length }
+  return { income, expenses, byCategory, setAside, count: rows.length }
 }
 
 export function trailingFullMonths(
@@ -62,7 +69,7 @@ export function monthToDateSpendByCategory(
 ): Record<string, number> {
   const from = startOfMonth(asOf)
   const to = asOf
-  const rows = signedFlows(txs).filter((t) => inPeriod(t.postedAt, from, to) && t.amount < 0)
+  const rows = signedFlows(txs).filter((t) => inPeriod(t.postedAt, from, to) && t.amount < 0 && !isSetAside(t))
   const byCategory: Record<string, number> = {}
   for (const t of rows) {
     byCategory[t.categorySlug] = (byCategory[t.categorySlug] ?? 0) + -t.amount
