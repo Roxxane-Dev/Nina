@@ -49,6 +49,34 @@ describe('Consents (US-03 / US-42)', () => {
     expect(await svc.allowsAi('u1')).toBe(false)
   })
 
+  it('policy 2026-10-v2 (D-014): a consent given under the previous text does not count until answered again', async () => {
+    expect(POLICY_VERSION).toBe('2026-10-v2')
+    const { svc, db } = setup()
+    // The user said yes to everything under v1.
+    db.rows('consents').push(
+      { user_id: 'u1', purpose: 'data_processing', granted: true, policy_version: '2026-10-v1' },
+      { user_id: 'u1', purpose: 'ai_processing', granted: true, policy_version: '2026-10-v1' },
+    )
+    stamp(db)
+    const before = await svc.current('u1')
+    expect(before.answered).toBe(false) // the app shows the consent screen again
+    expect(await svc.allowsAi('u1')).toBe(false) // and no LLM meanwhile
+
+    // Answering again with the same choices records them under v2 (append-only).
+    await svc.record('u1', { data_processing: true, ai_processing: true, analytics: false })
+    stamp(db)
+    const v2 = db.rows('consents').filter((r) => r.policy_version === '2026-10-v2')
+    expect(v2.map((r) => r.purpose).sort()).toEqual(['ai_processing', 'analytics', 'data_processing'])
+    expect(db.rows('consents').filter((r) => r.policy_version === '2026-10-v1')).toHaveLength(2) // history kept
+    expect((await svc.current('u1')).answered).toBe(true)
+    expect(await svc.allowsAi('u1')).toBe(true)
+
+    // Saying no to AI under v2 keeps it off.
+    await svc.record('u1', { data_processing: true, ai_processing: false, analytics: false })
+    stamp(db)
+    expect(await svc.allowsAi('u1')).toBe(false)
+  })
+
   it('AI needs both data and AI consent', async () => {
     const { svc, db } = setup()
     await svc.record('u1', { data_processing: false, ai_processing: true })

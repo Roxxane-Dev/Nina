@@ -15,8 +15,12 @@ export class ConsentsNotReadyError extends FeatureNotReadyError {
 
 export const CONSENT_PURPOSES = ['data_processing', 'ai_processing', 'analytics'] as const
 export type ConsentPurpose = (typeof CONSENT_PURPOSES)[number]
-/** Bump when the privacy text changes: users are asked again. */
-export const POLICY_VERSION = '2026-10-v1'
+/**
+ * Bump when the privacy text changes: users are asked again.
+ * v2 (2026-10-27, D-014): the AI consent now says that the redacted chat message
+ * is sent and that conversations are kept in the account.
+ */
+export const POLICY_VERSION = '2026-10-v2'
 
 export type ConsentState = {
   policyVersion: string
@@ -97,7 +101,9 @@ export class ConsentsService implements OnModuleInit {
   async allowsAi(userId: string): Promise<boolean> {
     try {
       const s = await this.current(userId)
-      return s.consents.data_processing && s.consents.ai_processing
+      // Only a consent given under the current policy text counts: after a bump,
+      // no LLM until the user answers again.
+      return s.answered && s.consents.data_processing && s.consents.ai_processing
     } catch {
       return false // fail closed: no consent information → no LLM
     }

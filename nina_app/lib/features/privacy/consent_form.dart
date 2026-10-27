@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 import '../../core/theme/design_system.dart';
 import '../../data/services/profile_api_service.dart';
 
+/// AI consent body, policy 2026-10-v2 (approved by the founder).
+const aiConsentText =
+    'Para conversar contigo con naturalidad, enviamos a un proveedor de IA tu mensaje del chat, '
+    'sin tu correo, teléfono, DNI, RUC, cuentas ni tarjetas. Si preguntas por tu plata, también '
+    'enviamos las cifras que Nina ya calculó; nunca tus movimientos uno por uno. El proveedor no usa '
+    'estos datos para entrenar sus modelos. Guardamos tus conversaciones en tu cuenta de Nina para '
+    'darte contexto.\nSin esto, Nina te responde igual con tus cifras, en formato simple.';
+
 /// The three consents, shown separately (FDS §6.1). Only "datos" is required;
 /// nothing optional comes pre-selected the first time (US-03).
 class ConsentForm extends StatefulWidget {
@@ -91,10 +99,10 @@ class _ConsentFormState extends State<ConsentForm> {
         ),
         _tile(
           key: const Key('consent-ai'),
-          title: 'Explicaciones con IA',
-          body:
-              'Enviamos cifras ya calculadas y anonimizadas a modelos de IA para explicarte tus resultados. '
-              'No se guardan ni se usan para entrenar. Sin esto, Nina te responde igual con tus cifras, pero en formato simple.',
+          title: 'Respuestas con IA',
+          // Policy 2026-10-v2 (D-014). Changing this text means bumping
+          // POLICY_VERSION in src/consents/consents.service.ts.
+          body: aiConsentText,
           value: _ai,
           onChanged: (v) => setState(() => _ai = v),
         ),

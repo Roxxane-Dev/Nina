@@ -55,7 +55,7 @@ on conflict (id) do nothing;
 
 -- ─── Consents (so the chat can use the AI path locally) ──────────────────────
 insert into public.consents (user_id, purpose, granted, policy_version)
-select u, p, true, '2026-10-v1'
+select u, p, true, '2026-10-v2'
 from (values ('a0000000-0000-4000-8000-00000000000a'::uuid), ('b0000000-0000-4000-8000-00000000000b'::uuid)) as users(u),
      (values ('data_processing'), ('ai_processing')) as purposes(p);
 
@@ -200,7 +200,7 @@ begin
   on conflict (id) do nothing;
 
   insert into public.consents (user_id, purpose, granted, policy_version)
-  select dev, p, true, '2026-10-v1' from (values ('data_processing'), ('ai_processing')) as v(p);
+  select dev, p, true, '2026-10-v2' from (values ('data_processing'), ('ai_processing')) as v(p);
 
   insert into public.transactions (user_id, amount, category, description, date, type, source)
   select dev, amount, category, description, date, type, source

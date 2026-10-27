@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nina_app/features/privacy/consent_form.dart';
 import 'package:nina_app/data/services/profile_api_service.dart';
 import 'package:nina_app/features/privacy/consent_gate.dart';
 import 'package:nina_app/features/profile/pages/profile_page.dart';
@@ -72,6 +73,38 @@ void main() {
 
     expect(api.saved.single, {'data': true, 'ai': false, 'analytics': false});
     expect(find.text('APP'), findsOneWidget);
+  });
+
+  testWidgets(
+      'policy 2026-10-v2: the AI consent says what is sent and kept, and a v1 answer asks again from scratch',
+      (tester) async {
+    // The backend reports answered=false after the bump, even if v1 said yes to AI.
+    final api = FakeProfileApi(const ConsentState(
+        answered: false,
+        dataProcessing: true,
+        aiProcessing: true,
+        analytics: false));
+    await tester.pumpWidget(
+        MaterialApp(home: ConsentGate(api: api, child: const Text('APP'))));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('consent-screen')), findsOneWidget);
+    expect(find.text('APP'), findsNothing);
+    expect(find.text('Respuestas con IA'), findsOneWidget);
+    expect(find.text(aiConsentText), findsOneWidget);
+    expect(aiConsentText, contains('tu mensaje del chat'));
+    expect(aiConsentText,
+        contains('sin tu correo, teléfono, DNI, RUC, cuentas ni tarjetas'));
+    expect(aiConsentText, contains('nunca tus movimientos uno por uno'));
+    expect(aiConsentText,
+        contains('Guardamos tus conversaciones en tu cuenta de Nina'));
+    expect(aiConsentText, isNot(contains('No se guardan')));
+    // The new text is a new decision: nothing comes pre-selected.
+    expect(
+        tester
+            .widget<SwitchListTile>(find.byKey(const Key('consent-ai')))
+            .value,
+        isFalse);
   });
 
   testWidgets('already consented users go straight to the app', (tester) async {
