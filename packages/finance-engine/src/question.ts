@@ -15,6 +15,12 @@ const PLAN_WORDS = /\b(viaj|viaje|irme|ir a|comprar|comprarme|juntar|ahorrar|met
 /** Spending words: a future-dated message with these is still about spending. */
 const SPEND_WORDS = /\b(gast|pagu[eé]|compr[eé])/i
 
+/** "¿y en julio?", "¿el mes pasado?", "ayer": a follow-up that is only a period. */
+function isBarePeriodFollowUp(message: string): boolean {
+  const words = message.replace(/[¿?¡!.,]/g, ' ').trim().split(/\s+/).filter(Boolean)
+  return /^(y|e)$/i.test(words[0] ?? '') || words.length <= 4
+}
+
 /**
  * Deterministic reading of a chat question: what is asked (intent), about
  * which dates (period) and which category. No LLM involved.
@@ -30,8 +36,9 @@ export function resolveQuestion(message: string, asOf: Date): ResolvedQuestion {
   } else if (period.future && (classified === 'other' || classified === 'unknown_finance' || classified === 'spending_summary')) {
     // "¿cuánta plata voy a tener el próximo mes?": a projection, not a summary of an empty month.
     intent = 'forecast'
-  } else if ((classified === 'other' || classified === 'unknown_finance') && period.explicit) {
+  } else if (period.explicit && (classified === 'unknown_finance' || (classified === 'other' && isBarePeriodFollowUp(message)))) {
     // "¿y el mes pasado?" / "¿y en julio?": a bare period means a spending summary.
+    // "¿quién ganó el partido ayer?" is not about money and stays 'other'.
     intent = 'spending_summary'
   }
   return {

@@ -4,7 +4,8 @@ import { createHash } from 'crypto'
 import type { FactsPayload } from '../../packages/finance-engine/src'
 import { AIService } from '../ai/ai.service'
 import { MOCK_UNAVAILABLE_REPLY } from '../ai/providers/mock.provider'
-import { buildGroundedUserPrompt, CHAT_SYSTEM_PROMPT_V1 } from './chat-prompt'
+import { buildGroundedUserPrompt, CHAT_OPEN_PROMPT_V1, CHAT_SYSTEM_PROMPT_V1 } from './chat-prompt'
+import { cleanFollowUps, validateOpenAnswer, type OpenAnswer } from './open-validator'
 import { wrapUntrusted } from './redaction'
 import { ROUTER_RULES, taskForFacts, type RouterTask } from './router.rules'
 import {
@@ -95,5 +96,33 @@ export class NinaRouterService {
       inputHash,
       usedLlm: true,
     }
+  }
+
+  /**
+   * Open conversation without figures (CI-01). Only the user's message goes to
+   * the LLM — redacted and wrapped as untrusted; no facts, no memories, nothing
+   * persisted. Any number in the answer fails validation. Returns null when no
+   * validated answer is available, so the caller keeps its deterministic reply.
+   * The caller checks AI consent and calm mode before calling.
+   */
+  async converse(userId: string, message: string): Promise<OpenAnswer | null> {
+    const prompt = `USER_MESSAGE:\n${wrapUntrusted(message)}`
+    for (let attempt = 0; attempt <= ROUTER_RULES.policies.retryOnValidationFailure; attempt++) {
+      try {
+        const raw = await this.ai.processMessage(
+          { message: prompt, context: 'general', ninaSnapshotPrompt: CHAT_OPEN_PROMPT_V1 },
+          { userId, persistConversation: false, useMemory: false },
+        )
+        if (raw.trim() === MOCK_UNAVAILABLE_REPLY) return null
+        const parsed = parseLlmAnswer(raw) ?? looseAnswer(raw, [])
+        const answer: OpenAnswer = { message: parsed.message.trim(), followUps: cleanFollowUps(parsed.followUps) }
+        const v = validateOpenAnswer(answer)
+        if (v.ok) return answer
+        this.logger.warn(`open validation failed: ${reasonCode(v.reason)}`)
+      } catch (e) {
+        this.logger.warn(`open LLM call failed: ${safeErrorCode(e)}`)
+      }
+    }
+    return null
   }
 }
