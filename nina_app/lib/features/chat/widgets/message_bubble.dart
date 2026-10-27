@@ -35,6 +35,18 @@ class MessageBubble extends StatelessWidget {
                     padding: EdgeInsets.only(top: 8),
                     child: _ConfirmationButtons(),
                   ),
+                if (message.canRetry)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: NinaSmallAction(
+                      key: const Key('chat-retry'),
+                      label: 'Reintentar',
+                      icon: Icons.refresh_rounded,
+                      onTap: () => context
+                          .read<ChatBloc>()
+                          .add(ChatRetryRequested(errorMessageId: message.id)),
+                    ),
+                  ),
               ],
             ),
           ),

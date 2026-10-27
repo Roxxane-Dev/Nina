@@ -16,6 +16,15 @@ class ChatMessageSent extends ChatEvent {
   List<Object?> get props => [message];
 }
 
+/// Sends again a message whose request failed, keeping the conversation.
+class ChatRetryRequested extends ChatEvent {
+  const ChatRetryRequested({required this.errorMessageId});
+  final String errorMessageId;
+
+  @override
+  List<Object?> get props => [errorMessageId];
+}
+
 class ChatConfirmationAccepted extends ChatEvent {
   const ChatConfirmationAccepted();
 }

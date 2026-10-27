@@ -70,6 +70,7 @@ class ChatMessage extends Equatable {
     this.isPending = false,
     this.card,
     this.followUps = const [],
+    this.retryText,
   });
 
   final String id;
@@ -80,9 +81,14 @@ class ChatMessage extends Equatable {
   final ChatCard? card;
   final List<String> followUps;
 
+  /// Set on an error bubble: the user message that failed, to send it again.
+  final String? retryText;
+
+  bool get canRetry => retryText != null;
+
   @override
   List<Object?> get props =>
-      [id, text, isUser, isConfirmation, isPending, card, followUps];
+      [id, text, isUser, isConfirmation, isPending, card, followUps, retryText];
 
   ChatMessage copyWith({
     String? text,
@@ -97,6 +103,7 @@ class ChatMessage extends Equatable {
       isPending: isPending ?? this.isPending,
       card: card,
       followUps: followUps,
+      retryText: retryText,
     );
   }
 }

@@ -192,8 +192,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Text(today[0].toUpperCase() + today.substring(1),
                 style: NinaText.bodyS(color: NinaColors.textTertiary)),
             const SizedBox(height: 2),
-            Text(name.isEmpty ? 'Hola' : 'Hola, $name',
-                style: NinaText.displayM()),
+            Text(name.isEmpty ? 'Hey 👋' : 'Hey, $name',
+                key: const Key('home-greeting'), style: NinaText.displayM()),
           ]),
         ),
         GestureDetector(

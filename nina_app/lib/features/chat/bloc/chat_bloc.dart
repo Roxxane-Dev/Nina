@@ -11,6 +11,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       : _dio = dio ?? DioClient.instance.dio,
         super(const ChatInitial()) {
     on<ChatMessageSent>(_onMessageSent);
+    on<ChatRetryRequested>(_onRetry);
     on<ChatConfirmationAccepted>(_onConfirmAccepted);
     on<ChatConfirmationRejected>(_onConfirmRejected);
     on<_ChatGreet>(_onGreet);
@@ -24,18 +25,24 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   /// Signed pending registration from the last reply; sent back with "sí"/"no".
   String? _pendingToken;
 
+  /// Signed conversation context from the last reply (what Nina asked for,
+  /// the last question). Opaque to the app; sent back with the next message.
+  String? _context;
+
+  /// Starters a beginner can tap without knowing what to ask.
   static const defaultFollowUps = [
-    '¿Cuánto gasté este mes?',
-    '¿En qué gasto más?',
-    '¿Qué puedes hacer?',
+    '¿Cuánto me queda este mes?',
+    '¿A dónde se fue mi plata?',
+    '¿Me alcanza para algo?',
+    'Quiero ahorrar para algo',
   ];
 
   void _onGreet(_ChatGreet event, Emitter<ChatState> emit) {
     final greeting = ChatMessage(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
-      text:
-          'Hola 👋 Soy Nina, tu agente financiero. Puedo registrar tus gastos '
-          'e ingresos y decirte en qué se va tu plata. ¿En qué te ayudo?',
+      text: 'Hey 👋 Soy Nina. Pregúntame lo que quieras de tu plata: cuánto '
+          'te queda, a dónde se fue o si te alcanza para algo. También puedes '
+          'contarme un gasto, como «gasté 25 en taxi».',
       isUser: false,
       followUps: defaultFollowUps,
     );
@@ -46,28 +53,49 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     ChatMessageSent event,
     Emitter<ChatState> emit,
   ) async {
-    // Skip internal greet event forwarded as sent
     final userMsg = ChatMessage(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       text: event.message,
       isUser: true,
     );
+    await _send(event.message, [...state.messages, userMsg], emit);
+  }
 
+  /// Retry: drop the error bubble and send the same text again. The user's
+  /// message stays where it was; nothing else in the conversation changes.
+  Future<void> _onRetry(
+    ChatRetryRequested event,
+    Emitter<ChatState> emit,
+  ) async {
+    final failed =
+        state.messages.where((m) => m.id == event.errorMessageId).firstOrNull;
+    final text = failed?.retryText;
+    if (text == null) return;
+    final messages =
+        state.messages.where((m) => m.id != event.errorMessageId).toList();
+    await _send(text, messages, emit);
+  }
+
+  Future<void> _send(
+    String text,
+    List<ChatMessage> base,
+    Emitter<ChatState> emit,
+  ) async {
     const loadingMsg = ChatMessage(
       id: 'loading',
       text: '',
       isUser: false,
       isPending: true,
     );
-
-    emit(ChatSending(messages: [...state.messages, userMsg, loadingMsg]));
+    emit(ChatSending(messages: [...base, loadingMsg]));
 
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/chat',
         data: {
-          'message': event.message,
+          'message': text,
           if (_pendingToken != null) 'pendingToken': _pendingToken,
+          if (_context != null) 'context': _context,
         },
       );
 
@@ -76,10 +104,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       // The backend says explicitly when it is waiting for a Sí / No.
       final isConfirmation = data['needsConfirmation'] == true;
       _pendingToken = isConfirmation ? data['pendingToken'] as String? : null;
+      _context = data['context'] as String? ?? _context;
       final followUps =
           (data['followUps'] as List? ?? const []).whereType<String>().toList();
-
-      final messages = state.messages.where((m) => m.id != 'loading').toList();
 
       final ninaMsg = ChatMessage(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -90,15 +117,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         followUps: followUps,
       );
 
-      emit(ChatReady(messages: [...messages, ninaMsg]));
+      emit(ChatReady(messages: [...base, ninaMsg]));
     } on Exception catch (e) {
-      final messages = state.messages.where((m) => m.id != 'loading').toList();
       final errMsg = ChatMessage(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         text: _friendlyError(e),
         isUser: false,
+        // A 401 is not fixed by retrying; everything else can be.
+        retryText: _isRetryable(e) ? text : null,
       );
-      emit(ChatError(messages: [...messages, errMsg], error: errMsg.text));
+      emit(ChatError(messages: [...base, errMsg], error: errMsg.text));
     }
   }
 
@@ -124,6 +152,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     add(const ChatMessageSent(message: 'cancelar'));
   }
 
+  bool _isRetryable(Exception e) =>
+      !(e is DioException && e.response?.statusCode == 401) &&
+      !(e is DioException && e.response?.statusCode == 400);
+
   String _friendlyError(Exception e) {
     if (e is DioException) {
       final status = e.response?.statusCode;
@@ -140,19 +172,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         final ref = requestId != null && requestId.length >= 8
             ? ' (código ${requestId.substring(0, 8)})'
             : '';
-        return 'Tuve un problema procesando tu mensaje. Inténtalo de nuevo.$ref';
+        return 'Se me cruzaron los cables procesando tu mensaje. Inténtalo otra vez.$ref';
       }
       switch (e.type) {
         case DioExceptionType.connectionError:
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.receiveTimeout:
         case DioExceptionType.sendTimeout:
-          return 'No puedo conectarme con Nina ahora. Revisa tu conexión o que el servidor esté encendido.';
+          return 'No puedo conectarme ahora. Revisa tu conexión y vuelve a intentarlo.';
         default:
           break;
       }
     }
-    return 'Algo salió mal en mi lado. Inténtalo de nuevo.';
+    return 'Algo salió mal en mi lado. Inténtalo otra vez.';
   }
 }
 

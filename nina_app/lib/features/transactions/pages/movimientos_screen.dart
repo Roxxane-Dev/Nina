@@ -278,38 +278,6 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                 _load();
               },
             ),
-            const SizedBox(height: 6),
-            NinaChipRow<_TypeFilter>(
-              options: const {
-                _TypeFilter.all: 'Todos',
-                _TypeFilter.income: 'Ingresos',
-                _TypeFilter.expense: 'Gastos'
-              },
-              selected: _type,
-              onSelect: (v) => setState(() => _type = v),
-            ),
-            if (_accounts.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              NinaChipRow<String?>(
-                options: {
-                  null: 'Todas las cuentas',
-                  for (final a in _accounts) a.id: a.name
-                },
-                selected: _accountId,
-                onSelect: (v) => setState(() => _accountId = v),
-              ),
-            ],
-            if (_categoryOptions.length > 1) ...[
-              const SizedBox(height: 6),
-              NinaChipRow<String?>(
-                options: {
-                  null: 'Todas las categorías',
-                  for (final c in _categoryOptions) c: c
-                },
-                selected: _category,
-                onSelect: (v) => setState(() => _category = v),
-              ),
-            ],
             const SizedBox(height: 8),
             Expanded(child: _buildList()),
           ],
@@ -317,6 +285,12 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
       ),
     );
   }
+
+  /// How many extra filters (type, account, category) are on.
+  int get _activeFilters =>
+      (_type != _TypeFilter.all ? 1 : 0) +
+      (_accountId != null ? 1 : 0) +
+      (_category != null ? 1 : 0);
 
   Widget _buildHeader() {
     final o = _overview;
@@ -337,17 +311,20 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     }
     return Padding(
       padding:
-          const EdgeInsets.fromLTRB(NinaSpace.gutter, 20, NinaSpace.gutter, 12),
+          const EdgeInsets.fromLTRB(NinaSpace.gutter, 16, NinaSpace.gutter, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Movimientos', style: NinaText.displayL()),
-          Text('Los recibos no mienten.',
-              style: NinaText.bodyS(color: NinaColors.textTertiary)),
+          Text('Movimientos', style: NinaText.displayM()),
           if (figures.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            NinaCard(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: NinaColors.surface,
+                borderRadius: BorderRadius.circular(NinaRadii.md),
+                border: Border.all(color: NinaColors.border),
+              ),
               child: Row(
                 children: [for (final f in figures) Expanded(child: f)],
               ),
@@ -358,26 +335,147 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     );
   }
 
+  /// Type, account and category live in a sheet so the list keeps the screen.
+  Future<void> _openFilters() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          void update(VoidCallback change) {
+            setState(change);
+            setSheet(() {});
+          }
+
+          Widget group(String title, List<Widget> chips) => Padding(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: NinaText.caps()),
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 8, runSpacing: 8, children: chips),
+                  ],
+                ),
+              );
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Expanded(
+                        child: Text('Filtros', style: NinaText.displayM())),
+                    if (_activeFilters > 0)
+                      TextButton(
+                        key: const Key('filters-clear'),
+                        onPressed: () => update(() {
+                          _type = _TypeFilter.all;
+                          _accountId = null;
+                          _category = null;
+                        }),
+                        child: const Text('Limpiar'),
+                      ),
+                  ]),
+                  const SizedBox(height: 12),
+                  group('Tipo', [
+                    for (final e in const {
+                      _TypeFilter.all: 'Todos',
+                      _TypeFilter.income: 'Ingresos',
+                      _TypeFilter.expense: 'Gastos'
+                    }.entries)
+                      NinaChip(
+                        key: Key('filter-type-${e.key.name}'),
+                        label: e.value,
+                        selected: _type == e.key,
+                        onTap: () => update(() => _type = e.key),
+                      ),
+                  ]),
+                  if (_accounts.isNotEmpty)
+                    group('Cuenta', [
+                      NinaChip(
+                        label: 'Todas',
+                        selected: _accountId == null,
+                        onTap: () => update(() => _accountId = null),
+                      ),
+                      for (final a in _accounts)
+                        NinaChip(
+                          label: a.name,
+                          selected: _accountId == a.id,
+                          onTap: () => update(() => _accountId = a.id),
+                        ),
+                    ]),
+                  if (_categoryOptions.length > 1)
+                    group('Categoría', [
+                      NinaChip(
+                        label: 'Todas',
+                        selected: _category == null,
+                        onTap: () => update(() => _category = null),
+                      ),
+                      for (final c in _categoryOptions)
+                        NinaChip(
+                          key: Key('filter-category-$c'),
+                          label: c,
+                          icon: categoryIcon(c),
+                          selected: _category == c,
+                          onTap: () => update(() => _category = c),
+                        ),
+                    ]),
+                  NinaButton(
+                    key: const Key('filters-apply'),
+                    label: 'Ver movimientos',
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildSearch() => Padding(
         padding: const EdgeInsets.fromLTRB(
-            NinaSpace.gutter, 0, NinaSpace.gutter, 12),
-        child: TextField(
-          controller: _searchCtrl,
-          style: NinaText.bodyM(color: NinaColors.textPrimary),
-          decoration: InputDecoration(
-            isDense: true,
-            prefixIcon: const Icon(Icons.search,
-                size: 20, color: NinaColors.textTertiary),
-            hintText: 'Buscar por nota o categoría',
-            hintStyle: NinaText.bodyM(color: NinaColors.textTertiary),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(NinaRadii.pill),
-                borderSide: const BorderSide(color: NinaColors.border)),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(NinaRadii.pill),
-                borderSide: const BorderSide(color: NinaColors.border)),
+            NinaSpace.gutter, 0, NinaSpace.gutter, 10),
+        child: Row(children: [
+          Expanded(
+            child: TextField(
+              controller: _searchCtrl,
+              style: NinaText.bodyM(color: NinaColors.textPrimary),
+              decoration: InputDecoration(
+                isDense: true,
+                prefixIcon: const Icon(Icons.search,
+                    size: 20, color: NinaColors.textTertiary),
+                hintText: 'Buscar',
+                hintStyle: NinaText.bodyM(color: NinaColors.textTertiary),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(NinaRadii.pill),
+                    borderSide: const BorderSide(color: NinaColors.border)),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(NinaRadii.pill),
+                    borderSide: const BorderSide(color: NinaColors.border)),
+              ),
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          Badge(
+            isLabelVisible: _activeFilters > 0,
+            label: Text('$_activeFilters'),
+            backgroundColor: NinaColors.accent,
+            child: NinaCircleButton(
+              key: const Key('movimientos-filters'),
+              icon: Icons.tune_rounded,
+              tooltip: 'Filtros',
+              size: 48,
+              filled: _activeFilters > 0,
+              onTap: _openFilters,
+            ),
+          ),
+        ]),
       );
 
   Widget _buildList() {
