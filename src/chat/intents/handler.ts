@@ -1,6 +1,7 @@
 import type { ResolvedQuestion } from '../../../packages/finance-engine/src'
 import type { CalmKind } from '../calm-mode'
 import type { ChatReply } from '../chat-reply'
+import type { Awaiting, ConversationContext } from '../conversation-context'
 
 /** What happened in a turn — for telemetry and tests, never shown to the user. */
 export type ChatOutcome =
@@ -25,6 +26,8 @@ export type ChatContext = {
   aiAllowed: boolean
   /** Calm mode (PRD-VOX-02): set by a keyword rule when the topic is debt, income loss or distress. */
   calm?: CalmKind | null
+  /** Verified context from the previous turn (signed token), if any. */
+  conversation?: ConversationContext | null
 }
 
 export type HandlerResult = {
@@ -33,6 +36,8 @@ export type HandlerResult = {
   llmUsed?: boolean
   validationPassed?: boolean
   engineVersion?: string
+  /** What Nina asked for, so the next message completes it. */
+  awaiting?: { kind: Awaiting; draft?: string; item?: string }
 }
 
 /**

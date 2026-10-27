@@ -38,7 +38,7 @@ export function buildCard(facts: FactsPayload, recent?: RecentItem[]): AnswerCar
         rows: recent.map((r) => ({
           label: `${shortDate(r.date)} · ${r.category}`,
           amount: r.isIncome ? r.amount : -r.amount,
-          tone: r.isIncome ? 'positive' : 'negative',
+          ...(r.isIncome ? { tone: 'positive' as const } : {}),
         })),
         howCalculated: 'Movimientos más recientes que registraste, del más nuevo al más antiguo.',
       }
@@ -50,7 +50,7 @@ export function buildCard(facts: FactsPayload, recent?: RecentItem[]): AnswerCar
         highlight: { label: 'Saldo (ingresos − gastos)', amount: f.balance, tone: f.balance >= 0 ? 'positive' : 'negative' },
         rows: [
           { label: 'Total de ingresos', amount: f.total_income, tone: 'positive' },
-          { label: 'Total de gastos', amount: -f.total_expenses, tone: 'negative' },
+          { label: 'Total de gastos', amount: -f.total_expenses },
         ],
         howCalculated:
           `Sumé todos tus ingresos y les resté todos tus gastos registrados ${period} (${facts.txnCount} movimientos). ` +
@@ -70,7 +70,7 @@ export function buildCard(facts: FactsPayload, recent?: RecentItem[]): AnswerCar
         highlight: { label: 'Disponible (ingresos − gastos)', amount: f.available, tone: f.available >= 0 ? 'positive' : 'negative' },
         rows: [
           { label: 'Ingresos', amount: f.income, tone: 'positive' },
-          { label: 'Gastos', amount: -f.expenses, tone: 'negative' },
+          { label: 'Gastos', amount: -f.expenses },
         ],
       }
     case 'category_spend':

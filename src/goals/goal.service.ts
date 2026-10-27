@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { localToday, monthLabelEs, parseGoalRequest, DEFAULT_USD_PEN_RATE, type GoalRequest } from '../../packages/finance-engine/src';
 import { createAdminClient } from '../common/supabase.client';
 import { usdPenRate } from '../common/usd-rate';
+import { formatSoles } from '../common/money';
 import { FinanceDataUnavailableError } from '../finance-engine/errors';
 import type { GoalRow } from './goal-plans';
 
@@ -15,6 +16,8 @@ export type ParsedGoal = {
   deadline?: string;
   original_usd?: number;
   usd_pen_rate?: number;
+  /** Only the year was given: the deadline is December and the confirmation says so. */
+  deadline_year_only?: boolean;
 };
 
 /** Questions ("¿cómo alcanzo mi meta?") are plans to build, never goals to register. */
@@ -40,19 +43,21 @@ export function goalFromRequest(req: GoalRequest, rate = DEFAULT_USD_PEN_RATE): 
   if (req.deadline) {
     const last = new Date(Date.UTC(req.deadline.year, req.deadline.month + 1, 0));
     goal.deadline = last.toISOString().slice(0, 10);
+    if (req.deadlineYearOnly) goal.deadline_year_only = true;
   }
   return goal;
 }
 
 export function goalConfirmationText(goal: ParsedGoal): string {
-  const money = `S/ ${goal.target_amount.toFixed(2)}`;
+  const money = formatSoles(goal.target_amount);
   const usd = goal.original_usd
-    ? ` (US$ ${goal.original_usd.toFixed(2)} al tipo de cambio de referencia S/ ${goal.usd_pen_rate})`
+    ? ` (US$ ${goal.original_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} al tipo de cambio de referencia S/ ${goal.usd_pen_rate})`
     : '';
   const when = goal.deadline
     ? ` para ${monthLabelEs(Number(goal.deadline.slice(0, 4)), Number(goal.deadline.slice(5, 7)) - 1)}`
     : '';
-  return `Voy a registrar una meta llamada "${goal.name}" por ${money}${usd}${when}.\n\n¿Confirmas?`;
+  const yearOnly = goal.deadline_year_only ? ' (solo me dijiste el año, así que cuento hasta diciembre; avísame si es antes)' : '';
+  return `Voy a registrar una meta llamada "${goal.name}" por ${money}${usd}${when}${yearOnly}.\n\n¿Confirmas?`;
 }
 
 /** After a plan: offer to save the goal. The confirmation (Sí / No) is the signed token on the reply. */

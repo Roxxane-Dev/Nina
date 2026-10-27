@@ -93,6 +93,20 @@ export function parseLlmAnswer(raw: string): LlmAnswer | null {
   }
 }
 
+/**
+ * The model answered with plain text instead of JSON: keep only the message.
+ * Labels such as "recommendation:" or "follow_ups:" must never reach the user.
+ */
+export function looseAnswer(raw: string, figuresUsed: string[]): LlmAnswer {
+  const parts = raw.split(/\s*\*{0,2}\b(recommendation|recomendaci[oó]n|follow_ups|follow-ups|confidence_note)\b\*{0,2}\s*:\s*/i)
+  const message = parts[0].trim()
+  let recommendation: string | undefined
+  for (let i = 1; i < parts.length - 1; i += 2) {
+    if (/^recom/i.test(parts[i])) recommendation = parts[i + 1].trim() || undefined
+  }
+  return { message, figuresUsed, recommendation, followUps: [] }
+}
+
 export function validateAnswer(
   answer: LlmAnswer,
   facts: FactsPayload,

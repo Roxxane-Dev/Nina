@@ -8,6 +8,7 @@ import { buildGroundedUserPrompt, CHAT_SYSTEM_PROMPT_V1 } from './chat-prompt'
 import { wrapUntrusted } from './redaction'
 import { ROUTER_RULES, taskForFacts, type RouterTask } from './router.rules'
 import {
+  looseAnswer,
   parseLlmAnswer,
   templatedAnswer,
   validateAnswer,
@@ -58,11 +59,7 @@ export class NinaRouterService {
         )
         // No real LLM answered: fall back to the engine-only template below.
         if (raw.trim() === MOCK_UNAVAILABLE_REPLY) break
-        const parsed = parseLlmAnswer(raw) ?? {
-          message: raw,
-          figuresUsed: Object.keys(facts.figures),
-          followUps: [],
-        }
+        const parsed = parseLlmAnswer(raw) ?? looseAnswer(raw, Object.keys(facts.figures))
         last = parsed
         const v = validateAnswer(parsed, facts)
         if (v.ok) {

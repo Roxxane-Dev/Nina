@@ -4,9 +4,10 @@ import { CALM_REPLIES } from '../calm-mode'
 import { reply } from '../chat-reply'
 import type { ChatContext, ChatIntentHandler, HandlerResult } from './handler'
 
-export const UNRECOGNIZED_REPLY = 'No entendí bien esa pregunta, ¿puedes reformularla?'
+export const UNRECOGNIZED_REPLY =
+  'Esa no la agarré 🫠 ¿Me la dices de otra forma? Por ejemplo: «¿cuánto gasté en comida?» o «¿me alcanza para unas zapatillas?».'
 
-const EXAMPLES = ['¿Cuánto gasté este mes?', '¿Cuál es mi saldo?', 'Gasté 25 en taxi']
+const EXAMPLES = ['¿Cuánto me queda este mes?', '¿A dónde se fue mi plata?', '¿Me alcanza para algo?']
 
 /**
  * otro / chat_general — help, out-of-scope requests and anything that is not a
@@ -30,7 +31,7 @@ export class GeneralHandler implements ChatIntentHandler {
         return {
           outcome: 'ok',
           reply: reply(
-            'Todavía no puedo simular compras ni escenarios de "¿qué pasa si…?". Por ahora puedo decirte cuánto gastas, en qué y cuánto te queda.',
+            'Todavía no simulo escenarios de "¿qué pasa si…?". Lo que sí puedo: decirte cuánto te queda este mes y si una compra entra. Dime qué quieres comprar y cuánto cuesta.',
             { followUps: ['¿Cuánto me queda?', '¿En qué gasto más?'] },
           ),
         }
@@ -40,7 +41,7 @@ export class GeneralHandler implements ChatIntentHandler {
         return {
           outcome: 'unrecognized',
           reply: reply(
-            'Soy Nina y me enfoco en tu plata 🙂 Puedo registrar tus gastos e ingresos y decirte en qué se te va el dinero.',
+            'Eso se me escapa 😅 Lo mío es tu plata: pregúntame cuánto te queda, a dónde se fue o si te alcanza para algo. O cuéntame un gasto: «gasté 25 en taxi».',
             { followUps: EXAMPLES },
           ),
         }

@@ -15,6 +15,8 @@ export type GoalRequest = {
   deadline: { year: number; month: number } | null
   /** The user named a date that is already over (or the current month): it cannot be planned. */
   deadlinePast: boolean
+  /** Only a year was given ("japón 2028"): the deadline is December of that year, and Nina says so. */
+  deadlineYearOnly?: boolean
 }
 
 const MONTHS: Array<[RegExp, number]> = [
@@ -66,7 +68,7 @@ function parseAmount(text: string): { amount: number; usd: boolean } | null {
   return { amount: pick.value, usd: pick.usd || (candidates.every((c) => !c.marked) && USD_RE.test(text)) }
 }
 
-function parseDeadline(text: string, asOf: Date): { deadline: GoalRequest['deadline']; past: boolean } {
+function parseDeadline(text: string, asOf: Date): { deadline: GoalRequest['deadline']; past: boolean; yearOnly?: boolean } {
   const y = asOf.getUTCFullYear()
   const m = asOf.getUTCMonth()
   const make = (year: number, month: number) => {
@@ -99,7 +101,12 @@ function parseDeadline(text: string, asOf: Date): { deadline: GoalRequest['deadl
   }
   // "en 2028" → the end of that year.
   const year = text.match(/\b(?:en|para|hasta|el|a fines de|finales de)\s+(?:el\s+)?(20\d\d)\b/)
-  if (year) return make(parseInt(year[1], 10), 11)
+  if (year) return { ...make(parseInt(year[1], 10), 11), yearOnly: true }
+  // "mi meta japón 2028": a bare future year next to the goal, never followed by a currency.
+  const bareYear = text.match(/\b(20\d\d)\b(?!\s*(?:soles?|d[oó]lar|usd|mil|k)\b)/)
+  if (bareYear && parseInt(bareYear[1], 10) > asOf.getUTCFullYear()) {
+    return { ...make(parseInt(bareYear[1], 10), 11), yearOnly: true }
+  }
   return { deadline: null, past: false }
 }
 
@@ -116,17 +123,25 @@ function takeWords(source: string, max = 3): string {
   return out.join(' ')
 }
 
+const title = (s: string) => s.replace(/(^|\s)(\S)/g, (_, sp: string, c: string) => sp + c.toUpperCase())
+
 export function extractGoalName(text: string): string {
   const lower = text.toLowerCase()
   const trip = lower.match(/\b(?:viajar|viaje|ir)\s+a(?:l)?\s+([a-záéíóúñ ]+)/)
   if (trip) {
     const place = takeWords(trip[1], 2)
-    if (place && !NAME_NOISE.has(place)) return `Viaje a ${place}`
+    if (place && !NAME_NOISE.has(place)) return `Viaje a ${title(place)}`
   }
   const purpose = lower.match(/\bpara\s+(?:comprar\s+|pagar\s+|hacer\s+|mi\s+|el\s+|la\s+|un\s+|una\s+|unas\s+|unos\s+)*([a-záéíóúñ ]+)/)
   if (purpose) {
     const what = takeWords(purpose[1])
     if (what && !NAME_NOISE.has(what) && !new RegExp(`^(${MONTH_WORDS})`).test(what)) return what
+  }
+  // "registra mi meta japón 2028": the words right after "meta".
+  const named = lower.match(/\bmeta\s+(?:de\s+(?:ahorro\s+)?|llamada\s+|que\s+se\s+llama\s+)?([a-záéíóúñ ]+)/)
+  if (named) {
+    const what = takeWords(named[1], 3)
+    if (what && !NAME_NOISE.has(what) && !new RegExp(`^(${MONTH_WORDS})`).test(what)) return title(what)
   }
   return 'Mi meta'
 }
@@ -136,13 +151,14 @@ export function parseGoalRequest(message: string, asOf: Date): GoalRequest | nul
   const text = message.trim().toLowerCase()
   const amount = parseAmount(text)
   if (!amount) return null
-  const { deadline, past } = parseDeadline(text, asOf)
+  const { deadline, past, yearOnly } = parseDeadline(text, asOf)
   return {
     amount: amount.amount,
     currency: amount.usd ? 'USD' : 'PEN',
     name: extractGoalName(text),
     deadline,
     deadlinePast: past,
+    ...(yearOnly && deadline ? { deadlineYearOnly: true } : {}),
   }
 }
 

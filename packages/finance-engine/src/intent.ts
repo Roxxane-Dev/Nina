@@ -33,11 +33,11 @@ const RULES: Array<{ intent: FactsIntent; patterns: RegExp[] }> = [
   },
   {
     intent: 'available',
-    patterns: [/me queda/i, /me sobr/i, /disponible/i, /ahorr[eé] este mes/i],
+    patterns: [/me queda/i, /me sobr/i, /disponible/i, /ahorr[eé] este mes/i, /puedo gastar(la|lo|me)?\b/i],
   },
   {
     intent: 'forecast',
-    patterns: [/cierre de mes/i, /fin de mes/i, /proyecci[oó]n/i, /me va a alcanzar/i, /voy a terminar/i],
+    patterns: [/cierre de mes/i, /fin de mes/i, /proyecci[oó]n/i, /me va a alcanzar/i, /voy a terminar/i, /voy a tener/i, /pr[oó]ximo mes/i, /mes que viene/i],
   },
   {
     intent: 'score',

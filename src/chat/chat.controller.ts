@@ -17,6 +17,8 @@ type ChatBody = {
   message: string
   /** Signed pending registration returned by the previous reply. */
   pendingToken?: string
+  /** Signed conversation context returned by the previous reply. */
+  context?: string
 }
 
 const MAX_MESSAGE_LENGTH = 1000
@@ -45,7 +47,8 @@ export class ChatController {
       throw new BadRequestException(`message must be at most ${MAX_MESSAGE_LENGTH} characters`)
     }
     const pendingToken = typeof body.pendingToken === 'string' ? body.pendingToken : undefined
+    const context = typeof body.context === 'string' ? body.context : undefined
     req.chatRequestId = randomUUID()
-    return this.chat.handleMessage(req.user.id, message, pendingToken, req.chatRequestId)
+    return this.chat.handleMessage(req.user.id, message, pendingToken, req.chatRequestId, context)
   }
 }

@@ -4,7 +4,7 @@
  * and emoji: data questions are answered from the engine template only, and
  * everything else gets a fixed, supportive reply with one concrete next step.
  */
-export type CalmKind = 'debt' | 'income_loss' | 'distress'
+export type CalmKind = 'debt' | 'income_loss' | 'distress' | 'worry'
 
 /** Lowercase, accents removed, so "Perdí mi trabajo" matches "perdi mi trabajo". */
 function fold(text: string): string {
@@ -57,11 +57,23 @@ const INCOME_LOSS = [
   /\bme (recortaron|bajaron|quitaron) el sueldo\b/,
 ]
 
+/** Worry about making it to payday: answered with the real numbers, calmly, no jokes. */
+const WORRY = [
+  /\bme preocupa\b.*\b(plata|dinero|llegar|alcanc|pago|quincena|fin de mes)/,
+  /\bno (voy a|creo) llegar\b/,
+  /\bno (me )?va a alcanzar\b/,
+  /\bno me alcanza\b(?! para)/,
+  /\bhasta (el )?(dia de )?(pago|cobro)\b/,
+  /\bhasta (la )?quincena\b/,
+  /\bestoy (preocupad[oa]|asustad[oa]) (por|con) (la plata|el dinero|mis gastos)/,
+]
+
 export function detectCalmTopic(message: string): CalmKind | null {
   const text = fold(message)
   if (DISTRESS.some((re) => re.test(text))) return 'distress'
   if (DEBT.some((re) => re.test(text))) return 'debt'
   if (INCOME_LOSS.some((re) => re.test(text))) return 'income_loss'
+  if (WORRY.some((re) => re.test(text))) return 'worry'
   return null
 }
 
@@ -107,7 +119,15 @@ export const CALM_REPLIES: Record<CalmKind, { reply: string; followUps: string[]
     reply: DISTRESS_REPLY,
     followUps: ['¿Cuánto me queda?'],
   },
+  worry: {
+    reply:
+      'Te entiendo, esa sensación pesa. Vamos con calma y con tus números reales: dime "¿cuánto me queda?" y vemos qué es lo urgente hasta tu próximo pago.',
+    followUps: ['¿Cuánto me queda?', '¿En qué gasto más?'],
+  },
 }
+
+/** Opening for a worried user before the real figures (no jokes, no emoji). */
+export const WORRY_PREFIX = 'Te entiendo, esa sensación pesa. Vamos con calma y con tus números reales.'
 
 /** Opening line when a data question is answered in calm mode. */
 export const CALM_PREFIX = 'Vamos con calma.'

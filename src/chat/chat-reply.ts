@@ -12,6 +12,8 @@ export type ChatReply = {
   card?: AnswerCard
   /** Present for answers built from engine facts. */
   grounded?: { intent: string; validationPassed: boolean; usedLlm: boolean; engineVersion: string }
+  /** Signed conversation context; the app sends it back with the next message. */
+  context?: string
 }
 
 export const reply = (text: string, extra: Partial<ChatReply> = {}): ChatReply => ({

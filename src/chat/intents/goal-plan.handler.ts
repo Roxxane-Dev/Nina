@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { parseGoalRequest } from '../../../packages/finance-engine/src'
+import { extractGoalName, parseGoalRequest } from '../../../packages/finance-engine/src'
 import { usdPenRate } from '../../common/usd-rate'
 import { FinanceEngineService } from '../../finance-engine/finance-engine.service'
 import { goalFromRequest, goalSaveOffer } from '../../goals/goal.service'
@@ -32,7 +32,15 @@ export class GoalPlanHandler implements ChatIntentHandler {
   async handle(ctx: ChatContext): Promise<HandlerResult | null> {
     if (ctx.question.intent !== 'goal_plan') return null
     const req = parseGoalRequest(ctx.message, ctx.asOf)
-    if (!req) return { outcome: 'unrecognized', reply: reply(ASK_AMOUNT) }
+    // Nina asks for the amount and keeps the sentence, so "7000 dólares" completes it.
+    if (!req) {
+      const name = extractGoalName(ctx.message)
+      const when = ctx.question.period.future ? ctx.question.period.label : null
+      const text = name !== 'Mi meta'
+        ? `${name}${when ? ` para ${when}` : ''}: me encanta el plan ✈️ ¿De cuánto es el presupuesto?${when ? '' : ' ¿Y para cuándo?'} Con eso te digo cuánto apartar al mes y si tu ritmo de ahorro te da.`
+        : ASK_AMOUNT
+      return { outcome: 'unrecognized', reply: reply(text, { followUps: ['¿Cuánto me queda este mes?'] }), awaiting: { kind: 'goal_amount', draft: ctx.message } }
+    }
     if (req.deadlinePast) return { outcome: 'unrecognized', reply: reply(DEADLINE_PAST) }
 
     const rate = usdPenRate(this.config)

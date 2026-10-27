@@ -13,7 +13,9 @@ import { ChatController } from './chat.controller'
 import { ChatService } from './chat.service'
 import { ChatTelemetry } from './chat-telemetry'
 import { ConfirmationTokens, confirmationSecret } from './confirmation-token'
+import { ContextTokens } from './conversation-context'
 import { ConfirmationHandler } from './intents/confirmation.handler'
+import { ConversationHandler } from './intents/conversation.handler'
 import { GeneralHandler } from './intents/general.handler'
 import { GoalPlanHandler } from './intents/goal-plan.handler'
 import { BalanceQueryHandler, SpendingQueryHandler } from './intents/query.handlers'
@@ -43,6 +45,7 @@ import {
     ChatTelemetry,
     QueryResponder,
     ConfirmationHandler,
+    ConversationHandler,
     GoalPlanHandler,
     RegisterIncomeHandler,
     RegisterGoalHandler,
@@ -55,6 +58,18 @@ import {
       inject: [ConfigService],
       useFactory: (config: ConfigService) =>
         new ConfirmationTokens(
+          confirmationSecret({
+            CHAT_CONFIRM_SECRET: config.get<string>('CHAT_CONFIRM_SECRET'),
+            SUPABASE_SERVICE_ROLE_KEY: config.get<string>('SUPABASE_SERVICE_ROLE_KEY'),
+          }),
+        ),
+    },
+    {
+      // Same secret, different purpose (the MAC is domain-separated in ContextTokens).
+      provide: ContextTokens,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) =>
+        new ContextTokens(
           confirmationSecret({
             CHAT_CONFIRM_SECRET: config.get<string>('CHAT_CONFIRM_SECRET'),
             SUPABASE_SERVICE_ROLE_KEY: config.get<string>('SUPABASE_SERVICE_ROLE_KEY'),

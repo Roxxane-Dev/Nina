@@ -19,6 +19,8 @@ export type PeriodRange = {
   label: string
   /** False when the user named no period and we defaulted to the current month. */
   explicit: boolean
+  /** The user named a period that has not started yet ("enero 2028"): it holds no movements. */
+  future?: boolean
 }
 
 const MONTHS_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre']
@@ -80,11 +82,27 @@ export function resolvePeriodRange(text: string, asOf: Date): PeriodRange {
   if (/mes (pasado|anterior)|ultimo mes/.test(t)) {
     return m === 0 ? monthRange(y - 1, 11, asOf) : monthRange(y, m - 1, asOf)
   }
+  if (/(proximo|siguiente) mes|mes que viene|el otro mes/.test(t)) {
+    const ny = m === 11 ? y + 1 : y
+    return { ...monthRange(ny, (m + 1) % 12, asOf), future: true }
+  }
   for (let i = 0; i < 12; i++) {
     const name = i === 8 ? '(setiembre|septiembre)' : MONTHS_ES[i]
+    // An explicit year always wins: "enero 2028" is January 2028, never last January.
+    const withYear = t.match(new RegExp(`\\b${name}\\s*(?:de(?:l)?\\s+)?(20\\d\\d)\\b`))
+    if (withYear) {
+      const year = parseInt(withYear[withYear.length - 1], 10)
+      const range = monthRange(year, i, asOf)
+      return year > y || (year === y && i > m) ? { ...range, future: true } : range
+    }
     if (new RegExp(`\\b${name}\\b`).test(t)) {
       return monthRange(i > m ? y - 1 : y, i, asOf)
     }
+  }
+  // "en 2028" / "para el 2028": a year, not an amount, only after a preposition.
+  const futureYear = t.match(/\b(?:en|para|hasta|del|el ano)\s+(?:el\s+)?(20\d\d)\b/)
+  if (futureYear && parseInt(futureYear[1], 10) > y) {
+    return { ...yearRange(parseInt(futureYear[1], 10), asOf, `el año ${futureYear[1]}`), future: true }
   }
   if (/este mes|\bel mes\b|en el mes/.test(t)) {
     return monthRange(y, m, asOf, true)

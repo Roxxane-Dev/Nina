@@ -220,15 +220,15 @@ describe('goal plans (a question is answered with a plan, never registered as a 
     expect(r.reply).toContain('US$ 6,000')
     expect(r.reply).toContain('diciembre 2028')
     expect(r.reply).toContain('S/ 865.38 al mes durante 26 meses')
-    expect(r.reply).toContain('Viaje a japon')
+    expect(r.reply).toContain('Viaje a Japon')
     expect(r.reply).not.toContain('Mi Meta')
     expect(r.needsConfirmation).toBe(true)
-    expect(r.card?.title).toBe('Plan: Viaje a japon')
+    expect(r.card?.title).toBe('Plan: Viaje a Japon')
     expect(insertGoal).not.toHaveBeenCalled()
 
     await chat.handleMessage('user-1', 'sí', r.pendingToken)
     expect(insertGoal).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Viaje a japon', target_amount: 22500, deadline: '2028-12-31', original_usd: 6000, usd_pen_rate: 3.75 }),
+      expect.objectContaining({ name: 'Viaje a Japon', target_amount: 22500, deadline: '2028-12-31', original_usd: 6000, usd_pen_rate: 3.75, deadline_year_only: true }),
       'user-1',
     )
   })
@@ -259,7 +259,7 @@ describe('goal plans (a question is answered with a plan, never registered as a 
     const { chat } = setup()
     const r = await chat.handleMessage('user-1', 'quiero ahorrar 2000 soles para un viaje en diciembre')
     expect(r.needsConfirmation).toBe(true)
-    expect(r.reply).toContain('S/ 2000.00')
+    expect(r.reply).toContain('S/ 2,000.00')
     expect(r.reply).toContain('diciembre 2026')
   })
 })

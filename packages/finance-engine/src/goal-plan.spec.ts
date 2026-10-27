@@ -10,7 +10,7 @@ describe('parseGoalRequest', () => {
       'dime quiero viajar a japon en 2028 y quiero ahorrar una bolsita de 6000 dolares cual seria mi plan pra llegar a ese ahorro meta',
       OCT_24,
     )
-    expect(g).toEqual({ amount: 6000, currency: 'USD', name: 'Viaje a japon', deadline: { year: 2028, month: 11 }, deadlinePast: false })
+    expect(g).toEqual({ amount: 6000, currency: 'USD', name: 'Viaje a Japon', deadline: { year: 2028, month: 11 }, deadlinePast: false, deadlineYearOnly: true })
   })
 
   it('reads soles with month + year, and never takes the month as the name', () => {
