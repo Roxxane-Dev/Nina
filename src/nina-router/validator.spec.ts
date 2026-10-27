@@ -1,5 +1,5 @@
 import type { FactsPayload } from '../../packages/finance-engine/src'
-import { extractNumbers, parseLlmAnswer, parseLocaleNumber, templatedAnswer, validateAnswer, type LlmAnswer } from './validator'
+import { extractNumbers, looseAnswer, parseLlmAnswer, parseLocaleNumber, templatedAnswer, validateAnswer, type LlmAnswer } from './validator'
 
 const facts: FactsPayload = {
   intent: 'spending_breakdown',
@@ -85,5 +85,18 @@ describe('templatedAnswer: goal_plan', () => {
     const m = templatedAnswer(f as never).message
     expect(m).toContain('S/ 1,200.00')
     expect(m).toContain('Aún no tengo meses completos')
+  })
+})
+
+describe('looseAnswer (plain-text LLM output)', () => {
+  it.each([
+    ['recommendation: Aparta algo.'],
+    ['Recommendation: Aparta algo.'],
+    ['**recommendation:** Aparta algo.'],
+    ['**Recomendación**: Aparta algo.'],
+  ])('strips the label in %s', (label) => {
+    const a = looseAnswer(`Te quedan S/ 4,500.00. ${label} follow_ups: ["¿En qué gasto más?"]`, ['available'])
+    expect(a.message).toBe('Te quedan S/ 4,500.00.')
+    expect(a.recommendation).toBe('Aparta algo.')
   })
 })
