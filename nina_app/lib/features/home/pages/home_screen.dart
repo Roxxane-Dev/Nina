@@ -262,6 +262,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   value: o.income,
                   color: NinaColors.success)),
           Expanded(child: _HeroFigure(label: 'Gastos', value: o.expenses)),
+          if (o.setAside > 0)
+            Expanded(
+                child: _HeroFigure(
+                    key: const Key('home-set-aside'),
+                    label: 'Apartado',
+                    value: o.setAside)),
         ]),
         const SizedBox(height: 12),
         Text(changeText, style: NinaText.bodyS(color: NinaColors.textTertiary)),
@@ -543,7 +549,8 @@ const _emptyOverview = Overview(
 
 class _HeroFigure extends StatelessWidget {
   const _HeroFigure(
-      {required this.label,
+      {super.key,
+      required this.label,
       required this.value,
       this.color = NinaColors.textPrimary});
   final String label;

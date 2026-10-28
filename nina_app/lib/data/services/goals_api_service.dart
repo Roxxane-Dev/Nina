@@ -83,4 +83,15 @@ class GoalsApiService {
         .map((g) => Goal.fromJson(g.cast<String, dynamic>()))
         .toList();
   }
+
+  /// HOME-02: records money the user set aside for the goal. Nina never moves
+  /// money; the backend stores a movement linked to the goal and returns the
+  /// goal with its progress recomputed by the engine.
+  Future<Goal> contribute(String goalId, double amount) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+        '/v1/goals/$goalId/contributions',
+        data: {'amount': amount});
+    return Goal.fromJson(
+        (res.data?['goal'] as Map?)?.cast<String, dynamic>() ?? const {});
+  }
 }

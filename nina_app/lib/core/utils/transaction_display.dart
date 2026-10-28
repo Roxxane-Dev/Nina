@@ -47,6 +47,8 @@ const _aliases = <String, String>{
   'salario': 'Sueldo',
   'freelance': 'Ingresos extra',
   'extra': 'Ingresos extra',
+  // HOME-02: money set aside for a goal (category 'savings', linked by goal_id).
+  'savings': 'Apartado',
   'other': 'Otros',
   'otros': 'Otros',
 };
@@ -66,6 +68,7 @@ IconData categoryIcon(String? raw) => switch (categoryLabel(raw)) {
       'Compras' => Icons.shopping_bag_outlined,
       'Suscripciones' => Icons.subscriptions_outlined,
       'Deudas' => Icons.credit_card_outlined,
+      'Apartado' => Icons.savings_outlined,
       'Sueldo' => Icons.south_west_rounded,
       'Ingresos extra' => Icons.south_west_rounded,
       _ => Icons.receipt_long_outlined,

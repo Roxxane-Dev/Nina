@@ -9,6 +9,7 @@ class Overview {
     required this.txnCount,
     required this.income,
     required this.expenses,
+    this.setAside = 0,
     required this.available,
     required this.balance,
     required this.categories,
@@ -25,6 +26,9 @@ class Overview {
   final int txnCount;
   final double income;
   final double expenses;
+
+  /// Set aside for goals in the period (HOME-02): saved, not spent.
+  final double setAside;
   final double available;
   final double balance;
   final List<CategoryShare> categories;
@@ -46,6 +50,7 @@ class Overview {
       txnCount: (j['txnCount'] as num?)?.toInt() ?? 0,
       income: _d(j['income']),
       expenses: _d(j['expenses']),
+      setAside: _d(j['setAside']),
       available: _d(j['available']),
       balance: _d(j['balance']),
       categories: (j['categories'] as List? ?? const [])
@@ -74,6 +79,7 @@ class OverviewAudit {
     required this.periodLabel,
     required this.income,
     required this.expenses,
+    this.setAside = 0,
     required this.available,
     required this.txnCount,
     required this.evidenceTxnIds,
@@ -83,6 +89,7 @@ class OverviewAudit {
   final String periodLabel;
   final double income;
   final double expenses;
+  final double setAside;
   final double available;
   final int txnCount;
   final List<String> evidenceTxnIds;
@@ -94,6 +101,7 @@ class OverviewAudit {
       periodLabel: period['label'] as String? ?? '',
       income: _d(j['income']),
       expenses: _d(j['expenses']),
+      setAside: _d(j['setAside']),
       available: _d(j['available']),
       txnCount: (j['txnCount'] as num?)?.toInt() ?? 0,
       evidenceTxnIds:

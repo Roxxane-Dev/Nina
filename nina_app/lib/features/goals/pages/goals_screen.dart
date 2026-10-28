@@ -5,6 +5,7 @@ import '../../../core/utils/money.dart';
 import '../../../data/services/finance_api_service.dart';
 import '../../../data/services/goals_api_service.dart';
 import '../../../shared/widgets/nina_ui.dart';
+import '../widgets/contribution_sheet.dart';
 
 /// Metas: saved goals with the engine's plan (required per month vs. the
 /// user's real savings pace). Goals are created by asking Nina in the chat.
@@ -36,6 +37,15 @@ class _GoalsScreenState extends State<GoalsScreen> {
     } else {
       context.go('/chat?draft=${Uri.encodeComponent(draft)}');
     }
+  }
+
+  Future<void> _contribute(Goal goal) async {
+    final updated = await showContributionSheet(context, goal: goal, api: _api);
+    if (updated == null || !mounted) return;
+    _reload();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+            'Anotado. Llevas ${formatSoles(updated.currentAmount)} para ${updated.name}.')));
   }
 
   @override
@@ -85,7 +95,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 for (final g in snap.data!) {
                   children.add(Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: _GoalCard(goal: g, onAsk: _ask),
+                    child: _GoalCard(
+                        goal: g,
+                        onAsk: _ask,
+                        onContribute: () => _contribute(g)),
                   ));
                 }
               }
@@ -104,9 +117,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
 }
 
 class _GoalCard extends StatelessWidget {
-  const _GoalCard({required this.goal, required this.onAsk});
+  const _GoalCard(
+      {required this.goal, required this.onAsk, required this.onContribute});
   final Goal goal;
   final ValueChanged<String> onAsk;
+  final VoidCallback onContribute;
 
   @override
   Widget build(BuildContext context) {
@@ -196,13 +211,22 @@ class _GoalCard extends StatelessWidget {
         ],
         if (goal.remaining > 0) ...[
           const SizedBox(height: 14),
-          NinaSmallAction(
-            label: 'Pregúntale a Nina cómo',
-            icon: Icons.auto_awesome_outlined,
-            onTap: () => onAsk(goal.deadlineLabel == null
-                ? '¿Cómo junto ${formatSoles(goal.remaining)} para ${goal.name}?'
-                : '¿Cómo junto ${formatSoles(goal.remaining)} para ${goal.deadlineLabel}?'),
-          ),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            NinaSmallAction(
+              key: Key('goal-contribute-${goal.id}'),
+              label: 'Registrar avance',
+              icon: Icons.add,
+              filled: true,
+              onTap: onContribute,
+            ),
+            NinaSmallAction(
+              label: 'Pregúntale a Nina cómo',
+              icon: Icons.auto_awesome_outlined,
+              onTap: () => onAsk(goal.deadlineLabel == null
+                  ? '¿Cómo junto ${formatSoles(goal.remaining)} para ${goal.name}?'
+                  : '¿Cómo junto ${formatSoles(goal.remaining)} para ${goal.deadlineLabel}?'),
+            ),
+          ]),
         ],
       ]),
     );

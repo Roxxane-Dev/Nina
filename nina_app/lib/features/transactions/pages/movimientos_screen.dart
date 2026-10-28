@@ -589,7 +589,8 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
         amount: amount,
         isIncome: isIncome,
         category: r['category'] as String?,
-        onTap: () => _changeCategory(r),
+        // HOME-02: a goal contribution keeps its category; delete it to undo.
+        onTap: r['goal_id'] == null ? () => _changeCategory(r) : null,
         trailing: IconButton(
           tooltip: 'Eliminar',
           visualDensity: VisualDensity.compact,

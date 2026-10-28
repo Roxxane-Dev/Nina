@@ -59,6 +59,10 @@ class AuditSheet extends StatelessWidget {
                 _Row(Icons.south_west_rounded, 'Ingresos', audit.income,
                     color: NinaColors.success),
                 _Row(Icons.receipt_long_outlined, '− Gastos', audit.expenses),
+                if (audit.setAside > 0)
+                  _Row(Icons.savings_outlined, '− Apartado para metas',
+                      audit.setAside,
+                      key: const Key('audit-set-aside')),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -104,7 +108,7 @@ class AuditSheet extends StatelessWidget {
 
 class _Row extends StatelessWidget {
   const _Row(this.icon, this.label, this.value,
-      {this.color = NinaColors.textPrimary});
+      {super.key, this.color = NinaColors.textPrimary});
   final IconData icon;
   final String label;
   final double value;
