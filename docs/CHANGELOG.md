@@ -2,6 +2,22 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-10-28 — Avances en metas (HOME-02, rama `feature/goal-contributions`)
+- **Metas:** cada meta tiene "Registrar avance". El progreso ya se mueve: monto inicial + avances.
+- **Chat:** "aparté 200 para Japón", "le puse 150 a mi meta laptop" piden confirmación y anotan el avance. Sin metas, con un nombre que no existe o con varias metas posibles, Nina pregunta en vez de adivinar.
+- **Disponible:** lo apartado resta del disponible y no cuenta como gasto (D-015).
+  - "¿Cuánto me queda?" dice cuánto apartaste.
+  - Inicio muestra "Apartado".
+  - "Cómo calculé esto" muestra "− Apartado para metas".
+- **Movimientos:** los avances se ven como "Apartado · <meta>" en color neutro.
+- **Base de datos (solo local):** `transactions.goal_id` con RLS y CHECK (`20261027000000_goal_contributions.sql`).
+- **Verificación:**
+  - RLS local: 5/5.
+  - jest 542/542.
+  - Flutter 103/103.
+  - API local probada: 400 / 404 / 401 / 201.
+  - Escenario V del chat contra el backend local.
+
 ## 2026-10-27 — Consentimiento de IA, política 2026-10-v2 (SEC-05)
 - "Explicaciones con IA" pasa a ser **"Respuestas con IA"**, con un texto que dice lo que de verdad se envía (el mensaje sin datos personales y, si aplica, las cifras del motor) y que Nina guarda las conversaciones.
 - `POLICY_VERSION` sube a `2026-10-v2`: todos vuelven a decidir, sin nada preseleccionado.

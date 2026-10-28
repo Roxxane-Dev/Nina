@@ -4,6 +4,28 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-015 · Avances en metas: lo apartado resta del disponible (HOME-02)
+**Fecha:** 2026-10-28 (aprobada por el founder: "lo apartado resta del disponible y retiros quedan para después")
+**Decisión:** un avance ("aparté S/ 200 para Japón") es un movimiento en `transactions` con `category = 'savings'`, `type = 'expense'` y la nueva columna `goal_id`. `transactions` sigue siendo la única fuente de verdad.
+- **Motor:**
+  - Lo apartado no es gasto: no entra en los gastos ni en las categorías.
+  - Resta del disponible: disponible = ingresos − gastos − lo apartado. Inicio, "Cómo calculé esto" y el chat dan la misma cifra.
+  - El ritmo de ahorro de los planes (ingresos − gastos) no baja por apartar.
+  - El saldo histórico no resta lo apartado: esa plata sigue siendo de la persona.
+- **Avance de la meta:** `current_amount` (monto inicial) + la suma de sus avances, calculado por el motor.
+- **Seguridad:** RLS solo deja vincular un movimiento a una meta propia. Un CHECK exige que sea una salida personal (nunca ingreso ni de un espacio). Si se borra la meta, el movimiento queda (`on delete set null`).
+- **Registro:**
+  - API: `POST /v1/goals/:id/contributions` (dueño y meta activa, si no 404).
+  - Chat: con confirmación, buscando la meta por nombre entre las propias.
+  - App: "Registrar avance" en Metas.
+
+**Por qué:** si lo apartado no restara, el disponible diría que la persona puede gastar plata que ya separó para su meta.
+
+**Consecuencias:**
+- Retirar plata de una meta queda para después. Hoy se deshace un avance borrándolo en Movimientos.
+- Los avances no se recategorizan: en Movimientos aparecen como "Apartado" y en color neutro.
+- La API lee `goal_id`: en producción la migración `20261027000000` debe aplicarse **antes** de desplegar esta API (runbook, sección 9).
+
 ## D-014 · Texto nuevo del consentimiento de IA y política 2026-10-v2 (SEC-05)
 **Fecha:** 2026-10-27 (texto aprobado por el founder)
 **Decisión:** el consentimiento "Respuestas con IA" dice lo que el código hace de verdad:

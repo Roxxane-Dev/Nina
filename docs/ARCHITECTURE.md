@@ -136,7 +136,10 @@ Usuario: "dime cuánto he gastado en el año"
 `packages/finance-engine/src/timezone.ts` es el único lugar que conoce la zona horaria (`America/Lima`). Un día calendario se guarda como medianoche UTC (`transactions.date` es `timestamptz` en la BD real) y se lee como ese día; un instante con hora se convierte al día de Lima. El registro de gastos/ingresos, los rangos del chat y el `asOf` de score/forecast usan esa misma utilidad.
 
 ### Saldo
-"¿Cuál es mi saldo?" = todos los ingresos − todos los gastos registrados en Nina (no es el saldo del banco; aún no hay cuentas con saldo inicial).
+"¿Cuál es mi saldo?" = todos los ingresos − todos los gastos registrados en Nina (no es el saldo del banco; aún no hay cuentas con saldo inicial). Lo apartado para metas no resta del saldo (sigue siendo tuya).
+
+### Disponible y metas (HOME-02, D-015)
+Disponible del mes = ingresos − gastos − lo apartado para metas. Un avance es un movimiento con `goal_id` (categoría `savings`); el motor lo saca de gastos y categorías (`isSetAside`) y suma el avance de cada meta (`setAsideByGoal`).
 
 ### Errores (sin mensaje genérico para todo)
 | Caso | Respuesta | HTTP | `outcome` en logs |

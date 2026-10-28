@@ -66,7 +66,8 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | ID | Título | Prioridad | Estado | Evidencia / siguiente acción |
 |---|---|---|---|---|
 | HOME-01 | Saludo "Hey, <nombre>" | P2 | Done | `home_screen.dart`. |
-| HOME-02 | Registrar avances en una meta ("aparté S/ 200 para Japón") | P1 | Todo | Hoy `current_amount` nunca cambia y el progreso no avanza. |
+| HOME-02 | Registrar avances en una meta ("aparté S/ 200 para Japón") | P1 | Done | D-015; rama `feature/goal-contributions`. Falta aplicar la migración en producción (runbook §9). |
+| HOME-04 | Retirar plata de una meta | P2 | Todo | Fuera de HOME-02 por decisión (D-015). Hoy se deshace un avance borrándolo. |
 | HOME-03 | Editar un movimiento (monto, descripción, fecha) | P1 | Todo | Hoy solo se puede cambiar la categoría o borrarlo. |
 | NAV-01 | Filtros de Movimientos compactos (una fila + hoja) | P1 | Done | `movimientos_screen.dart`; tests del subagente. |
 | FIG-01 | Figma: Movimientos, Añadir, Metas, Espacio, Perfil y prototipo | P2 | Blocked | Límite de 20 llamadas/mes del plan Starter. Scripts listos; correr en noviembre. |

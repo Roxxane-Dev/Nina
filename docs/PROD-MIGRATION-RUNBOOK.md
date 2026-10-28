@@ -620,3 +620,17 @@ create policy "Users can insert their personal and shared transactions."
 
 ## 8. Replay result (local)
 Section 4's SQL, extracted from this file with the last line changed to `commit;`, was applied to a fresh local database containing only the production snapshot baseline (`supabase db reset --version 20260101000000 --no-seed`, local Docker). Results are recorded in `docs/OVERNIGHT-LOG.md` (task 7).
+
+## 9. Later migration: goal contributions (`20261027000000`, HOME-02)
+Not part of the section 4 transaction. Apply it after sections 1–8, as its own script in the SQL Editor.
+
+- **Order matters:** the API that ships with HOME-02 reads `transactions.goal_id`. Apply this migration **before** deploying that API; otherwise every engine read (Inicio, chat, Metas) fails with a missing-column error.
+- **What it does:**
+  - Adds nullable `transactions.goal_id` referencing `goals(id) on delete set null`, plus a partial index.
+  - Adds the CHECK `transactions_goal_contribution_shape`: a goal-linked row must be `type = 'expense'` with no `shared_space_id`.
+  - Recreates "Users insert own transactions" and "Users update own transactions" with the same conditions as `20260108`, plus "the goal belongs to the author".
+- **What could break:**
+  - Brief lock on `transactions` while adding the column; use `set lock_timeout = '5s';` first.
+  - The CHECK validates existing rows, but they all have `goal_id = null`, so it passes.
+- **Test:** locally, `supabase/tests/goal_contributions_rls.sql` (5 of 5). Do not run it on production.
+- **Rollback:** fix forward if possible. Otherwise run `alter table public.transactions drop constraint transactions_goal_contribution_shape;`, re-run the two policies from `20260108`, then drop the column. Dropping the column loses which movements were contributions; the movements themselves stay.
