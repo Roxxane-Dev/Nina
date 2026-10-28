@@ -2,6 +2,7 @@ import {
   buildGoalPlanFacts,
   monthLabelEs,
   monthsBetween,
+  setAsideByGoal,
   type EngineTransaction,
   type GoalRequest,
 } from '../../packages/finance-engine/src'
@@ -22,7 +23,10 @@ export type GoalView = {
   id: string
   name: string
   targetAmount: number
+  /** Saved so far: the amount the goal started with + every contribution registered (HOME-02). */
   currentAmount: number
+  /** Part of currentAmount registered as contributions. */
+  contributed: number
   /** target − current, never negative: what is still left to save. */
   remaining: number
   deadline: string | null
@@ -49,9 +53,15 @@ const round = (n: number) => Math.round(n * 100) / 100
  * savings pace. The engine plans the remaining amount (target − current), so a goal that is half
  * saved asks for half the effort.
  */
-export function goalPlanView(row: GoalRow, txs: EngineTransaction[], asOf: Date): GoalView {
+export function goalPlanView(
+  row: GoalRow,
+  txs: EngineTransaction[],
+  asOf: Date,
+  contributions: Record<string, number> = setAsideByGoal(txs),
+): GoalView {
   const targetAmount = round(num(row.target_amount))
-  const currentAmount = round(num(row.current_amount))
+  const contributed = round(contributions[row.id] ?? 0)
+  const currentAmount = round(num(row.current_amount) + contributed)
   const remaining = round(Math.max(0, targetAmount - currentAmount))
 
   let deadline: GoalRequest['deadline'] = null
@@ -76,6 +86,7 @@ export function goalPlanView(row: GoalRow, txs: EngineTransaction[], asOf: Date)
     name: row.name,
     targetAmount,
     currentAmount,
+    contributed,
     remaining,
     deadline: row.deadline ? row.deadline.slice(0, 10) : null,
     deadlineLabel,

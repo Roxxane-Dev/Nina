@@ -16,6 +16,15 @@ export function isSetAside(t: EngineTransaction): boolean {
   return t.goalId != null && t.amount < 0
 }
 
+/** Total set aside per goal id, all time (goal progress = opening amount + this). */
+export function setAsideByGoal(txs: EngineTransaction[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const t of signedFlows(txs)) {
+    if (isSetAside(t)) out[t.goalId!] = (out[t.goalId!] ?? 0) + -t.amount
+  }
+  return out
+}
+
 export function monthlyTotals(
   txs: EngineTransaction[],
   year: number,

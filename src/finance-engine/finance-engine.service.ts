@@ -50,7 +50,7 @@ export class FinanceEngineService implements OnModuleInit {
     if (!this.db) return []
     const { data, error } = await this.db
       .from('transactions')
-      .select('id, type, amount, category, description, date')
+      .select('id, type, amount, category, description, date, goal_id')
       .eq('user_id', userId)
       .order('date', { ascending: false })
       .limit(2000)

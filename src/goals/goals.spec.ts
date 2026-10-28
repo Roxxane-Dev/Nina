@@ -1,9 +1,10 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants'
+import { BadRequestException, NotFoundException } from '@nestjs/common'
 import type { EngineTransaction } from '../../packages/finance-engine/src'
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard'
 import { FinanceDataUnavailableError } from '../finance-engine/errors'
 import { FakeSupabase } from '../testing/fake-supabase'
-import { GoalService } from './goal.service'
+import { GoalService, parseContribution } from './goal.service'
 import { goalPlanView, type GoalRow } from './goal-plans'
 import { GoalsController } from './goals.controller'
 
@@ -172,5 +173,77 @@ describe('GoalsController', () => {
     const ctrl = new GoalsController({ listActive: jest.fn().mockResolvedValue([]) } as never, { loadTransactions } as never)
     expect(await ctrl.list({ user: { id: ANA } } as never)).toEqual({ goals: [] })
     expect(loadTransactions).not.toHaveBeenCalled()
+  })
+})
+
+describe('HOME-02: goal contributions', () => {
+  const TODAY = new Date('2026-10-27T00:00:00Z')
+
+  it('goal progress = opening amount + contributions linked to the goal', () => {
+    const txs = [
+      { ...tx('2026-10-05', -200, 'other'), goalId: 'g1' },
+      { ...tx('2026-10-20', -100, 'other'), goalId: 'g1' },
+      { ...tx('2026-10-21', -999, 'other'), goalId: 'g-other' },
+    ]
+    const v = goalPlanView(goal(), txs, AS_OF)
+    expect(v.contributed).toBe(300)
+    expect(v.currentAmount).toBe(750) // 450 opening + 300
+    expect(v.remaining).toBe(750)
+    expect(v.plan.requiredPerMonth).toBe(125) // 750 / 6
+  })
+
+  it('parseContribution validates amount, date and note', () => {
+    expect(parseContribution({ amount: 200 }, TODAY)).toEqual({ amount: 200, date: '2026-10-27', note: null })
+    expect(parseContribution({ amount: 12.5, date: '2026-10-01', note: '  quincena ' }, TODAY)).toEqual({ amount: 12.5, date: '2026-10-01', note: 'quincena' })
+    for (const bad of [null, {}, { amount: 0 }, { amount: -5 }, { amount: '200' }, { amount: 1.005 }, { amount: Number.NaN }, { amount: 1e9 }]) {
+      expect(typeof parseContribution(bad, TODAY)).toBe('string')
+    }
+    expect(parseContribution({ amount: 10, date: '2026-10-28' }, TODAY)).toBe('date cannot be in the future')
+    expect(parseContribution({ amount: 10, date: '27/10/2026' }, TODAY)).toBe('date must be YYYY-MM-DD')
+    expect(parseContribution({ amount: 10, note: 5 }, TODAY)).toBe('note must be text')
+  })
+
+  function setup(missing: string[] = []) {
+    const db = new FakeSupabase({}, missing)
+    const svc = new GoalService({ get: () => undefined } as never)
+    ;(svc as unknown as { db: unknown }).db = db
+    db.rows('goals').push(
+      { id: 'g-ana', user_id: ANA, name: 'Japón', target_amount: 26250, current_amount: 0, deadline: null, status: 'active' },
+      { id: 'g-done', user_id: ANA, name: 'Bici', target_amount: 900, current_amount: 900, deadline: null, status: 'completed' },
+      { id: 'g-beto', user_id: BETO, name: 'Auto', target_amount: 30000, current_amount: 0, deadline: null, status: 'active' },
+    )
+    return { svc, db }
+  }
+
+  it('records a personal savings movement linked to the goal', async () => {
+    const { svc, db } = setup()
+    const row = await svc.addContribution(ANA, 'g-ana', { amount: 200, date: '2026-10-27', note: null })
+    expect(row.id).toBe('g-ana')
+    expect(db.rows('transactions')).toEqual([
+      expect.objectContaining({ user_id: ANA, amount: 200, type: 'expense', category: 'savings', goal_id: 'g-ana', date: '2026-10-27', description: 'Apartado · Japón', space_id: 'personal' }),
+    ])
+    expect(db.rows('transactions')[0]).not.toHaveProperty('shared_space_id')
+  })
+
+  it("another user's goal or an inactive goal is 404 and nothing is written", async () => {
+    const { svc, db } = setup()
+    await expect(svc.addContribution(ANA, 'g-beto', { amount: 200, date: '2026-10-27', note: null })).rejects.toBeInstanceOf(NotFoundException)
+    await expect(svc.addContribution(ANA, 'g-done', { amount: 200, date: '2026-10-27', note: null })).rejects.toBeInstanceOf(NotFoundException)
+    expect(db.rows('transactions')).toEqual([])
+  })
+
+  it('a database error throws FinanceDataUnavailableError', async () => {
+    const { svc } = setup(['goals'])
+    await expect(svc.addContribution(ANA, 'g-ana', { amount: 1, date: '2026-10-27', note: null })).rejects.toBeInstanceOf(FinanceDataUnavailableError)
+  })
+
+  it('the controller uses the JWT user, rejects bad bodies and returns the updated goal', async () => {
+    const addContribution = jest.fn().mockResolvedValue(goal())
+    const loadTransactions = jest.fn().mockResolvedValue([{ ...tx('2026-10-05', -50, 'other'), goalId: 'g1' }])
+    const ctrl = new GoalsController({ addContribution } as never, { loadTransactions } as never)
+    const out = await ctrl.contribute({ user: { id: ANA } } as never, 'g1', { amount: 50, user_id: BETO })
+    expect(addContribution).toHaveBeenCalledWith(ANA, 'g1', expect.objectContaining({ amount: 50 }))
+    expect(out.goal.currentAmount).toBe(500)
+    await expect(ctrl.contribute({ user: { id: ANA } } as never, 'g1', { amount: -1 })).rejects.toBeInstanceOf(BadRequestException)
   })
 })

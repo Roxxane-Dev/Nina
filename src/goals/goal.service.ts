@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { localToday, monthLabelEs, parseGoalRequest, DEFAULT_USD_PEN_RATE, type GoalRequest } from '../../packages/finance-engine/src';
+import { isoDate, localToday, monthLabelEs, parseGoalRequest, DEFAULT_USD_PEN_RATE, type GoalRequest } from '../../packages/finance-engine/src';
 import { createAdminClient } from '../common/supabase.client';
 import { usdPenRate } from '../common/usd-rate';
 import { formatSoles } from '../common/money';
@@ -67,6 +67,40 @@ export function goalSaveOffer(goal: ParsedGoal): string {
     .replace('.\n\n¿Confirmas?', '? Así te sigo el paso.')
 }
 
+export type ContributionInput = { amount: number; date: string; note: string | null };
+
+const MAX_CONTRIBUTION = 10_000_000;
+const MAX_NOTE = 120;
+
+/**
+ * Validates POST /v1/goals/:id/contributions. Returns the clean input or the error message.
+ * Amount in soles, > 0, at most 2 decimals; date YYYY-MM-DD, not in the future (Lima), default today.
+ */
+export function parseContribution(body: unknown, today: Date): ContributionInput | string {
+  if (!body || typeof body !== 'object') return 'body must be an object';
+  const b = body as Record<string, unknown>;
+  const amount = typeof b.amount === 'number' ? b.amount : Number.NaN;
+  if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_CONTRIBUTION) return 'amount must be a positive number';
+  if (Math.abs(Math.round(amount * 100) - amount * 100) > 1e-6) {
+    return 'amount must have at most 2 decimals';
+  }
+  const todayIso = isoDate(today);
+  let date = todayIso;
+  if (b.date !== undefined && b.date !== null) {
+    if (typeof b.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(b.date) || Number.isNaN(Date.parse(`${b.date}T00:00:00Z`))) {
+      return 'date must be YYYY-MM-DD';
+    }
+    if (b.date > todayIso) return 'date cannot be in the future';
+    date = b.date;
+  }
+  let note: string | null = null;
+  if (b.note !== undefined && b.note !== null) {
+    if (typeof b.note !== 'string') return 'note must be text';
+    note = b.note.trim().slice(0, MAX_NOTE) || null;
+  }
+  return { amount: Math.round(amount * 100) / 100, date, note };
+}
+
 @Injectable()
 export class GoalService {
   private readonly logger = new Logger(GoalService.name);
@@ -108,6 +142,44 @@ export class GoalService {
     if (insertErr) throw insertErr;
 
     return { result: `¡Meta "${goal.name}" registrada exitosamente! 🎯` };
+  }
+
+  /**
+   * HOME-02: records a contribution as a personal movement linked to the goal (category 'savings').
+   * The goal must belong to the caller and be active; otherwise 404 (never reveals other users' goals).
+   * Returns the goal row so the caller can rebuild its progress with the engine.
+   */
+  async addContribution(userId: string, goalId: string, input: ContributionInput): Promise<GoalRow> {
+    if (!this.db) throw new FinanceDataUnavailableError('no_client');
+    const { data: goal, error: readErr } = await this.db
+      .from('goals')
+      .select('id, name, target_amount, current_amount, deadline, status, created_at')
+      .eq('id', goalId)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (readErr) {
+      this.logger.error(`addContribution read failed: ${readErr.code ?? 'unknown'}`);
+      throw new FinanceDataUnavailableError(readErr.code);
+    }
+    if (!goal) throw new NotFoundException('goal not found');
+
+    const { error: insertErr } = await this.db.from('transactions').insert({
+      user_id: userId,
+      amount: input.amount,
+      type: 'expense',
+      category: 'savings',
+      description: input.note ?? `Apartado · ${(goal as GoalRow).name}`,
+      date: input.date,
+      source_table: 'manual',
+      space_id: 'personal',
+      goal_id: goalId,
+    });
+    if (insertErr) {
+      this.logger.error(`addContribution insert failed: ${insertErr.code ?? 'unknown'}`);
+      throw new FinanceDataUnavailableError(insertErr.code);
+    }
+    return goal as GoalRow;
   }
 
   /** Metas: the user's active goals, newest first. Read with the service role, filtered by user_id. */

@@ -1,11 +1,11 @@
-import { Controller, Get, Request, UseFilters, UseGuards } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Request, UseFilters, UseGuards } from '@nestjs/common'
 import type { Request as ExpressRequest } from 'express'
-import { localToday } from '../../packages/finance-engine/src'
+import { localToday, setAsideByGoal } from '../../packages/finance-engine/src'
 import { ApiExceptionFilter } from '../common/api-exception.filter'
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard'
 import type { SupabaseUser } from '../auth/auth.service'
 import { FinanceEngineService } from '../finance-engine/finance-engine.service'
-import { GoalService } from './goal.service'
+import { GoalService, parseContribution } from './goal.service'
 import { goalPlanView } from './goal-plans'
 
 type AuthedRequest = ExpressRequest & { user: SupabaseUser }
@@ -26,6 +26,26 @@ export class GoalsController {
     if (!rows.length) return { goals: [] }
     const asOf = localToday(new Date())
     const txs = await this.engine.loadTransactions(req.user.id)
-    return { goals: rows.map((row) => goalPlanView(row, txs, asOf)) }
+    const contributions = setAsideByGoal(txs)
+    return { goals: rows.map((row) => goalPlanView(row, txs, asOf, contributions)) }
+  }
+
+  /**
+   * HOME-02: "aparté S/ 200 para Japón". Records a movement linked to the goal; Nina never moves
+   * money. The goal must be one of the caller's active goals (checked here and by RLS).
+   */
+  @Post(':id/contributions')
+  @HttpCode(201)
+  async contribute(
+    @Request() req: AuthedRequest,
+    @Param('id', new ParseUUIDPipe()) goalId: string,
+    @Body() body: unknown,
+  ) {
+    const asOf = localToday(new Date())
+    const input = parseContribution(body, asOf)
+    if (typeof input === 'string') throw new BadRequestException(input)
+    const goal = await this.goals.addContribution(req.user.id, goalId, input)
+    const txs = await this.engine.loadTransactions(req.user.id)
+    return { goal: goalPlanView(goal, txs, asOf) }
   }
 }
