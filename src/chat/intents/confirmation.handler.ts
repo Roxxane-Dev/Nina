@@ -2,7 +2,9 @@ import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common'
 import { SpacesService } from '../../spaces/spaces.service'
 import { ExpensesService, detectConfirmIntent, type ResolvedExpense } from '../../expenses/expenses.service'
 import { IncomeService } from '../../income/income.service'
-import { GoalService, type ParsedGoal } from '../../goals/goal.service'
+import { GoalService, type ParsedGoal, type PendingContribution } from '../../goals/goal.service'
+import { formatSoles } from '../../common/money'
+import { isoDate, localToday } from '../../../packages/finance-engine/src'
 import type { ParsedIncome } from '../../expenses/income-parser'
 import { ConfirmationTokens, type PendingAction } from '../confirmation-token'
 import { reply } from '../chat-reply'
@@ -61,12 +63,29 @@ export class ConfirmationHandler implements ChatIntentHandler {
         }
       }
     }
+    if (pending.kind === 'goal_contribution') return this.contribute(ctx.userId, pending.payload.contribution as PendingContribution)
     const saved = await this.commit(ctx.userId, pending, spaceId)
     const name = typeof pending.payload.spaceName === 'string' ? pending.payload.spaceName : null
     return {
       outcome: 'saved',
       reply: reply(name ? `${saved}
 Quedó en el espacio «${name}».` : saved, { followUps: AFTER_SAVE_FOLLOW_UPS }),
+    }
+  }
+
+  /** HOME-02: the goal is checked again at save time (it may have been completed or deleted). */
+  private async contribute(userId: string, c: PendingContribution): Promise<HandlerResult> {
+    try {
+      await this.goalService.addContribution(userId, c.goalId, { amount: c.amount, date: isoDate(localToday(new Date())), note: null })
+    } catch (e) {
+      if (!(e instanceof NotFoundException)) throw e
+      return { outcome: 'cancelled', reply: reply(`La meta "${c.goalName}" ya no está activa, así que no anoté nada.`) }
+    }
+    return {
+      outcome: 'saved',
+      reply: reply(`Listo, anoté ${formatSoles(c.amount)} para "${c.goalName}" 🎯 Lo ves en Metas.`, {
+        followUps: AFTER_SAVE_FOLLOW_UPS,
+      }),
     }
   }
 

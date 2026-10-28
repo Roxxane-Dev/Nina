@@ -67,10 +67,16 @@ export function buildCard(facts: FactsPayload, recent?: RecentItem[]): AnswerCar
       return {
         ...base,
         title: 'Lo que te queda',
-        highlight: { label: 'Disponible (ingresos − gastos)', amount: f.available, tone: f.available >= 0 ? 'positive' : 'negative' },
+        highlight: {
+          label: f.set_aside ? 'Disponible (ingresos − gastos − apartado)' : 'Disponible (ingresos − gastos)',
+          amount: f.available,
+          tone: f.available >= 0 ? 'positive' : 'negative',
+        },
         rows: [
           { label: 'Ingresos', amount: f.income, tone: 'positive' },
           { label: 'Gastos', amount: -f.expenses },
+          // HOME-02: saved, not spent, so it is neutral, never an alert.
+          ...(f.set_aside ? [{ label: 'Apartado para metas', amount: -f.set_aside }] : []),
         ],
       }
     case 'category_spend':

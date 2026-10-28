@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 
-export type PendingKind = 'expense' | 'income' | 'goal'
+export type PendingKind = 'expense' | 'income' | 'goal' | 'goal_contribution'
 export type PendingAction = { kind: PendingKind; payload: Record<string, unknown> }
 
 /** Confirmations expire so a stale "sí" never saves an old expense. */
@@ -37,7 +37,7 @@ export class ConfirmationTokens {
     try {
       const env = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as Envelope
       if (env.sub !== userId || typeof env.exp !== 'number' || env.exp <= now) return null
-      if (!['expense', 'income', 'goal'].includes(env.kind)) return null
+      if (!['expense', 'income', 'goal', 'goal_contribution'].includes(env.kind)) return null
       return { kind: env.kind, payload: env.payload }
     } catch {
       return null

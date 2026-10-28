@@ -45,7 +45,7 @@ function toNumber(raw: string): number {
 }
 
 /** The goal amount in the text. Years, durations ("en 6 meses") and counts are never amounts. */
-function parseAmount(text: string): { amount: number; usd: boolean } | null {
+export function parseAmount(text: string): { amount: number; usd: boolean } | null {
   const candidates: Array<{ value: number; marked: boolean; usd: boolean }> = []
   for (const m of text.matchAll(new RegExp(String.raw`(?:(s\/\.?|us\$|\$|usd)\s*)?(${NUM})(?:\s*(mil|k)\b)?(?:\s*(soles?|d[oó]lar(?:es)?|usd|s\/\.?|pesos|lucas?))?`, 'gi'))) {
     const [full, pre, raw, mult, post] = m

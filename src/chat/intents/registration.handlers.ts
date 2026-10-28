@@ -68,13 +68,21 @@ export class RegisterIncomeHandler implements ChatIntentHandler {
   }
 }
 
-/** registrar_meta — "quiero ahorrar 2000 para un viaje". */
+/**
+ * registrar_meta — "quiero ahorrar 2000 para un viaje".
+ * Also HOME-02 avances — "aparté 200 para Japón" (checked first: "puse 200 en mi meta" is not a new goal).
+ */
 @Injectable()
 export class RegisterGoalHandler implements ChatIntentHandler {
   readonly name = 'register_goal'
   constructor(private readonly tokens: ConfirmationTokens, private readonly goalService: GoalService) {}
 
   async handle(ctx: ChatContext): Promise<HandlerResult | null> {
+    const contribution = await this.goalService.buildContributionFromMessage(ctx.message, ctx.userId)
+    if (contribution && 'reply' in contribution) return { outcome: 'ok', reply: reply(contribution.reply) }
+    if (contribution) {
+      return askToConfirm(this.tokens, ctx, contribution.text, 'goal_contribution', { contribution: contribution.contribution })
+    }
     const conf = await this.goalService.buildPendingFromMessage(ctx.message, ctx.userId)
     return conf ? askToConfirm(this.tokens, ctx, conf.text, 'goal', { goal: conf.goal }) : null
   }

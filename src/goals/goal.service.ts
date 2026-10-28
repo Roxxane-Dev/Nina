@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { isoDate, localToday, monthLabelEs, parseGoalRequest, DEFAULT_USD_PEN_RATE, type GoalRequest } from '../../packages/finance-engine/src';
+import { isoDate, localToday, matchGoal, monthLabelEs, parseContributionRequest, parseGoalRequest, DEFAULT_USD_PEN_RATE, type GoalRequest } from '../../packages/finance-engine/src';
 import { createAdminClient } from '../common/supabase.client';
 import { usdPenRate } from '../common/usd-rate';
 import { formatSoles } from '../common/money';
@@ -101,6 +101,18 @@ export function parseContribution(body: unknown, today: Date): ContributionInput
   return { amount: Math.round(amount * 100) / 100, date, note };
 }
 
+/** What the chat signs for "aparté 200 para Japón" (re-checked against the goal when confirmed). */
+export type PendingContribution = { goalId: string; goalName: string; amount: number; original_usd?: number; usd_pen_rate?: number };
+
+export function contributionConfirmationText(c: PendingContribution): string {
+  const usd = c.original_usd
+    ? ` (US$ ${c.original_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} al tipo de cambio de referencia S/ ${c.usd_pen_rate})`
+    : '';
+  return `Voy a anotar ${formatSoles(c.amount)}${usd} apartados para tu meta "${c.goalName}". No cuenta como gasto, pero sale de tu disponible del mes.
+
+¿Confirmas?`;
+}
+
 @Injectable()
 export class GoalService {
   private readonly logger = new Logger(GoalService.name);
@@ -124,6 +136,38 @@ export class GoalService {
     const parsed = parseGoal(message, localToday(new Date()), usdPenRate(this.config));
     if (!parsed) return null;
     return { text: goalConfirmationText(parsed), goal: parsed };
+  }
+
+  /**
+   * HOME-02 chat: "aparté 200 para Japón". Returns the confirmation to sign, a plain reply when the
+   * goal cannot be told (no goals, unknown or ambiguous name), or null when the message is not a
+   * contribution.
+   */
+  async buildContributionFromMessage(
+    message: string,
+    userId: string,
+  ): Promise<{ text: string; contribution: PendingContribution } | { reply: string } | null> {
+    const req = parseContributionRequest(message);
+    if (!req) return null;
+    const goals = await this.listActive(userId);
+    const match = matchGoal(req.goalText, goals.map((g) => ({ id: g.id, name: g.name })));
+    if ('none' in match) {
+      return goals.length
+        ? { reply: `No encontré esa meta. Tus metas son: ${goals.map((g) => `"${g.name}"`).join(', ')}. Dime para cuál es, por ejemplo: "aparté 200 para ${goals[0].name}".` }
+        : { reply: 'Todavía no tienes metas, así que no tengo dónde anotarlo. Crea una primero, por ejemplo: "quiero ahorrar 2000 para un viaje".' };
+    }
+    if ('ambiguous' in match) {
+      return { reply: `¿Para cuál meta es? ${match.ambiguous.map((g) => `"${g.name}"`).join(', ')}. Dímelo así: "aparté 200 para ${match.ambiguous[0].name}".` };
+    }
+    const rate = usdPenRate(this.config);
+    const usd = req.currency === 'USD';
+    const contribution: PendingContribution = {
+      goalId: match.goal.id,
+      goalName: match.goal.name,
+      amount: Math.round((usd ? req.amount * rate : req.amount) * 100) / 100,
+      ...(usd ? { original_usd: req.amount, usd_pen_rate: rate } : {}),
+    };
+    return { text: contributionConfirmationText(contribution), contribution };
   }
 
   async insertGoal(goal: ParsedGoal, userId: string): Promise<{ result: string }> {

@@ -156,7 +156,9 @@ export function templatedAnswer(facts: FactsPayload): LlmAnswer {
   } else if (facts.intent === 'income') {
     message = `${prefix}Tus ingresos ${period} suman ${formatSoles(f.income)}.`
   } else if (facts.intent === 'available') {
-    message = `${prefix}${cap(period)} ingresaste ${formatSoles(f.income)} y gastaste ${formatSoles(f.expenses)}: te quedan ${formatSoles(f.available)}.`
+    message = f.set_aside
+      ? `${prefix}${cap(period)} ingresaste ${formatSoles(f.income)}, gastaste ${formatSoles(f.expenses)} y apartaste ${formatSoles(f.set_aside)} para tus metas: te quedan ${formatSoles(f.available)}.`
+      : `${prefix}${cap(period)} ingresaste ${formatSoles(f.income)} y gastaste ${formatSoles(f.expenses)}: te quedan ${formatSoles(f.available)}.`
   } else if (facts.intent === 'category_spend' && ctx?.categoryLabel) {
     message = `${prefix}${cap(period)} gastaste ${formatSoles(f.category_spend ?? 0)} en ${ctx.categoryLabel}; el mes anterior fueron ${formatSoles(f.category_prev ?? 0)}.`
   } else {
