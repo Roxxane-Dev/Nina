@@ -135,11 +135,11 @@ export function validateAnswer(
  */
 /**
  * HOME-02: the available figure is negative only because of money set aside. Nothing is wrong and
- * an LLM reads it as overspending, so this case is always answered from the engine template.
+ * an LLM reads it as overspending, so any question with those facts is answered from the engine template.
  */
 export function setAsideCausesNegative(facts: FactsPayload): boolean {
   const f = facts.figures
-  return facts.intent === 'available' && negativeOnlyFromSetAside(f.available, f.set_aside ?? 0)
+  return negativeOnlyFromSetAside(f.available, f.set_aside ?? 0)
 }
 
 export function templatedAnswer(facts: FactsPayload): LlmAnswer {
@@ -165,7 +165,7 @@ export function templatedAnswer(facts: FactsPayload): LlmAnswer {
   } else if (facts.intent === 'income') {
     message = `${prefix}Tus ingresos ${period} suman ${formatSoles(f.income)}.`
   } else if (facts.intent === 'available') {
-    message = setAsideCausesNegative(facts)
+    message = setAsideCausesNegative(facts) && facts.intent === 'available'
       ? `${prefix}${cap(period)} apartaste ${formatSoles(f.set_aside)} para tus metas, y eso es ahorro, no un gasto.` +
         (f.income > 0
           ? ` Apartaste más de lo que te quedaba del mes, por eso tu disponible sale en ${formatSoles(f.available)}.`

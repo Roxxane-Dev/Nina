@@ -97,3 +97,28 @@ describe('HOME-04: "¿cuánto me queda?" after a withdrawal', () => {
     expect(buildCard(f)?.rows).toContainEqual({ label: 'Retirado de metas', amount: 300 })
   })
 })
+
+describe('D-2 / D-6: quality rules in the prompt', () => {
+  it('cuts only the highest category, never with no expenses, in correct Spanish', () => {
+    expect(CHAT_SYSTEM_PROMPT_V1).toContain('nunca sobre la más baja')
+    expect(CHAT_SYSTEM_PROMPT_V1).toContain('Si FACTS.figures.expenses es 0, no propongas recortar nada')
+    expect(CHAT_SYSTEM_PROMPT_V1).toContain('"te recomiendo que registres"')
+  })
+})
+
+describe('HOME-02: "¿en qué gasto más?" with only money set aside', () => {
+  it('does not call the LLM and states the plain figures', async () => {
+    const f = buildFactsPayload({
+      intent: 'spending_summary',
+      txs: [tx('2026-10-10', -170, 'other', 'g1')],
+      asOf,
+      period: monthRange(2026, 9, asOf, true),
+    })
+    const explainFacts = jest.fn()
+    const responder = new QueryResponder({ explainFacts } as never)
+    const out = await responder.explain({ userId: 'u1', message: '¿en qué gasto más?', aiAllowed: true } as never, f)
+    expect(explainFacts).not.toHaveBeenCalled()
+    expect(out.reply.reply).toContain('gastaste S/ 0.00')
+    expect(out.reply.reply).not.toMatch(/complicada|te falta/i)
+  })
+})

@@ -42,7 +42,7 @@ Escala del 1 al 5 en este orden: **Nat**uralidad · **Per**sonalidad · **Cla**r
 |---|---|---|
 | D-0 | Respuestas en texto plano del LLM mostraban "recommendation:" / "follow_ups:" (también en negrita) | **Corregido** (`looseAnswer` + test) |
 | D-1 | El LLM a veces dice cosas imprecisas sin cifra nueva: "casi S/ 26,250" (es exacto), "me da risa que lo digas", chip "¿Quiero hacer un presupuesto?" | Abierto → backlog CI-06 / ajuste de prompt. El validador sí impide cifras inventadas. |
-| D-2 | En H, el LLM recomendó "recorta entretenimiento, tu categoría más baja", un consejo que no tiene sentido | Abierto → ajuste de prompt: recomendar sobre la categoría más alta |
+| D-2 | En H, el LLM recomendó "recorta entretenimiento, tu categoría más baja", un consejo que no tiene sentido | Corregido en `chat-v8`: solo la categoría más alta, y nada si no hay gastos |
 | D-3 | D no da un "siguiente paso" concreto (por ejemplo, ver próximos pagos) | Abierto → depende de INS-01 (próximos compromisos) |
 | D-4 | "Compré algo que no necesitaba" se registra como Otros, no como Compras | Abierto → CI-04 |
 | D-5 | Se pierde la tilde: "Japon" | Abierto → CI-05 |
@@ -75,6 +75,6 @@ Mismo método y misma cuenta sintética. Usa el camino LLM nuevo (`chat-open-v1`
 
 **Defectos de esta parte:**
 - **Corregido en `open1`:** el LLM sugería preguntas que Nina no sabe responder ("¿Cuánto debo en mi tarjeta?"). Ahora el prompt limita las sugerencias a lo que Nina puede hacer.
-- **D-6 (abierto):** en H, la respuesta con cifras tuvo un error de gramática ("te recomiendo que registras"). Viene del camino de consultas, no de CI-01. Se suma al ajuste de prompt D-2.
+- **D-6 (corregido en `chat-v8`):** en H, la respuesta con cifras tuvo un error de gramática ("te recomiendo que registras"). Viene del camino de consultas, no de CI-01. Se suma al ajuste de prompt D-2.
 
 **Tests automatizados:** jest 506/506; incluye `open-conversation.spec.ts` con 34 tests de validador, router, handler y periodos.
