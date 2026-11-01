@@ -30,6 +30,13 @@ class _Api extends GoalsApiService {
   Future<List<Goal>> list() async => [_goal(current)];
 
   @override
+  Future<Goal> withdraw(String goalId, double amount) async {
+    sent.add(('withdraw', amount));
+    current -= amount;
+    return _goal(current);
+  }
+
+  @override
   Future<Goal> contribute(String goalId, double amount) async {
     sent.add((goalId, amount));
     current += amount;
@@ -72,6 +79,50 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const Key('goal-current-g1'))).data,
         'S/ 200.50');
     expect(find.text('Anotado. Llevas S/ 200.50 para Japón.'), findsOneWidget);
+  });
+
+  testWidgets('HOME-04: Retirar never asks for more than the goal holds',
+      (tester) async {
+    useTallSurface(tester);
+    final api = _Api()..current = 300;
+    await tester.pumpWidget(
+        MaterialApp(home: GoalsScreen(api: api, onAskNina: (_) {})));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('goal-withdraw-g1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Retirar de la meta'), findsOneWidget);
+    expect(find.textContaining('no cuenta como ingreso'), findsOneWidget);
+
+    await tester.enterText(
+        find.byKey(const Key('contribution-amount')), '300.01');
+    await tester.tap(find.byKey(const Key('contribution-save')));
+    await tester.pumpAndSettle();
+    expect(find.text('Solo llevas S/ 300.00.'), findsOneWidget);
+    expect(api.sent, isEmpty);
+
+    await tester.enterText(find.byKey(const Key('contribution-amount')), '100');
+    await tester.tap(find.byKey(const Key('contribution-save')));
+    await tester.pumpAndSettle();
+    expect(api.sent, [('withdraw', 100.0)]);
+    expect(tester.widget<Text>(find.byKey(const Key('goal-current-g1'))).data,
+        'S/ 200.00');
+  });
+
+  testWidgets('a goal with nothing saved offers no Retirar', (tester) async {
+    useTallSurface(tester);
+    await tester.pumpWidget(
+        MaterialApp(home: GoalsScreen(api: _Api(), onAskNina: (_) {})));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('goal-withdraw-g1')), findsNothing);
+  });
+
+  test('a withdrawal reads as such and is not green income', () {
+    final row = {'goal_id': 'g1', 'type': 'income', 'category': 'savings'};
+    expect(isGoalWithdrawal(row), isTrue);
+    expect(movementLabel(row), 'Retiro de meta');
+    expect(isGoalWithdrawal({...row, 'type': 'expense'}), isFalse);
+    expect(movementLabel({...row, 'type': 'expense'}), 'Apartado');
   });
 
   testWidgets('the audit sheet shows what was set aside, from the engine',

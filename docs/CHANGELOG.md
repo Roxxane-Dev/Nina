@@ -2,6 +2,13 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-11-01 — Editar movimientos y retirar de una meta (HOME-03, HOME-04)
+- **Movimientos:** tocar un movimiento abre "Editar movimiento": monto, descripción, fecha y categoría. Un avance de meta no cambia de categoría.
+- **Metas:** "Retirar" devuelve plata al disponible, baja el avance y nunca cuenta como ingreso (D-017).
+- **Inicio:** si el disponible sale negativo solo por lo apartado, va en color neutro (D-016).
+- **Chat:** "gasté 80 soles en X" ya no toma "soles" como categoría (CI-04), y los lugares comunes llevan tilde (CI-05).
+- **Base de datos (solo local):** `20261101000000_goal_withdrawals.sql`.
+
 ## 2026-10-28 — Avances en metas (HOME-02, rama `feature/goal-contributions`)
 - **Metas:** cada meta tiene "Registrar avance". El progreso ya se mueve: monto inicial + avances.
 - **Chat:** "aparté 200 para Japón", "le puse 150 a mi meta laptop" piden confirmación y anotan el avance. Sin metas, con un nombre que no existe o con varias metas posibles, Nina pregunta en vez de adivinar.

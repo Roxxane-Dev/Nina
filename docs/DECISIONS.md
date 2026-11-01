@@ -4,6 +4,19 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-017 · Retiros de una meta (HOME-04)
+**Fecha:** 2026-11-01 (aprobada por el founder con el plan)
+**Decisión:** un retiro es un movimiento ligado a la meta con `type = 'income'` y `category = 'savings'`.
+- Nunca cuenta como ingreso: el motor lo saca de ingresos, de categorías y del ritmo de ahorro.
+- Vuelve al disponible: disponible = ingresos − gastos − apartado + retiros. `setAside` es neto y puede ser negativo.
+- El avance de la meta baja, y no se puede retirar más de lo que lleva (lo calcula el motor; la API responde 400).
+- En Movimientos sale como "Retiro de meta", sin verde.
+
+**Por qué:** así `transactions` sigue siendo la única fuente de verdad y el retiro queda en el historial, en vez de borrar avances.
+**Consecuencias:**
+- Migración nueva `20261101000000`: el CHECK ya no exige `type = 'expense'`, solo que no esté en un espacio.
+- Retirar desde el chat ("saqué 200 de Japón") queda pendiente; hoy se hace desde Metas.
+
 ## D-016 · Negativo solo por lo apartado no es una alerta
 **Fecha:** 2026-11-01 (aprobada por el founder)
 **Decisión:** si el disponible sale negativo solo por lo apartado (sin lo apartado sería 0 o más), Inicio y Movimientos lo muestran en color neutro, con "Falta tu ingreso" o "Por lo apartado". El chat responde desde el motor, sin LLM. El sobregasto real sigue en rojo. Precisa D-009.
@@ -19,7 +32,7 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
   - El ritmo de ahorro de los planes (ingresos − gastos) no baja por apartar.
   - El saldo histórico no resta lo apartado: esa plata sigue siendo de la persona.
 - **Avance de la meta:** `current_amount` (monto inicial) + la suma de sus avances, calculado por el motor.
-- **Seguridad:** RLS solo deja vincular un movimiento a una meta propia. Un CHECK exige que sea una salida personal (nunca ingreso ni de un espacio). Si se borra la meta, el movimiento queda (`on delete set null`).
+- **Seguridad:** RLS solo deja vincular un movimiento a una meta propia. Un CHECK exige que sea personal, nunca de un espacio (D-017 quitó la parte de "solo salidas"). Si se borra la meta, el movimiento queda (`on delete set null`).
 - **Registro:**
   - API: `POST /v1/goals/:id/contributions` (dueño y meta activa, si no 404).
   - Chat: con confirmación, buscando la meta por nombre entre las propias.
@@ -28,7 +41,7 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 **Por qué:** si lo apartado no restara, el disponible diría que la persona puede gastar plata que ya separó para su meta.
 
 **Consecuencias:**
-- Retirar plata de una meta queda para después. Hoy se deshace un avance borrándolo en Movimientos.
+- Los retiros llegaron después (D-017).
 - Los avances no se recategorizan: en Movimientos aparecen como "Apartado" y en color neutro.
 - La API lee `goal_id`: en producción la migración `20261027000000` debe aplicarse **antes** de desplegar esta API (runbook, sección 9).
 

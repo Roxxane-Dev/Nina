@@ -1,4 +1,4 @@
-import { isSetAside, signedFlows } from './aggregates'
+import { isGoalWithdrawal, isSetAside, signedFlows } from './aggregates'
 import { percentile } from './stats'
 import { addMonths, daysBetween, endOfMonth, isoDate, startOfMonth } from './period'
 import { ENGINE_VERSION } from './version'
@@ -25,7 +25,7 @@ export function computeForecast(
   },
 ): ForecastResult {
   const horizon = opts?.horizonEnd ?? endOfMonth(asOf)
-  const incomes = signedFlows(txs).filter((t) => t.amount > 0)
+  const incomes = signedFlows(txs).filter((t) => t.amount > 0 && !isGoalWithdrawal(t))
   const salaryDays = incomes
     .filter((t) => t.categorySlug === 'salary' || t.categorySlug === 'sueldo' || t.categorySlug === 'income')
     .map((t) => t.postedAt.getUTCDate())

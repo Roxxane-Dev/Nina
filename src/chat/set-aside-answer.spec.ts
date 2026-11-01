@@ -84,3 +84,16 @@ describe('HOME-02: negative only because of money set aside', () => {
     expect(setAsideCausesNegative(facts(positive))).toBe(false)
   })
 })
+
+describe('HOME-04: "¿cuánto me queda?" after a withdrawal', () => {
+  const txs = [tx('2026-10-01', 4000, 'salary'), tx('2026-10-05', -1000, 'home'), { ...tx('2026-10-10', 300, 'other', 'g1') }]
+
+  it('says it came from the goals and keeps it out of income', () => {
+    const f = facts(txs)
+    expect(f.figures.income).toBe(4000)
+    expect(f.figures.goal_withdrawn).toBe(300)
+    expect(f.figures.available).toBe(3300)
+    expect(templatedAnswer(f).message).toContain('retiraste S/ 300.00 de tus metas: te quedan S/ 3,300.00')
+    expect(buildCard(f)?.rows).toContainEqual({ label: 'Retirado de metas', amount: 300 })
+  })
+})

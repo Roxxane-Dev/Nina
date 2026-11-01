@@ -5,22 +5,27 @@ import '../../../data/services/finance_api_service.dart';
 import '../../../data/services/goals_api_service.dart';
 import '../../../shared/widgets/nina_ui.dart';
 
-/// HOME-02: "Registrar avance". Resolves to the goal with its progress
-/// recomputed by the backend, or null when nothing was saved.
+/// HOME-02 "Registrar avance" and HOME-04 "Retirar". Resolves to the goal with
+/// its progress recomputed by the backend, or null when nothing was saved.
 Future<Goal?> showContributionSheet(BuildContext context,
-    {required Goal goal, required GoalsApiService api}) {
+    {required Goal goal, required GoalsApiService api, bool withdraw = false}) {
   return showModalBottomSheet<Goal>(
     useRootNavigator: true,
     context: context,
     isScrollControlled: true,
-    builder: (_) => ContributionSheet(goal: goal, api: api),
+    builder: (_) => ContributionSheet(goal: goal, api: api, withdraw: withdraw),
   );
 }
 
 class ContributionSheet extends StatefulWidget {
-  const ContributionSheet({super.key, required this.goal, required this.api});
+  const ContributionSheet(
+      {super.key,
+      required this.goal,
+      required this.api,
+      this.withdraw = false});
   final Goal goal;
   final GoalsApiService api;
+  final bool withdraw;
 
   @override
   State<ContributionSheet> createState() => _ContributionSheetState();
@@ -53,12 +58,19 @@ class _ContributionSheetState extends State<ContributionSheet> {
       setState(() => _error = 'Escribe un monto mayor a cero.');
       return;
     }
+    if (widget.withdraw && v > widget.goal.currentAmount) {
+      setState(() =>
+          _error = 'Solo llevas ${formatSoles(widget.goal.currentAmount)}.');
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
-      final updated = await widget.api.contribute(widget.goal.id, v);
+      final updated = widget.withdraw
+          ? await widget.api.withdraw(widget.goal.id, v)
+          : await widget.api.contribute(widget.goal.id, v);
       if (mounted) Navigator.of(context).pop(updated);
     } catch (e) {
       if (mounted) {
@@ -83,14 +95,16 @@ class _ContributionSheetState extends State<ContributionSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Registrar avance', style: NinaText.displayM()),
+              Text(widget.withdraw ? 'Retirar de la meta' : 'Registrar avance',
+                  style: NinaText.displayM()),
               const SizedBox(height: 6),
               Text(
                   '${g.name} · llevas ${formatSoles(g.currentAmount)} de ${formatSoles(g.targetAmount)}',
                   style: NinaText.bodyM()),
               const SizedBox(height: 18),
               NinaField(
-                label: '¿Cuánto apartaste?',
+                label:
+                    widget.withdraw ? '¿Cuánto retiras?' : '¿Cuánto apartaste?',
                 controller: _amount,
                 fieldKey: const Key('contribution-amount'),
                 prefixText: 'S/ ',
@@ -103,15 +117,20 @@ class _ContributionSheetState extends State<ContributionSheet> {
                 onSubmitted: (_) => _save(),
               ),
               const SizedBox(height: 12),
-              const NinaNote(
+              NinaNote(
                 icon: Icons.info_outline,
-                text:
-                    'Lo apartado no cuenta como gasto, pero sale de tu disponible del mes. Nina no mueve tu plata: solo lo anota.',
+                text: widget.withdraw
+                    ? 'Vuelve a tu disponible del mes y no cuenta como ingreso. Nina no mueve tu plata: solo lo anota.'
+                    : 'Lo apartado no cuenta como gasto, pero sale de tu disponible del mes. Nina no mueve tu plata: solo lo anota.',
               ),
               const SizedBox(height: 18),
               NinaButton(
                 key: const Key('contribution-save'),
-                label: _saving ? 'Guardando…' : 'Guardar avance',
+                label: _saving
+                    ? 'Guardando…'
+                    : widget.withdraw
+                        ? 'Guardar retiro'
+                        : 'Guardar avance',
                 onPressed: _saving ? null : _save,
               ),
             ],

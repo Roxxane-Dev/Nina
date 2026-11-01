@@ -39,8 +39,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
     }
   }
 
-  Future<void> _contribute(Goal goal) async {
-    final updated = await showContributionSheet(context, goal: goal, api: _api);
+  Future<void> _contribute(Goal goal, {bool withdraw = false}) async {
+    final updated = await showContributionSheet(context,
+        goal: goal, api: _api, withdraw: withdraw);
     if (updated == null || !mounted) return;
     _reload();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -98,7 +99,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     child: _GoalCard(
                         goal: g,
                         onAsk: _ask,
-                        onContribute: () => _contribute(g)),
+                        onContribute: () => _contribute(g),
+                        onWithdraw: () => _contribute(g, withdraw: true)),
                   ));
                 }
               }
@@ -118,10 +120,14 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
 class _GoalCard extends StatelessWidget {
   const _GoalCard(
-      {required this.goal, required this.onAsk, required this.onContribute});
+      {required this.goal,
+      required this.onAsk,
+      required this.onContribute,
+      required this.onWithdraw});
   final Goal goal;
   final ValueChanged<String> onAsk;
   final VoidCallback onContribute;
+  final VoidCallback onWithdraw;
 
   @override
   Widget build(BuildContext context) {
@@ -209,23 +215,32 @@ class _GoalCard extends StatelessWidget {
                   style: NinaText.bodyS(color: NinaColors.warning)),
             ),
         ],
-        if (goal.remaining > 0) ...[
+        if (goal.remaining > 0 || goal.currentAmount > 0) ...[
           const SizedBox(height: 14),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            NinaSmallAction(
-              key: Key('goal-contribute-${goal.id}'),
-              label: 'Registrar avance',
-              icon: Icons.add,
-              filled: true,
-              onTap: onContribute,
-            ),
-            NinaSmallAction(
-              label: 'Pregúntale a Nina cómo',
-              icon: Icons.auto_awesome_outlined,
-              onTap: () => onAsk(goal.deadlineLabel == null
-                  ? '¿Cómo junto ${formatSoles(goal.remaining)} para ${goal.name}?'
-                  : '¿Cómo junto ${formatSoles(goal.remaining)} para ${goal.deadlineLabel}?'),
-            ),
+            if (goal.remaining > 0)
+              NinaSmallAction(
+                key: Key('goal-contribute-${goal.id}'),
+                label: 'Registrar avance',
+                icon: Icons.add,
+                filled: true,
+                onTap: onContribute,
+              ),
+            if (goal.currentAmount > 0)
+              NinaSmallAction(
+                key: Key('goal-withdraw-${goal.id}'),
+                label: 'Retirar',
+                icon: Icons.remove,
+                onTap: onWithdraw,
+              ),
+            if (goal.remaining > 0)
+              NinaSmallAction(
+                label: 'Pregúntale a Nina cómo',
+                icon: Icons.auto_awesome_outlined,
+                onTap: () => onAsk(goal.deadlineLabel == null
+                    ? '¿Cómo junto ${formatSoles(goal.remaining)} para ${goal.name}?'
+                    : '¿Cómo junto ${formatSoles(goal.remaining)} para ${goal.deadlineLabel}?'),
+              ),
           ]),
         ],
       ]),

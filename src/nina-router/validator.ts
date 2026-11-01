@@ -170,6 +170,8 @@ export function templatedAnswer(facts: FactsPayload): LlmAnswer {
         (f.income > 0
           ? ` Apartaste más de lo que te quedaba del mes, por eso tu disponible sale en ${formatSoles(f.available)}.`
           : ` Todavía no registras ingresos este mes, por eso tu disponible sale en ${formatSoles(f.available)}. Si ya te pagaron, cuéntame: "me pagaron 3000".`)
+      : f.goal_withdrawn
+      ? `${prefix}${cap(period)} ingresaste ${formatSoles(f.income)}, gastaste ${formatSoles(f.expenses)} y retiraste ${formatSoles(f.goal_withdrawn)} de tus metas: te quedan ${formatSoles(f.available)}.`
       : f.set_aside
       ? `${prefix}${cap(period)} ingresaste ${formatSoles(f.income)}, gastaste ${formatSoles(f.expenses)} y apartaste ${formatSoles(f.set_aside)} para tus metas: te quedan ${formatSoles(f.available)}.`
       : `${prefix}${cap(period)} ingresaste ${formatSoles(f.income)} y gastaste ${formatSoles(f.expenses)}: te quedan ${formatSoles(f.available)}.`

@@ -194,36 +194,60 @@ export class GoalService {
    * Returns the goal row so the caller can rebuild its progress with the engine.
    */
   async addContribution(userId: string, goalId: string, input: ContributionInput): Promise<GoalRow> {
+    const goal = await this.getActive(userId, goalId);
+    await this.insertGoalMovement(userId, goal, 'expense', input, `Apartado · ${goal.name}`);
+    return goal;
+  }
+
+  /**
+   * HOME-04: records money taken back from the goal. The caller has checked it is not more than the
+   * goal holds. Stored as an 'income' row linked to the goal; the engine never counts it as income.
+   */
+  async addWithdrawal(userId: string, goal: GoalRow, input: ContributionInput): Promise<void> {
+    await this.insertGoalMovement(userId, goal, 'income', input, `Retiro · ${goal.name}`);
+  }
+
+  /** The caller's active goal, or 404 (never reveals other users' goals). */
+  async getActive(userId: string, goalId: string): Promise<GoalRow> {
     if (!this.db) throw new FinanceDataUnavailableError('no_client');
-    const { data: goal, error: readErr } = await this.db
+    const { data: goal, error } = await this.db
       .from('goals')
       .select('id, name, target_amount, current_amount, deadline, status, created_at')
       .eq('id', goalId)
       .eq('user_id', userId)
       .eq('status', 'active')
       .maybeSingle();
-    if (readErr) {
-      this.logger.error(`addContribution read failed: ${readErr.code ?? 'unknown'}`);
-      throw new FinanceDataUnavailableError(readErr.code);
+    if (error) {
+      this.logger.error(`getActive failed: ${error.code ?? 'unknown'}`);
+      throw new FinanceDataUnavailableError(error.code);
     }
     if (!goal) throw new NotFoundException('goal not found');
+    return goal as GoalRow;
+  }
 
-    const { error: insertErr } = await this.db.from('transactions').insert({
+  private async insertGoalMovement(
+    userId: string,
+    goal: GoalRow,
+    type: 'expense' | 'income',
+    input: ContributionInput,
+    defaultDescription: string,
+  ): Promise<void> {
+    if (!this.db) throw new FinanceDataUnavailableError('no_client');
+    const { error } = await this.db.from('transactions').insert({
       user_id: userId,
       amount: input.amount,
-      type: 'expense',
+      type,
       category: 'savings',
-      description: input.note ?? `Apartado · ${(goal as GoalRow).name}`,
+      description: input.note ?? defaultDescription,
       date: input.date,
       source_table: 'manual',
       space_id: 'personal',
-      goal_id: goalId,
+      goal_id: goal.id,
     });
-    if (insertErr) {
-      this.logger.error(`addContribution insert failed: ${insertErr.code ?? 'unknown'}`);
-      throw new FinanceDataUnavailableError(insertErr.code);
+    if (error) {
+      this.logger.error(`insertGoalMovement failed: ${error.code ?? 'unknown'}`);
+      throw new FinanceDataUnavailableError(error.code);
     }
-    return goal as GoalRow;
   }
 
   /** Metas: the user's active goals, newest first. Read with the service role, filtered by user_id. */

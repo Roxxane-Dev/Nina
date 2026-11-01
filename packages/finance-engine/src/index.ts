@@ -1,6 +1,6 @@
 export { ENGINE_VERSION } from './version'
 export * from './types'
-export { isSetAside, negativeOnlyFromSetAside, setAsideByGoal, monthlyTotals, trailingFullMonths, monthToDateSpendByCategory, periodBounds, signedFlows, usableTransactions, periodTotals } from './aggregates'
+export { isGoalWithdrawal, isSetAside, negativeOnlyFromSetAside, setAsideByGoal, monthlyTotals, trailingFullMonths, monthToDateSpendByCategory, periodBounds, signedFlows, usableTransactions, periodTotals } from './aggregates'
 export { detectAnomalies } from './anomaly'
 export { computeHealthScore } from './score'
 export { detectRecurrence } from './recurrence'

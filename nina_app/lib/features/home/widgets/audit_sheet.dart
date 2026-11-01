@@ -59,9 +59,13 @@ class AuditSheet extends StatelessWidget {
                 _Row(Icons.south_west_rounded, 'Ingresos', audit.income,
                     color: NinaColors.success),
                 _Row(Icons.receipt_long_outlined, '− Gastos', audit.expenses),
-                if (audit.setAside > 0)
-                  _Row(Icons.savings_outlined, '− Apartado para metas',
-                      audit.setAside,
+                if (audit.setAside != 0)
+                  _Row(
+                      Icons.savings_outlined,
+                      audit.setAside > 0
+                          ? '− Apartado para metas'
+                          : '+ Retirado de metas',
+                      audit.setAside.abs(),
                       key: const Key('audit-set-aside')),
                 Container(
                   padding:

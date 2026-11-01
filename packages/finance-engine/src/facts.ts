@@ -1,4 +1,4 @@
-import { periodTotals, signedFlows } from './aggregates'
+import { isGoalWithdrawal, periodTotals, signedFlows } from './aggregates'
 import { categoryLabel } from './categories'
 import { isoDate } from './period'
 import { monthLabelEs, monthRange, previousRange, type PeriodRange } from './periods'
@@ -59,6 +59,7 @@ export function buildFactsPayload(input: {
     expenses_change: round(current.expenses - prev.expenses),
   }
   if (current.setAside > 0) figures.set_aside = round(current.setAside)
+  if (current.setAside < 0) figures.goal_withdrawn = round(-current.setAside)
   if (current.income > 0) {
     figures.savings_rate_pct = Math.round(((current.income - current.expenses) / current.income) * 100)
   }
@@ -173,9 +174,9 @@ export function recentTransactions(
     .map((t) => ({
       id: t.id,
       date: isoDate(t.postedAt),
-      category: categoryLabel(t.categorySlug),
+      category: t.goalId ? (t.amount < 0 ? 'Apartado' : 'Retiro de meta') : categoryLabel(t.categorySlug),
       amount: round(Math.abs(t.amount)),
-      isIncome: t.amount > 0,
+      isIncome: t.amount > 0 && !t.goalId,
     }))
 }
 
@@ -195,7 +196,7 @@ function categoryItems(totals: PeriodTotals): Array<{ label: string; amount: num
 
 function incomeByCategory(rows: EngineTransaction[]): Array<{ label: string; amount: number }> {
   const by: Record<string, number> = {}
-  for (const t of rows) if (t.amount > 0) by[t.categorySlug] = (by[t.categorySlug] ?? 0) + t.amount
+  for (const t of rows) if (t.amount > 0 && !isGoalWithdrawal(t)) by[t.categorySlug] = (by[t.categorySlug] ?? 0) + t.amount
   return Object.entries(by)
     .sort((a, b) => b[1] - a[1])
     .map(([slug, amount]) => ({ label: categoryLabel(slug), amount: round(amount) }))

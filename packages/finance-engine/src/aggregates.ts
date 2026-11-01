@@ -16,6 +16,11 @@ export function isSetAside(t: EngineTransaction): boolean {
   return t.goalId != null && t.amount < 0
 }
 
+/** Money taken back from a goal (HOME-04). It returns to the available figure; it is never income. */
+export function isGoalWithdrawal(t: EngineTransaction): boolean {
+  return t.goalId != null && t.amount > 0
+}
+
 /**
  * The available figure is negative only because of money set aside (D-016): saved, not overspent,
  * so it is not an alert. Real overspending stays negative without the set-aside amount.
@@ -28,7 +33,7 @@ export function negativeOnlyFromSetAside(available: number, setAside: number): b
 export function setAsideByGoal(txs: EngineTransaction[]): Record<string, number> {
   const out: Record<string, number> = {}
   for (const t of signedFlows(txs)) {
-    if (isSetAside(t)) out[t.goalId!] = (out[t.goalId!] ?? 0) + -t.amount
+    if (t.goalId != null) out[t.goalId] = (out[t.goalId] ?? 0) - t.amount
   }
   return out
 }
@@ -50,8 +55,8 @@ export function periodTotals(txs: EngineTransaction[], from: Date, to: Date): Pe
   let expenses = 0
   let setAside = 0
   for (const t of rows) {
-    if (t.amount > 0) income += t.amount
-    else if (isSetAside(t)) setAside += -t.amount
+    if (t.goalId != null) setAside -= t.amount
+    else if (t.amount > 0) income += t.amount
     else {
       const spend = -t.amount
       expenses += spend

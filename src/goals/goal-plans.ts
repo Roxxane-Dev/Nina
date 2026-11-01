@@ -25,7 +25,7 @@ export type GoalView = {
   targetAmount: number
   /** Saved so far: the amount the goal started with + every contribution registered (HOME-02). */
   currentAmount: number
-  /** Part of currentAmount registered as contributions. */
+  /** Part of currentAmount registered as contributions, net of withdrawals. */
   contributed: number
   /** target − current, never negative: what is still left to save. */
   remaining: number
@@ -61,7 +61,7 @@ export function goalPlanView(
 ): GoalView {
   const targetAmount = round(num(row.target_amount))
   const contributed = round(contributions[row.id] ?? 0)
-  const currentAmount = round(num(row.current_amount) + contributed)
+  const currentAmount = Math.max(0, round(num(row.current_amount) + contributed))
   const remaining = round(Math.max(0, targetAmount - currentAmount))
 
   let deadline: GoalRequest['deadline'] = null

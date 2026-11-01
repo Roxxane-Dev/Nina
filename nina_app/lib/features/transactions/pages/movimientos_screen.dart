@@ -304,11 +304,13 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
               ),
             ),
             // HOME-02: without this line the three figures do not add up.
-            if (o != null && _period != _PeriodFilter.all && o.setAside > 0)
+            if (o != null && _period != _PeriodFilter.all && o.setAside != 0)
               Padding(
                 padding: const EdgeInsets.only(top: 6, left: 4),
                 child: Text(
-                  'El disponible descuenta ${formatSoles(o.setAside)} apartados para tus metas',
+                  o.setAside > 0
+                      ? 'El disponible descuenta ${formatSoles(o.setAside)} apartados para tus metas'
+                      : 'El disponible suma ${formatSoles(-o.setAside)} retirados de tus metas',
                   key: const Key('movimientos-set-aside'),
                   style: NinaText.bodyS(color: NinaColors.textTertiary),
                 ),
@@ -551,12 +553,12 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     return DateFormat("d 'de' MMM yyyy", 'es').format(d).toUpperCase();
   }
 
-  static const _contributionPrefix = 'Apartado · ';
+  static final _goalMovementPrefix = RegExp(r'^(Apartado|Retiro) · ');
 
   Widget _buildRow(Map<String, dynamic> r) {
     final isIncome = r['type'] == 'income';
     final amount = ((r['amount'] as num?) ?? 0).toDouble();
-    final cat = categoryLabel(r['category'] as String?);
+    final cat = movementLabel(r);
     final note = (r['description'] as String?)?.trim();
     return Dismissible(
       key: ValueKey('tx-${r['id']}'),
@@ -571,11 +573,12 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
       child: TransactionRow(
         // A contribution is named by its goal, the part a long title would cut.
         title: note?.isNotEmpty == true
-            ? note!.replaceFirst(_contributionPrefix, '')
+            ? note!.replaceFirst(_goalMovementPrefix, '')
             : cat,
         meta: cat,
         amount: amount,
         isIncome: isIncome,
+        neutral: isGoalWithdrawal(r),
         category: r['category'] as String?,
         onTap: () => _edit(r),
         trailing: IconButton(

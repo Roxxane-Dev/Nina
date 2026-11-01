@@ -53,6 +53,15 @@ const _aliases = <String, String>{
   'otros': 'Otros',
 };
 
+/// A row linked to a goal with type income is money taken back (HOME-04).
+bool isGoalWithdrawal(Map<String, dynamic> row) =>
+    row['goal_id'] != null && row['type'] == 'income';
+
+/// Label of a stored movement.
+String movementLabel(Map<String, dynamic> row) => isGoalWithdrawal(row)
+    ? 'Retiro de meta'
+    : categoryLabel(row['category'] as String?);
+
 String categoryLabel(String? raw) =>
     _aliases[(raw ?? '').trim().toLowerCase()] ?? 'Otros';
 

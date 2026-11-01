@@ -13,6 +13,7 @@ class TransactionRow extends StatelessWidget {
     required this.amount,
     required this.isIncome,
     this.category,
+    this.neutral = false,
     this.onTap,
     this.trailing,
   });
@@ -22,11 +23,15 @@ class TransactionRow extends StatelessWidget {
   final double amount;
   final bool isIncome;
   final String? category;
+
+  /// Money back from a goal: it comes in, but it is not income (no green).
+  final bool neutral;
   final VoidCallback? onTap;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
+    final green = isIncome && !neutral;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(NinaRadii.sm),
@@ -35,9 +40,8 @@ class TransactionRow extends StatelessWidget {
         child: Row(children: [
           NinaIconBox(
             icon: categoryIcon(category),
-            background:
-                isIncome ? NinaColors.successSoft : NinaColors.surfaceAlt,
-            foreground: isIncome ? NinaColors.success : NinaColors.textPrimary,
+            background: green ? NinaColors.successSoft : NinaColors.surfaceAlt,
+            foreground: green ? NinaColors.success : NinaColors.textPrimary,
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -58,7 +62,7 @@ class TransactionRow extends StatelessWidget {
           Text(
             '${isIncome ? '+' : '−'}${formatSoles(amount)}',
             style: NinaText.number(
-                color: isIncome ? NinaColors.success : NinaColors.textPrimary),
+                color: green ? NinaColors.success : NinaColors.textPrimary),
           ),
           if (trailing != null) trailing!,
         ]),

@@ -280,12 +280,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   value: o.income,
                   color: NinaColors.success)),
           Expanded(child: _HeroFigure(label: 'Gastos', value: o.expenses)),
-          if (o.setAside > 0)
+          if (o.setAside != 0)
             Expanded(
                 child: _HeroFigure(
                     key: const Key('home-set-aside'),
-                    label: 'Apartado',
-                    value: o.setAside)),
+                    label: o.setAside > 0 ? 'Apartado' : 'Retirado',
+                    value: o.setAside.abs())),
         ]),
         const SizedBox(height: 12),
         Text(changeText, style: NinaText.bodyS(color: NinaColors.textTertiary)),
@@ -484,9 +484,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ? rows[i]['description'] as String
                         : categoryLabel(rows[i]['category'] as String?),
                     meta:
-                        '${categoryLabel(rows[i]['category'] as String?)} · ${_dayLabel(rows[i]['date'] as String?)}',
+                        '${movementLabel(rows[i])} · ${_dayLabel(rows[i]['date'] as String?)}',
                     amount: ((rows[i]['amount'] as num?) ?? 0).toDouble(),
                     isIncome: rows[i]['type'] == 'income',
+                    neutral: isGoalWithdrawal(rows[i]),
                     category: rows[i]['category'] as String?,
                   ),
                 ],

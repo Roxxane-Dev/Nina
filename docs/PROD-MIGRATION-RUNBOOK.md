@@ -621,8 +621,10 @@ create policy "Users can insert their personal and shared transactions."
 ## 8. Replay result (local)
 Section 4's SQL, extracted from this file with the last line changed to `commit;`, was applied to a fresh local database containing only the production snapshot baseline (`supabase db reset --version 20260101000000 --no-seed`, local Docker). Results are recorded in `docs/OVERNIGHT-LOG.md` (task 7).
 
-## 9. Later migration: goal contributions (`20261027000000`, HOME-02)
-Not part of the section 4 transaction. Apply it after sections 1–8, as its own script in the SQL Editor.
+## 9. Later migrations: goal contributions and withdrawals (`20261027000000`, `20261101000000`)
+Not part of the section 4 transaction. Apply both, in that order, after sections 1–8, as one script in the SQL Editor.
+
+`20261101000000` (HOME-04) only relaxes the CHECK below to `goal_id is null or shared_space_id is null`, so a withdrawal (a goal row with `type = 'income'`) is allowed. It takes a brief lock on `transactions` and changes no data.
 
 - **Order matters:** the API that ships with HOME-02 reads `transactions.goal_id`. Apply this migration **before** deploying that API; otherwise every engine read (Inicio, chat, Metas) fails with a missing-column error.
 - **What it does:**

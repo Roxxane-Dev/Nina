@@ -21,7 +21,7 @@ Registro e inicio de sesión, consentimiento y primeros pasos. Además:
 - Inicio con el disponible del mes y "Cómo calculé esto".
 - Movimientos con filtros compactos, y añadir movimiento a Personal o al espacio.
 - Chat con contexto, modo calma y planes de meta.
-- Metas con el plan del motor y avances ("Registrar avance" o desde el chat).
+- Metas con el plan del motor, avances ("Registrar avance" o desde el chat) y retiros.
 - Espacios compartidos, cuentas, perfil y privacidad.
 
 ## Hito actual

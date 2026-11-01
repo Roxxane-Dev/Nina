@@ -1,5 +1,5 @@
--- RLS test for goal contributions (HOME-02). Run on the LOCAL database after migration
--- 20261027000000_goal_contributions.sql:
+-- RLS test for goal contributions and withdrawals (HOME-02, HOME-04). Run on the LOCAL database after
+-- migrations 20261027000000_goal_contributions.sql and 20261101000000_goal_withdrawals.sql:
 --   docker exec -i supabase_db_Nina psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/goal_contributions_rls.sql
 -- Runs inside a transaction that is rolled back.
 
@@ -36,14 +36,21 @@ insert into public.transactions (id, user_id, type, amount, category, date, goal
 values ('00000000-0000-4000-8000-0000000000b1', '00000000-0000-4000-8000-0000000000f1', 'expense', 200, 'savings', '2026-10-27', '00000000-0000-4000-8000-0000000000a1');
 do $$ begin raise notice 'ok: F1 adds to own goal'; end $$;
 
--- A contribution cannot be an income.
+-- A withdrawal (HOME-04) is a goal movement with type income, on the author's own goal.
+insert into public.transactions (user_id, type, amount, category, date, goal_id)
+values ('00000000-0000-4000-8000-0000000000f1', 'income', 50, 'savings', '2026-10-27', '00000000-0000-4000-8000-0000000000a1');
+do $$ begin raise notice 'ok: F1 withdraws from own goal'; end $$;
+
+-- F2 cannot withdraw from F1's goal.
+reset role;
+select pg_temp.act_as('00000000-0000-4000-8000-0000000000f2');
 do $$
 begin
   insert into public.transactions (user_id, type, amount, category, date, goal_id)
-  values ('00000000-0000-4000-8000-0000000000f1', 'income', 50, 'savings', '2026-10-27', '00000000-0000-4000-8000-0000000000a1');
-  raise exception 'CHECK FAIL: an income was linked to a goal';
-exception when check_violation then
-  raise notice 'ok: a contribution must be an outflow';
+  values ('00000000-0000-4000-8000-0000000000f2', 'income', 50, 'savings', '2026-10-27', '00000000-0000-4000-8000-0000000000a1');
+  raise exception 'RLS FAIL: F2 withdrew from another user''s goal';
+exception when insufficient_privilege or check_violation then
+  raise notice 'ok: F2 cannot withdraw from F1 goal';
 end $$;
 
 -- F2 cannot see F1's contribution.

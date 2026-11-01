@@ -247,3 +247,47 @@ describe('HOME-02: goal contributions', () => {
     await expect(ctrl.contribute({ user: { id: ANA } } as never, 'g1', { amount: -1 })).rejects.toBeInstanceOf(BadRequestException)
   })
 })
+
+describe('HOME-04: goal withdrawals', () => {
+  const GID = 'g1'
+  function setup(contributed = 300) {
+    const db = new FakeSupabase()
+    db.rows('goals').push({ id: GID, user_id: ANA, name: 'Japón', target_amount: 1000, current_amount: 0, deadline: null, status: 'active' })
+    const svc = new GoalService({ get: () => undefined } as never)
+    ;(svc as unknown as { db: unknown }).db = db
+    const loadTransactions = jest.fn(async () => [
+      { ...tx('2026-10-05', -contributed, 'other'), goalId: GID },
+      ...db.rows('transactions').map((r) => ({ ...tx('2026-10-06', Number(r.amount), 'other'), goalId: GID })),
+    ])
+    return { db, ctrl: new GoalsController(svc, { loadTransactions } as never) }
+  }
+  const req = { user: { id: ANA } } as never
+
+  it('records an income-type movement linked to the goal and lowers its progress', async () => {
+    const t = setup()
+    const out = await t.ctrl.withdraw(req, GID, { amount: 100 })
+    expect(t.db.rows('transactions')).toEqual([
+      expect.objectContaining({ user_id: ANA, amount: 100, type: 'income', category: 'savings', goal_id: GID, description: 'Retiro · Japón' }),
+    ])
+    expect(out.goal.currentAmount).toBe(200)
+  })
+
+  it('never more than the goal holds', async () => {
+    const t = setup(50)
+    await expect(t.ctrl.withdraw(req, GID, { amount: 50.01 })).rejects.toBeInstanceOf(BadRequestException)
+    expect(t.db.rows('transactions')).toEqual([])
+    await t.ctrl.withdraw(req, GID, { amount: 50 })
+    expect(t.db.rows('transactions')).toHaveLength(1)
+  })
+
+  it("another user's goal is 404 and nothing is written", async () => {
+    const t = setup()
+    await expect(t.ctrl.withdraw({ user: { id: BETO } } as never, GID, { amount: 10 })).rejects.toBeInstanceOf(NotFoundException)
+    expect(t.db.rows('transactions')).toEqual([])
+  })
+
+  it('a bad amount is 400', async () => {
+    const t = setup()
+    await expect(t.ctrl.withdraw(req, GID, { amount: -5 })).rejects.toBeInstanceOf(BadRequestException)
+  })
+})

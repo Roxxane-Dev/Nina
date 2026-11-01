@@ -20,7 +20,7 @@ export type OverviewAudit = {
   period: { from: string; to: string; label: string }
   income: number
   expenses: number
-  /** Set aside for goals in the period (HOME-02). */
+  /** Net set aside for goals in the period; negative when more was withdrawn. */
   setAside: number
   available: number
   txnCount: number
@@ -35,7 +35,7 @@ export type Overview = {
   txnCount: number
   income: number
   expenses: number
-  /** Set aside for goals in the period: saved, not spent (HOME-02). */
+  /** Net set aside for goals in the period (HOME-02). Negative when more was withdrawn (HOME-04). */
   setAside: number
   /** income − expenses − setAside of the period. */
   available: number
@@ -88,7 +88,9 @@ export function buildOverview(txs: EngineTransaction[], range: PeriodRange, asOf
       formula:
         current.setAside > 0
           ? `Disponible = ingresos de ${range.label} − gastos de ${range.label} − lo apartado para tus metas. Las transferencias entre tus cuentas no se cuentan.`
-          : `Disponible = ingresos de ${range.label} − gastos de ${range.label}. Las transferencias entre tus cuentas no se cuentan.`,
+          : current.setAside < 0
+            ? `Disponible = ingresos de ${range.label} − gastos de ${range.label} + lo que retiraste de tus metas. Las transferencias entre tus cuentas no se cuentan.`
+            : `Disponible = ingresos de ${range.label} − gastos de ${range.label}. Las transferencias entre tus cuentas no se cuentan.`,
       period: { from: isoDate(range.from), to: isoDate(range.to), label: range.label },
       income: round(current.income),
       expenses: round(current.expenses),

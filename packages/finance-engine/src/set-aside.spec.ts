@@ -1,5 +1,6 @@
 import { buildOverview } from './overview'
 import { buildGoalPlanFacts } from './goal-plan'
+import { setAsideByGoal } from './aggregates'
 import { monthRange } from './periods'
 import type { EngineTransaction } from './types'
 
@@ -63,6 +64,40 @@ describe('HOME-02: money set aside for a goal', () => {
     ])
     const facts = buildGoalPlanFacts({ txs: months, asOf, goal: { amount: 6000, currency: 'PEN' } as never })
     expect(facts.figures.avg_expenses).toBe(1000)
+    expect(facts.figures.avg_monthly_savings).toBe(2000)
+  })
+})
+
+describe('HOME-04: money withdrawn from a goal', () => {
+  const range = monthRange(2026, 9, asOf, true)
+  const goal = { goalId: 'goal-japon' }
+
+  it('returns to the available figure and is never income', () => {
+    const o = buildOverview(
+      [tx('2026-10-01', 4000, 'salary'), tx('2026-10-05', -1000, 'home'), tx('2026-10-10', 300, 'savings', goal)],
+      range,
+      asOf,
+    )
+    expect(o.income).toBe(4000)
+    expect(o.expenses).toBe(1000)
+    expect(o.setAside).toBe(-300)
+    expect(o.available).toBe(3300)
+    expect(o.audit.formula).toContain('+ lo que retiraste de tus metas')
+  })
+
+  it('nets against contributions and lowers goal progress', () => {
+    const txs = [tx('2026-09-10', -500, 'savings', goal), tx('2026-10-10', 200, 'savings', goal)]
+    expect(setAsideByGoal(txs)).toEqual({ 'goal-japon': 300 })
+  })
+
+  it('does not raise the income the savings pace is built on', () => {
+    const months = ['2026-07', '2026-08', '2026-09'].flatMap((m) => [
+      tx(m + '-01', 3000, 'salary'),
+      tx(m + '-03', -1000, 'home'),
+      tx(m + '-04', 900, 'savings', goal),
+    ])
+    const facts = buildGoalPlanFacts({ txs: months, asOf, goal: { amount: 6000, currency: 'PEN' } as never })
+    expect(facts.figures.avg_income).toBe(3000)
     expect(facts.figures.avg_monthly_savings).toBe(2000)
   })
 })

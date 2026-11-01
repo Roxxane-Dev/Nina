@@ -51,7 +51,7 @@ export type PeriodTotals = {
   income: number
   expenses: number
   byCategory: Record<string, number>
-  /** Outflows set aside for a goal: kept out of expenses and categories. */
+  /** Net money set aside for goals: contributions − withdrawals. Negative when more came back. */
   setAside: number
   count: number
 }

@@ -48,4 +48,25 @@ export class GoalsController {
     const txs = await this.engine.loadTransactions(req.user.id)
     return { goal: goalPlanView(goal, txs, asOf) }
   }
+
+  /** HOME-04: "saqué S/ 200 de Japón". Never more than the goal holds, computed by the engine. */
+  @Post(':id/withdrawals')
+  @HttpCode(201)
+  async withdraw(
+    @Request() req: AuthedRequest,
+    @Param('id', new ParseUUIDPipe()) goalId: string,
+    @Body() body: unknown,
+  ) {
+    const asOf = localToday(new Date())
+    const input = parseContribution(body, asOf)
+    if (typeof input === 'string') throw new BadRequestException(input)
+    const goal = await this.goals.getActive(req.user.id, goalId)
+    const before = await this.engine.loadTransactions(req.user.id)
+    if (input.amount > goalPlanView(goal, before, asOf).currentAmount) {
+      throw new BadRequestException('amount exceeds what the goal holds')
+    }
+    await this.goals.addWithdrawal(req.user.id, goal, input)
+    const txs = await this.engine.loadTransactions(req.user.id)
+    return { goal: goalPlanView(goal, txs, asOf) }
+  }
 }
