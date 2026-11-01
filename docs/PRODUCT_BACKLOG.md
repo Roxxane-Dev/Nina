@@ -71,7 +71,7 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | HOME-05 | Retirar de una meta desde el chat ("saqué 200 de Japón") | P3 | Todo | Hoy solo desde Metas. |
 | HOME-03 | Editar un movimiento (monto, descripción, fecha) | P1 | Done | `PATCH /v1/transactions/:id` y hoja "Editar movimiento". Un avance no cambia de categoría. Falta revisarlo en pantalla. |
 | NAV-01 | Filtros de Movimientos compactos (una fila + hoja) | P1 | Done | `movimientos_screen.dart`; tests del subagente. |
-| FIG-01 | Figma: Movimientos, Añadir, Metas, Espacio, Perfil y prototipo | P2 | Blocked | Límite de 20 llamadas/mes del plan Starter. Scripts listos; correr en noviembre. |
+| FIG-01 | Figma: Movimientos, Añadir, Metas, Espacio, Perfil y prototipo | P2 | Needs Verification | Pantallas y prototipo creados el 2026-11-01 (78 enlaces, ninguno faltante). Falta verlos renderizados: el plan Starter cortó antes de la captura. "Editar movimiento" no está en Figma. |
 
 ## 6. Motor y pronósticos
 

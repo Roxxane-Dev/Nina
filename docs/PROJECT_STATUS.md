@@ -44,7 +44,7 @@ MVP "Claridad de tu plata", con el chat como prioridad.
   - CI-02: memoria entre sesiones.
   - INS-06: número después de una compra, que es what-if.
   - Confirmar que la cuenta de OpenAI no usa los datos para entrenar (D-014).
-- **Figma (FIG-01):** límite del plan Starter; se retoma en noviembre.
+- **Figma (FIG-01):** pantallas y prototipo creados; falta revisarlos a ojo en Figma (el plan Starter cortó antes de la captura).
 - **Producción (SEC-01):** las migraciones las aplica el founder. `20261027000000` va antes del despliegue de la API (runbook §9).
 
 ## Próximas tareas recomendadas
