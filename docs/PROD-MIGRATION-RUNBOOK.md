@@ -10,7 +10,8 @@ Scope: migrations `20260102` to `20260107` in `supabase/migrations/`, plus the c
 Tested on: a fresh local Postgres 17 built from the production snapshot (`docs/schema-prod-snapshot.sql`), by replaying exactly the SQL block of section 4 (see section 8). Not tested on a copy of production data.
 
 ## 0. Before you start
-- **Backup first.** Dashboard → Database → Backups: confirm a recent backup exists (or note the PITR timestamp). If you are on a plan without PITR, take a manual backup. Write down the time.
+> Founder decision (D-018): the production project is on the Free plan, which has no backups. It is an MVP with a single user, so the migration runs without one. Add backups before there are real users.
+- **Backup first (skipped, see above).** Dashboard → Database → Backups: confirm a recent backup exists (or note the PITR timestamp). If you are on a plan without PITR, take a manual backup. Write down the time.
 - Open the SQL Editor on the **production** project and double-check the project name in the top bar.
 - Use one SQL Editor tab per script below; do not mix them.
 - Run section 2 (read-only) first and stop if a gate in section 3 fails.
@@ -621,8 +622,10 @@ create policy "Users can insert their personal and shared transactions."
 ## 8. Replay result (local)
 Section 4's SQL, extracted from this file with the last line changed to `commit;`, was applied to a fresh local database containing only the production snapshot baseline (`supabase db reset --version 20260101000000 --no-seed`, local Docker). Results are recorded in `docs/OVERNIGHT-LOG.md` (task 7).
 
-## 9. Later migrations: goal contributions and withdrawals (`20261027000000`, `20261101000000`)
-Not part of the section 4 transaction. Apply both, in that order, after sections 1–8, as one script in the SQL Editor.
+## 9. Later migrations: goals and nudges (`20261027000000`, `20261101000000`, `20261102000000`)
+Not part of the section 4 transaction. Apply them, in that order, after sections 1–8, as one script in the SQL Editor.
+
+`20261102000000` (NOTIF-01) adds the table `nudge_dismissals` with RLS, and the API reads it. Apply it in the same script, after the other two.
 
 `20261101000000` (HOME-04) only relaxes the CHECK below to `goal_id is null or shared_space_id is null`, so a withdrawal (a goal row with `type = 'income'`) is allowed. It takes a brief lock on `transactions` and changes no data.
 

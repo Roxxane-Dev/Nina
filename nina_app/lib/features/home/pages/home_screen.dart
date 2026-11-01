@@ -11,7 +11,9 @@ import '../../../data/services/finance_api_service.dart';
 import '../../../domain/models/nina_user_profile.dart';
 import '../../../domain/models/overview.dart';
 import '../../../shared/widgets/add_transaction_sheet.dart';
+import '../../../data/services/nudges_api_service.dart';
 import '../../../shared/widgets/nina_ui.dart';
+import '../widgets/nudges_sheet.dart';
 import '../../transactions/widgets/transaction_row.dart';
 import '../widgets/audit_sheet.dart';
 
@@ -21,6 +23,7 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen(
       {super.key,
       this.api,
+      this.nudgesApi,
       this.loadRecent,
       this.loadProfile,
       this.watchChanges,
@@ -28,6 +31,9 @@ class HomeScreen extends StatefulWidget {
 
   /// Injectable for tests.
   final FinanceApiService? api;
+
+  /// Avisos (NOTIF-01); injectable for tests.
+  final NudgesApiService? nudgesApi;
   final Future<List<Map<String, dynamic>>> Function()? loadRecent;
   final Future<NinaUserProfile> Function()? loadProfile;
   final Stream<Object?> Function()? watchChanges;
@@ -47,6 +53,9 @@ class _HomeData {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final FinanceApiService _api = widget.api ?? FinanceApiService.instance;
+  late final NudgesApiService _nudgesApi =
+      widget.nudgesApi ?? NudgesApiService.instance;
+  List<Nudge> _nudges = const [];
   late Future<_HomeData> _dataFuture;
   StreamSubscription<Object?>? _changes;
   NinaUserProfile? _profile;
@@ -57,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _dataFuture = _loadData();
+    _loadNudges();
     _refreshProfile();
     final watch = widget.watchChanges ??
         SupabaseFinanceRepository.instance.watchTransactions;
@@ -80,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() {
         _dataFuture = _loadData();
       });
+      _loadNudges();
     }
   }
 
@@ -181,6 +192,51 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Nudges are a nice-to-have: if they fail, Home simply shows none.
+  Future<void> _loadNudges() async {
+    try {
+      final list = await _nudgesApi.list();
+      if (mounted) setState(() => _nudges = list);
+    } catch (_) {
+      if (mounted) setState(() => _nudges = const []);
+    }
+  }
+
+  void _openNudges() {
+    showNudgesSheet(context,
+        nudges: _nudges,
+        api: _nudgesApi,
+        onAction: _runNudge,
+        onDismissed: (n) =>
+            setState(() => _nudges = _nudges.where((x) => x != n).toList()));
+  }
+
+  void _runNudge(Nudge n) {
+    switch (n.actionType) {
+      case 'add':
+        _addManually();
+      case 'goals':
+        context.go('/goals');
+      case 'transactions':
+        context.go('/transactions');
+      default:
+        context.go('/chat?draft=${Uri.encodeComponent(n.draft ?? '')}');
+    }
+  }
+
+  Widget _buildBell() => Badge(
+        key: const Key('home-nudges-badge'),
+        isLabelVisible: _nudges.isNotEmpty,
+        label: Text('${_nudges.length}'),
+        backgroundColor: NinaColors.accent,
+        child: NinaCircleButton(
+          key: const Key('home-nudges'),
+          icon: Icons.notifications_none_rounded,
+          tooltip: 'Avisos',
+          onTap: _openNudges,
+        ),
+      );
+
   Widget _buildHeader() {
     final name = _displayName();
     final today = DateFormat("EEEE d 'de' MMMM", 'es').format(DateTime.now());
@@ -196,6 +252,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 key: const Key('home-greeting'), style: NinaText.displayM()),
           ]),
         ),
+        _buildBell(),
+        const SizedBox(width: 10),
         GestureDetector(
           key: const Key('home-profile'),
           onTap: () => context.push('/profile'),

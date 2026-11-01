@@ -13,6 +13,7 @@ import { SpacesModule } from './spaces/spaces.module'
 import { ConsentsModule } from './consents/consents.module'
 import { MeModule } from './me/me.module'
 import { AccountsModule } from './accounts/accounts.module'
+import { NudgesModule } from './nudges/nudges.module'
 import { HealthController } from './health/health.controller'
 
 @Module({
@@ -31,6 +32,7 @@ import { HealthController } from './health/health.controller'
     ConsentsModule,
     MeModule,
     AccountsModule,
+    NudgesModule,
   ],
   controllers: [HealthController],
 })

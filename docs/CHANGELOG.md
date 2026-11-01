@@ -2,6 +2,12 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-11-01 — Avisos de Nina (NOTIF-01)
+- Campana en Inicio con avisos: fin de semana, suscripciones, Navidad, ingreso faltante, pagos que se vienen, categoría movida y metas.
+- Los textos usan cifras del motor, sin LLM. Con sobregasto real, Nina no bromea.
+- `render.yaml` para publicar la API en Render.
+- **Base de datos (solo local):** `20261102000000_nudge_dismissals.sql`.
+
 ## 2026-11-01 — Editar movimientos y retirar de una meta (HOME-03, HOME-04)
 - **Movimientos:** tocar un movimiento abre "Editar movimiento": monto, descripción, fecha y categoría. Un avance de meta no cambia de categoría.
 - **Metas:** "Retirar" devuelve plata al disponible, baja el avance y nunca cuenta como ingreso (D-017).

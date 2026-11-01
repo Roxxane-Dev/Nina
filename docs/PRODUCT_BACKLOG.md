@@ -104,6 +104,8 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | ID | Título | Prioridad | Estado | Siguiente acción |
 |---|---|---|---|---|
 | QA-01 | Recorrido visual completo de la app en el navegador o dispositivo | P1 | Done | `docs/QA_REPORT.md`: 9 defectos corregidos y 2 abiertos (Q-10, Q-11). Falta un dispositivo real. |
+| NOTIF-01 | Avisos de Nina dentro de la app | P1 | Done | D-018. Falta verlos en pantalla. |
+| NOTIF-02 | Notificaciones push con la app cerrada | P2 | Todo | Requiere un proyecto de Firebase del founder y una tarea programada. |
 | QA-02 | Correo de confirmación real en el dispositivo | P1 | Todo | Supabase de desarrollo con confirmación activa. |
 | QA-03 | Escenarios de principiante automatizados | P1 | Done | `scripts/chat-scenarios.js` + `CHAT_TEST_REPORT.md`. |
 

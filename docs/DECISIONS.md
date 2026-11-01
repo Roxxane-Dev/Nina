@@ -4,6 +4,17 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-018 · Avisos de Nina y producción sin backup
+**Fecha:** 2026-11-01 (decidido por el founder)
+**Decisión de avisos:** Nina muestra avisos con su voz (fin de semana, suscripciones, Navidad, ingreso faltante, pagos que se vienen, categoría movida, metas). Reemplaza la regla anterior de "sin disparadores proactivos extra".
+- Los calcula el motor al abrir Inicio (`buildNudges`); no van al LLM ni se guardan. Solo se guarda cuáles cerró la persona (`nudge_dismissals`, con RLS).
+- Cada aviso tiene una clave por periodo: si lo cierras, vuelve en el siguiente periodo si aplica.
+- Con sobregasto real se apagan los juguetones y queda uno tranquilo, sin bromas.
+- Por ahora están dentro de la app (campana en Inicio). Las notificaciones push, con la app cerrada, necesitan un proyecto de Firebase y están pendientes (NOTIF-02).
+
+**Decisión de producción:** el proyecto de Supabase es del plan Free, que no incluye backups. El founder acepta migrar sin backup porque es un MVP que solo usa ella. La API correrá en Render (`render.yaml`), un solo repo con ambientes separados.
+**Consecuencias:** si una migración falla después del commit, no hay copia para volver atrás. Antes de tener usuarios reales hay que resolver backups.
+
 ## D-017 · Retiros de una meta (HOME-04)
 **Fecha:** 2026-11-01 (aprobada por el founder con el plan)
 **Decisión:** un retiro es un movimiento ligado a la meta con `type = 'income'` y `category = 'savings'`.
