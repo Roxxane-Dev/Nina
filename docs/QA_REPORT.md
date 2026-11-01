@@ -20,7 +20,7 @@
 | H-4 | "En positivo" y "Gastos iguales que en octubre" con el mes vacío | Corregido: "Sin movimientos" y "Sin gastos registrados en noviembre 2026" |
 | H-5 | El error de monto se cortaba en la hoja | Corregido: mensaje más corto |
 | H-6 | "−S/ 0.00" y "+S/ 0.00" en el resumen | Corregido |
-| H-7 | **Inicio muestra "En rojo" al apartar antes de registrar el sueldo** | Abierto: decisión del founder. Cumple D-009 (disponible negativo = rojo), pero no es un problema real |
+| H-7 | **Inicio muestra "En rojo" al apartar antes de registrar el sueldo** | Corregido (D-016): color neutro con "Falta tu ingreso" o "Por lo apartado"; el sobregasto real sigue en rojo |
 
 **No se revisó en pantalla:** la pastilla "Sin movimientos" (cubierta por un test de widget, porque la cuenta ya tenía avances en noviembre).
 

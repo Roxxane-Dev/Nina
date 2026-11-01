@@ -14,6 +14,7 @@ describe('golden: overview (user Ana)', () => {
       income: 5100,
       expenses: 1870.3,
       setAside: 0,
+      negativeFromSetAside: false,
       available: 3229.7,
       balance: 5969.3,
       categories: [

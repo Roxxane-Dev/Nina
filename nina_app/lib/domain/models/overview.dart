@@ -10,6 +10,7 @@ class Overview {
     required this.income,
     required this.expenses,
     this.setAside = 0,
+    this.negativeFromSetAside = false,
     required this.available,
     required this.balance,
     required this.categories,
@@ -29,6 +30,9 @@ class Overview {
 
   /// Set aside for goals in the period (HOME-02): saved, not spent.
   final double setAside;
+
+  /// Negative only because of money set aside: not an alert (D-016).
+  final bool negativeFromSetAside;
   final double available;
   final double balance;
   final List<CategoryShare> categories;
@@ -51,6 +55,7 @@ class Overview {
       income: _d(j['income']),
       expenses: _d(j['expenses']),
       setAside: _d(j['setAside']),
+      negativeFromSetAside: j['negativeFromSetAside'] == true,
       available: _d(j['available']),
       balance: _d(j['balance']),
       categories: (j['categories'] as List? ?? const [])

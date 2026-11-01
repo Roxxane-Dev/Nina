@@ -4,6 +4,12 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-016 · Negativo solo por lo apartado no es una alerta
+**Fecha:** 2026-11-01 (aprobada por el founder)
+**Decisión:** si el disponible sale negativo solo por lo apartado (sin lo apartado sería 0 o más), Inicio y Movimientos lo muestran en color neutro, con "Falta tu ingreso" o "Por lo apartado". El chat responde desde el motor, sin LLM. El sobregasto real sigue en rojo. Precisa D-009.
+**Por qué:** apartar el día 1, antes de registrar el sueldo, es un buen hábito. El rojo diría que algo anda mal.
+**Consecuencias:** la regla vive en un solo lugar del motor (`negativeOnlyFromSetAside`) y la app recibe `negativeFromSetAside`.
+
 ## D-015 · Avances en metas: lo apartado resta del disponible (HOME-02)
 **Fecha:** 2026-10-28 (aprobada por el founder: "lo apartado resta del disponible y retiros quedan para después")
 **Decisión:** un avance ("aparté S/ 200 para Japón") es un movimiento en `transactions` con `category = 'savings'`, `type = 'expense'` y la nueva columna `goal_id`. `transactions` sigue siendo la única fuente de verdad.

@@ -10,7 +10,7 @@ describe('parseGoalRequest', () => {
       'dime quiero viajar a japon en 2028 y quiero ahorrar una bolsita de 6000 dolares cual seria mi plan pra llegar a ese ahorro meta',
       OCT_24,
     )
-    expect(g).toEqual({ amount: 6000, currency: 'USD', name: 'Viaje a Japon', deadline: { year: 2028, month: 11 }, deadlinePast: false, deadlineYearOnly: true })
+    expect(g).toEqual({ amount: 6000, currency: 'USD', name: 'Viaje a Japón', deadline: { year: 2028, month: 11 }, deadlinePast: false, deadlineYearOnly: true })
   })
 
   it('reads soles with month + year, and never takes the month as the name', () => {
@@ -89,5 +89,18 @@ describe('buildGoalPlanFacts (golden: Ana)', () => {
     const f = buildGoalPlanFacts({ txs: ANA_TXS, asOf: OCT_24, goal: parseGoalRequest('ahorrar 6000 soles', OCT_24)! })
     expect(f.figures.required_per_month).toBeUndefined()
     expect(f.figures.months_at_current_pace).toBeGreaterThan(0)
+  })
+})
+
+describe('CI-05: place names read right', () => {
+  const asOf = new Date('2026-10-27T00:00:00Z')
+  it.each([
+    ['ahorrar 3000 para viajar a mexico', 'Viaje a México'],
+    ['ahorrar 3000 para ir a cancun', 'Viaje a Cancún'],
+    ['ahorrar 3000 para japon', 'Japón'],
+    ['ahorrar 3000 para viajar a chile', 'Viaje a Chile'],
+    ['ahorrar 3000 para una laptop', 'laptop'],
+  ])('%s', (msg, name) => {
+    expect(parseGoalRequest(msg, asOf)?.name).toBe(name)
   })
 })

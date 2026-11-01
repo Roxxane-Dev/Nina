@@ -16,6 +16,14 @@ export function isSetAside(t: EngineTransaction): boolean {
   return t.goalId != null && t.amount < 0
 }
 
+/**
+ * The available figure is negative only because of money set aside (D-016): saved, not overspent,
+ * so it is not an alert. Real overspending stays negative without the set-aside amount.
+ */
+export function negativeOnlyFromSetAside(available: number, setAside: number): boolean {
+  return setAside > 0 && available < 0 && available + setAside >= 0
+}
+
 /** Total set aside per goal id, all time (goal progress = opening amount + this). */
 export function setAsideByGoal(txs: EngineTransaction[]): Record<string, number> {
   const out: Record<string, number> = {}

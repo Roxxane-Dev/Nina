@@ -125,7 +125,18 @@ function takeWords(source: string, max = 3): string {
 
 const title = (s: string) => s.replace(/(^|\s)(\S)/g, (_, sp: string, c: string) => sp + c.toUpperCase())
 
+/** Places people write without the accent ("japon"). The stored name should read right. */
+const ACCENTED: Record<string, string> = {
+  japon: 'Japón', mexico: 'México', canada: 'Canadá', panama: 'Panamá', peru: 'Perú', paris: 'París',
+  turquia: 'Turquía', cancun: 'Cancún', bogota: 'Bogotá', medellin: 'Medellín', berlin: 'Berlín',
+}
+const withAccents = (name: string) => name.replace(/[a-záéíóúñ]+/gi, (w) => ACCENTED[w.toLowerCase()] ?? w)
+
 export function extractGoalName(text: string): string {
+  return withAccents(rawGoalName(text))
+}
+
+function rawGoalName(text: string): string {
   const lower = text.toLowerCase()
   const trip = lower.match(/\b(?:viajar|viaje|ir)\s+a(?:l)?\s+([a-záéíóúñ ]+)/)
   if (trip) {

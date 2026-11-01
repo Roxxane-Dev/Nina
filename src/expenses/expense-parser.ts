@@ -110,7 +110,7 @@ function stripAccents(s: string): string {
  * Uses matchAll — never regex.exec.
  */
 const EXPENSE_REGEX =
-  /(\d+(?:[.,]\d+)?)\s*(?:en|para|de|on|for)?\s+([a-z]+)/gi
+  /(\d+(?:[.,]\d+)?)\s*(?:(?:soles?|lucas?)\b\s*)?(?:en|para|de|on|for)?\s+([a-z]+)/gi
 
 const INTENT_REGEX =
   /\b(?:gaste|gastar|pague|pagar|compre|comprar|compra|gastos?|pagos?|inverti|invertir|me\s+costo?|cost[oó]|registre|registrar|registro)\b/i

@@ -310,8 +310,12 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
               'Ingresos',
               '${o.income > 0 ? '+' : ''}${formatSoles(o.income)}',
               NinaColors.success))
-          ..add(_Figure('Disponible', formatSoles(o.available),
-              o.available >= 0 ? NinaColors.textPrimary : NinaColors.error));
+          ..add(_Figure(
+              'Disponible',
+              formatSoles(o.available),
+              o.available >= 0 || o.negativeFromSetAside
+                  ? NinaColors.textPrimary
+                  : NinaColors.error));
       }
     }
     return Padding(

@@ -88,3 +88,19 @@ describe('parseExpenses', () => {
     expect(r[0].normalizedCategory).toBe('other')
   })
 })
+
+describe('CI-04: the currency word is never the category', () => {
+  it.each([
+    ['gasté 80 soles en compras', 80, 'compras', 'shopping'],
+    ['pagué 25 soles de taxi', 25, 'taxi', 'transport'],
+    ['gasté 40 lucas en ropa', 40, 'ropa', 'shopping'],
+    ['gasté 12 soles comida', 12, 'comida', 'food'],
+    ['gasté 25 en taxi', 25, 'taxi', 'transport'],
+  ])('%s', (msg, amount, rawCategory, normalizedCategory) => {
+    expect(parseExpenses(msg)).toEqual([expect.objectContaining({ amount, rawCategory, normalizedCategory })])
+  })
+
+  it('several items keep working', () => {
+    expect(parseExpenses('gasté 25 soles en taxi y 12 en café').map((e) => e.normalizedCategory)).toEqual(['transport', 'food'])
+  })
+})

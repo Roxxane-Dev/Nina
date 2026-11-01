@@ -51,11 +51,11 @@ describe('conversational phrases (asOf 2026-10-26)', () => {
     expect(resolveQuestion('gasté 2030 soles en la tele', OCT_26).intent).not.toBe('goal_plan')
   })
 
-  it('"registra mi meta japon 2028 con un presupuesto de 7000 dolares" → "Japon", December 2028, year only, US$ 7000', () => {
+  it('"registra mi meta japon 2028 con un presupuesto de 7000 dolares" → "Japón", December 2028, year only, US$ 7000', () => {
     expect(parseGoalRequest('registra mi meta japon 2028 con un presupuesto de 7000 dolares', OCT_26)).toEqual({
       amount: 7000,
       currency: 'USD',
-      name: 'Japon',
+      name: 'Japón',
       deadline: { year: 2028, month: 11 },
       deadlinePast: false,
       deadlineYearOnly: true,

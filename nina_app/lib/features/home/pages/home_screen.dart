@@ -229,6 +229,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final change = o.expensesChange;
     // Nothing registered yet (e.g. the 1st of the month): not "in the black".
     final empty = o.txnCount == 0;
+    // Money set aside before the income is registered is not an alert (D-016).
+    final calm = o.negativeFromSetAside;
     final changeText = o.expenses == 0
         ? 'Sin gastos registrados en ${o.periodLabel}'
         : change == 0
@@ -245,10 +247,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           NinaPill(
             label: empty
                 ? 'Sin movimientos'
-                : positive
-                    ? 'En positivo'
-                    : 'En rojo',
-            tone: empty
+                : calm
+                    ? (o.income > 0 ? 'Por lo apartado' : 'Falta tu ingreso')
+                    : positive
+                        ? 'En positivo'
+                        : 'En rojo',
+            tone: empty || calm
                 ? NinaTone.neutral
                 : positive
                     ? NinaTone.positive
@@ -263,7 +267,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             formatSoles(o.available),
             key: const Key('home-available'),
             style: NinaText.hero(
-                color: positive ? NinaColors.textPrimary : NinaColors.error),
+                color: positive || calm
+                    ? NinaColors.textPrimary
+                    : NinaColors.error),
           ),
         ),
         const SizedBox(height: 16),

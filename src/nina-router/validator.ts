@@ -1,4 +1,4 @@
-import type { FactsPayload } from '../../packages/finance-engine/src'
+import { negativeOnlyFromSetAside, type FactsPayload } from '../../packages/finance-engine/src'
 import { formatSoles } from '../common/money'
 
 export type LlmAnswer = {
@@ -139,7 +139,7 @@ export function validateAnswer(
  */
 export function setAsideCausesNegative(facts: FactsPayload): boolean {
   const f = facts.figures
-  return facts.intent === 'available' && (f.set_aside ?? 0) > 0 && f.available < 0 && f.available + f.set_aside >= 0
+  return facts.intent === 'available' && negativeOnlyFromSetAside(f.available, f.set_aside ?? 0)
 }
 
 export function templatedAnswer(facts: FactsPayload): LlmAnswer {

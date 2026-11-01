@@ -231,15 +231,15 @@ describe('goal plans (a question is answered with a plan, never registered as a 
     expect(r.reply).toContain('US$ 6,000')
     expect(r.reply).toContain('diciembre 2028')
     expect(r.reply).toContain('S/ 865.38 al mes durante 26 meses')
-    expect(r.reply).toContain('Viaje a Japon')
+    expect(r.reply).toContain('Viaje a Japón')
     expect(r.reply).not.toContain('Mi Meta')
     expect(r.needsConfirmation).toBe(true)
-    expect(r.card?.title).toBe('Plan: Viaje a Japon')
+    expect(r.card?.title).toBe('Plan: Viaje a Japón')
     expect(insertGoal).not.toHaveBeenCalled()
 
     await chat.handleMessage('user-1', 'sí', r.pendingToken)
     expect(insertGoal).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Viaje a Japon', target_amount: 22500, deadline: '2028-12-31', original_usd: 6000, usd_pen_rate: 3.75, deadline_year_only: true }),
+      expect.objectContaining({ name: 'Viaje a Japón', target_amount: 22500, deadline: '2028-12-31', original_usd: 6000, usd_pen_rate: 3.75, deadline_year_only: true }),
       'user-1',
     )
   })
@@ -292,14 +292,14 @@ describe('multi-turn conversation (signed context)', () => {
   it('(a) Japan question asks for the budget; "7000 dolares" with the context returns the plan and the save offer', async () => {
     const { chat, insertGoal } = setup(undefined, true, conversational)
     const ask = await chat.handleMessage('user-1', 'dime quiero viajar a japon en enero 2028 crees que sea buena idea?')
-    expect(ask.reply).toContain('Viaje a Japon para enero 2028')
+    expect(ask.reply).toContain('Viaje a Japón para enero 2028')
     expect(ask.reply).toContain('¿De cuánto es el presupuesto?')
     expect(ask.needsConfirmation).toBe(false)
     expect(ask.context).toEqual(expect.any(String))
 
     const plan = await chat.handleMessage('user-1', '7000 dolares', undefined, 'local', ask.context)
     expect(plan.grounded?.intent).toBe('goal_plan')
-    expect(plan.card?.title).toBe('Plan: Viaje a Japon')
+    expect(plan.card?.title).toBe('Plan: Viaje a Japón')
     expect(plan.reply).toContain('US$ 7,000')
     expect(plan.reply).toContain('S/ 26,250.00')
     expect(plan.reply).toContain('S/ 1,750.00 al mes durante 15 meses')
@@ -309,7 +309,7 @@ describe('multi-turn conversation (signed context)', () => {
 
     await chat.handleMessage('user-1', 'sí', plan.pendingToken, 'local', plan.context)
     expect(insertGoal).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Viaje a Japon', target_amount: 26250, deadline: '2028-01-31', original_usd: 7000 }),
+      expect.objectContaining({ name: 'Viaje a Japón', target_amount: 26250, deadline: '2028-01-31', original_usd: 7000 }),
       'user-1',
     )
   })
@@ -329,7 +329,7 @@ describe('multi-turn conversation (signed context)', () => {
   })
 
   it('(b) shoes: asks the price, then answers with the engine available figure and the price, never available − price', async () => {
-    const goal: GoalRow = { id: 'g1', name: 'Viaje a Japon', target_amount: 26250, current_amount: 0, deadline: '2028-01-31', status: 'active' }
+    const goal: GoalRow = { id: 'g1', name: 'Viaje a Japón', target_amount: 26250, current_amount: 0, deadline: '2028-01-31', status: 'active' }
     const { chat, listActive } = setup(undefined, true, { goals: [goal] })
     const ask = await chat.handleMessage('user-1', 'Quiero comprarme unas zapatillas')
     expect(ask.reply).toContain('unas zapatillas')
@@ -341,7 +341,7 @@ describe('multi-turn conversation (signed context)', () => {
     expect(listActive).toHaveBeenCalledWith('user-1')
     expect(r.reply).toContain('S/ 350.00')
     expect(r.reply).toContain('te quedan S/ 4,500.00') // engine available for October (4500 − 0)
-    expect(r.reply).toContain('«Viaje a Japon»')
+    expect(r.reply).toContain('«Viaje a Japón»')
     expect(r.card).toBeDefined()
     expect(r.card?.highlight?.amount).toBe(4500)
     expect(r.grounded?.intent).toBe('available')

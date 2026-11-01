@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:nina_app/core/theme/design_system.dart';
 import 'package:nina_app/data/services/finance_api_service.dart';
 import 'package:nina_app/domain/models/nina_user_profile.dart';
 import 'package:nina_app/domain/models/overview.dart';
@@ -154,6 +155,33 @@ void main() {
     expect(find.text('En positivo'), findsNothing);
     expect(find.text('Sin gastos registrados en octubre 2026'), findsOneWidget);
     expect(find.textContaining('Gastos iguales'), findsNothing);
+  });
+
+  testWidgets('negative only by money set aside is calm, not "En rojo" (D-016)',
+      (tester) async {
+    await tester.pumpWidget(_home(_Api({
+      ...overviewJson(),
+      'income': 0,
+      'expenses': 0,
+      'setAside': 250,
+      'available': -250,
+      'negativeFromSetAside': true,
+    })));
+    await tester.pumpAndSettle();
+    expect(find.text('Falta tu ingreso'), findsOneWidget);
+    expect(find.text('En rojo'), findsNothing);
+    final style = tester.widget<Text>(find.byKey(const Key('home-available')));
+    expect(style.style?.color, isNot(NinaColors.error));
+  });
+
+  testWidgets('real overspending is still "En rojo"', (tester) async {
+    await tester.pumpWidget(_home(_Api({
+      ...overviewJson(),
+      'available': -300,
+      'setAside': 100,
+    })));
+    await tester.pumpAndSettle();
+    expect(find.text('En rojo'), findsOneWidget);
   });
 
   testWidgets('an older backend without audit simply hides the link',

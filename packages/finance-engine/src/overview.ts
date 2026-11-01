@@ -2,7 +2,7 @@
  * Screen-level aggregates for Inicio, Movimientos and Análisis.
  * The app renders these numbers as-is; it never sums transactions itself.
  */
-import { periodTotals, signedFlows } from './aggregates'
+import { negativeOnlyFromSetAside, periodTotals, signedFlows } from './aggregates'
 import { categoryLabel } from './categories'
 import { inPeriod, isoDate } from './period'
 import { monthLabelEs, monthRange, previousRange, type PeriodRange } from './periods'
@@ -39,6 +39,8 @@ export type Overview = {
   setAside: number
   /** income − expenses − setAside of the period. */
   available: number
+  /** Negative only because of money set aside: show it calmly, it is not an alert (D-016). */
+  negativeFromSetAside: boolean
   /** Historical balance: all incomes − all expenses registered (same as chat "saldo"). */
   balance: number
   categories: Array<{ slug: string; label: string; amount: number; sharePct: number }>
@@ -76,6 +78,7 @@ export function buildOverview(txs: EngineTransaction[], range: PeriodRange, asOf
     expenses: round(current.expenses),
     setAside: round(current.setAside),
     available,
+    negativeFromSetAside: negativeOnlyFromSetAside(available, round(current.setAside)),
     balance: round(all.income - all.expenses),
     categories,
     previous: { label: prevRange.label, income: round(prev.income), expenses: round(prev.expenses) },

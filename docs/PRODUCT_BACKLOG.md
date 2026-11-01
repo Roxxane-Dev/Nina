@@ -46,8 +46,8 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | CI-01 | Conversación abierta con LLM, sin cifras (validador que rechace números) | P1 | Done | Aprobada (D-013). `open-conversation.spec.ts` (34 tests) y escenarios N–U en `CHAT_TEST_REPORT.md`. Falta verla en la UI (QA-01). |
 | CI-02 | Memoria entre sesiones (metas mencionadas, estilo preferido) | P2 | Blocked | Requiere migración, consentimiento y decisión del founder (D-012). |
 | CI-03 | Banco de frases reales como tests de regresión | P1 | In Progress | Ya existe `scripts/chat-scenarios.js`. Falta sumar cada fallo nuevo. |
-| CI-04 | "Compré algo que no necesitaba" se registra como Otros, no Compras | P2 | Todo | Revisar el alias "compras" en el parser de gastos. |
-| CI-05 | Nombres con tilde ("Japon" → "Japón") | P3 | Todo | Diccionario corto de lugares comunes. |
+| CI-04 | "Compré algo que no necesitaba" se registra como Otros, no Compras | P2 | Done | La causa era general: en "gasté 80 soles en X" el parser tomaba "soles" como categoría. |
+| CI-05 | Nombres con tilde ("Japon" → "Japón") | P3 | Done | Diccionario corto en `goal-plan.ts`. |
 | CI-06 | Variedad de respuestas deterministas (no repetir la misma frase) | P2 | Todo | Varias versiones por respuesta, con semilla por turno. |
 
 ## 4. Insights e indicadores

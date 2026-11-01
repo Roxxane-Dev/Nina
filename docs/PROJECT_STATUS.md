@@ -1,6 +1,6 @@
 # Estado del proyecto — Nina
 
-Actualizado: 2026-10-28. Léelo al empezar una sesión. El detalle está en `PRODUCT_BACKLOG.md`; las decisiones, en `DECISIONS.md`.
+Actualizado: 2026-11-01. Léelo al empezar una sesión. El detalle está en `PRODUCT_BACKLOG.md`; las decisiones, en `DECISIONS.md`.
 
 ## Visión
 Nina es una compañera de inteligencia financiera personal para Perú (es-PE, S/). Entiende tu plata, te la explica en simple y te dice el siguiente paso. Fase actual: **Nina Intelligence**, que nunca mueve dinero. El MVP vence el **2026-10-31**.
@@ -37,8 +37,6 @@ MVP "Claridad de tu plata", con el chat como prioridad.
 - Nada en curso. Esperan revisión `feature/chat-conversational` y `feature/goal-contributions` (esta va encima de la anterior).
 
 ## Defectos conocidos
-- CI-04: "compré algo que no necesitaba" se registra como Otros, no como Compras.
-- CI-05: los nombres de lugares pierden la tilde ("Japon").
 - Q-11: en Movimientos, los nombres largos se cortan.
 
 ## Bloqueos

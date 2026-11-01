@@ -40,6 +40,21 @@ describe('HOME-02: money set aside for a goal', () => {
     expect(o.audit.formula).not.toContain('apartado')
   })
 
+  it('negative only because of money set aside is flagged; real overspending is not', () => {
+    const range = monthRange(2026, 9, asOf, true)
+    const saved = buildOverview([tx('2026-10-10', -250, 'savings', { goalId: 'g' })], range, asOf)
+    expect(saved.available).toBe(-250)
+    expect(saved.negativeFromSetAside).toBe(true)
+
+    const overspent = buildOverview(
+      [tx('2026-10-01', 1000, 'salary'), tx('2026-10-02', -1200, 'home'), tx('2026-10-03', -100, 'savings', { goalId: 'g' })],
+      range,
+      asOf,
+    )
+    expect(overspent.available).toBe(-300)
+    expect(overspent.negativeFromSetAside).toBe(false)
+  })
+
   it('does not lower the savings pace used by goal plans', () => {
     const months = ['2026-07', '2026-08', '2026-09'].flatMap((m) => [
       tx(`${m}-01`, 3000, 'salary'),
