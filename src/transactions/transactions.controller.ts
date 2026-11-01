@@ -21,7 +21,7 @@ import { CATEGORY_LABELS_ES, categoryLabel, normalizeCategorySlug } from '../../
 import { CategoryRulesService } from '../category-rules/category-rules.service'
 import { SpacesService } from '../spaces/spaces.service'
 import { AccountsService } from '../accounts/accounts.service'
-import { TransactionsService, validateNewTransaction, type NewTransactionInput } from './transactions.service'
+import { TransactionsService, validateNewTransaction, validateTransactionEdit, type NewTransactionInput } from './transactions.service'
 
 type AuthedRequest = ExpressRequest & { user: SupabaseUser }
 
@@ -58,18 +58,39 @@ export class TransactionsController {
     return this.transactions.create(req.user.id, v.value, spaceId, accountId)
   }
 
-  /** US-24: fix the category and remember it for similar descriptions. */
+  /**
+   * HOME-03: edit amount, date and note. US-24: fix the category and remember it for similar
+   * descriptions. Any of them can come alone.
+   */
   @Patch(':id')
-  async updateCategory(
+  async update(
     @Request() req: AuthedRequest,
     @Param('id', new ParseUUIDPipe()) id: string,
-    @Body() body: { category?: string },
+    @Body() body: { category?: string; amount?: unknown; date?: unknown; note?: unknown },
   ) {
-    const raw = typeof body?.category === 'string' ? body.category.trim().toLowerCase() : ''
-    const slug = normalizeCategorySlug(raw)
-    if (!raw || !CATEGORY_LABELS_ES[slug] || (slug === 'other' && raw !== 'other' && raw !== 'otros')) {
-      throw new BadRequestException('unknown category')
+    const edit = validateTransactionEdit(
+      { amount: body?.amount, date: body?.date, note: body?.note },
+      this.transactions.today(),
+    )
+    if (!edit.ok) throw new BadRequestException(edit.error)
+    const hasEdit = Object.keys(edit.value).length > 0
+    if (!hasEdit && body?.category === undefined) throw new BadRequestException('nothing to update')
+
+    let slug: string | null = null
+    if (body?.category !== undefined) {
+      const raw = typeof body.category === 'string' ? body.category.trim().toLowerCase() : ''
+      slug = normalizeCategorySlug(raw)
+      if (!raw || !CATEGORY_LABELS_ES[slug] || (slug === 'other' && raw !== 'other' && raw !== 'otros')) {
+        throw new BadRequestException('unknown category')
+      }
+      if (await this.transactions.isGoalContribution(req.user.id, id)) {
+        throw new BadRequestException('a goal contribution keeps its category')
+      }
     }
+    if (hasEdit && !(await this.transactions.updateDetails(req.user.id, id, edit.value))) {
+      throw new NotFoundException('transaction not found')
+    }
+    if (slug === null) return { id, remembered: false }
     const row = await this.transactions.updateCategory(req.user.id, id, slug)
     if (!row) throw new NotFoundException('transaction not found')
     const remembered = row.type === 'expense' && row.description

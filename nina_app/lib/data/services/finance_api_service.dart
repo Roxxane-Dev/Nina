@@ -63,6 +63,24 @@ class FinanceApiService {
     return res.data?['remembered'] == true;
   }
 
+  /// HOME-03. True when a changed category will be remembered (US-24).
+  Future<bool> updateTransaction(String id,
+      {required double amount,
+      required String date,
+      required String note,
+      String? category}) async {
+    final res = await _dio.patch<Map<String, dynamic>>(
+      '/v1/transactions/$id',
+      data: {
+        'amount': amount,
+        'date': date,
+        'note': note,
+        if (category != null) 'category': category,
+      },
+    );
+    return res.data?['remembered'] == true;
+  }
+
   /// US-25.
   Future<void> deleteTransaction(String id) async {
     await _dio.delete<void>('/v1/transactions/$id');

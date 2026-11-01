@@ -11,6 +11,7 @@ import '../../../data/services/finance_api_service.dart';
 import '../../../domain/models/overview.dart';
 import '../../../shared/widgets/add_transaction_sheet.dart';
 import '../../../shared/widgets/nina_ui.dart';
+import '../widgets/edit_transaction_sheet.dart';
 import '../widgets/transaction_row.dart';
 
 enum _PeriodFilter { current, previous, all }
@@ -193,52 +194,16 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
   }
 
   /// US-24: pick the right category; Nina remembers it for similar descriptions.
-  Future<void> _changeCategory(Map<String, dynamic> row) async {
-    final options =
-        row['type'] == 'income' ? incomeCategories : expenseCategories;
-    final picked = await showModalBottomSheet<String>(
-      useRootNavigator: true,
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text('Cambiar categoría', style: NinaText.titleL()),
-            ),
-            for (final e in options.entries)
-              ListTile(
-                title: Text(e.value),
-                leading:
-                    Icon(categoryIcon(e.key), color: NinaColors.textSecondary),
-                trailing: categoryLabel(row['category'] as String?) == e.value
-                    ? const Icon(Icons.check, color: NinaColors.cocoa)
-                    : null,
-                onTap: () => Navigator.pop(ctx, e.key),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (picked == null || !mounted) return;
-    try {
-      final remembered =
-          await _api.updateCategory(row['id'].toString(), picked);
-      if (!mounted) return;
-      final note = (row['description'] as String?)?.trim();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(remembered && note != null && note.isNotEmpty
-            ? 'Listo. La próxima vez que registres "$note" usaré esta categoría.'
-            : 'Categoría actualizada.'),
-      ));
-      _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(financeErrorMessage(e))));
-      }
-    }
+  /// HOME-03: amount, date, note and (except contributions) category.
+  Future<void> _edit(Map<String, dynamic> row) async {
+    final result = await showEditTransactionSheet(context, row: row, api: _api);
+    if (result == null || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(result.remembered && result.note.isNotEmpty
+          ? 'Listo. La próxima vez que registres "${result.note}" usaré esta categoría.'
+          : 'Movimiento actualizado.'),
+    ));
+    _load();
   }
 
   // ── UI ────────────────────────────────────────────────────────────────────
@@ -612,8 +577,7 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
         amount: amount,
         isIncome: isIncome,
         category: r['category'] as String?,
-        // HOME-02: a goal contribution keeps its category; delete it to undo.
-        onTap: r['goal_id'] == null ? () => _changeCategory(r) : null,
+        onTap: () => _edit(r),
         trailing: IconButton(
           tooltip: 'Eliminar',
           visualDensity: VisualDensity.compact,

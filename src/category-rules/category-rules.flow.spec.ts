@@ -30,13 +30,13 @@ const TX = '11111111-1111-4111-8111-111111111111'
 describe('US-24: correct a category and remember it', () => {
   function controllerWith(row: { description: string | null; type: string } | null) {
     const rules = fakeRules()
-    const transactions = { updateCategory: jest.fn(async () => row), today: () => new Date() }
+    const transactions = { updateCategory: jest.fn(async () => row), isGoalContribution: jest.fn(async () => false), today: () => new Date() }
     return { ctrl: new TransactionsController(transactions as never, rules.svc, {} as never, {} as never), transactions, rules }
   }
 
   it('updates the category and remembers it for the description', async () => {
     const { ctrl, transactions, rules } = controllerWith({ description: 'Almuerzo en Tambo', type: 'expense' })
-    const r = await ctrl.updateCategory(req('u1'), TX, { category: 'food' })
+    const r = await ctrl.update(req('u1'), TX, { category: 'food' })
     expect(transactions.updateCategory).toHaveBeenCalledWith('u1', TX, 'food')
     expect(r).toEqual({ id: TX, category: 'food', label: 'Comida', remembered: true })
     expect(rules.rows).toEqual([expect.objectContaining({ user_id: 'u1', pattern: 'almuerzo en tambo', category: 'food' })])
@@ -44,12 +44,12 @@ describe('US-24: correct a category and remember it', () => {
 
   it('rejects unknown categories', async () => {
     const { ctrl } = controllerWith({ description: 'x', type: 'expense' })
-    await expect(ctrl.updateCategory(req('u1'), TX, { category: 'juguetes' })).rejects.toBeInstanceOf(BadRequestException)
+    await expect(ctrl.update(req('u1'), TX, { category: 'juguetes' })).rejects.toBeInstanceOf(BadRequestException)
   })
 
   it("404 for someone else's movement", async () => {
     const { ctrl } = controllerWith(null)
-    await expect(ctrl.updateCategory(req('u2'), TX, { category: 'food' })).rejects.toBeInstanceOf(NotFoundException)
+    await expect(ctrl.update(req('u2'), TX, { category: 'food' })).rejects.toBeInstanceOf(NotFoundException)
   })
 
   it('the next registration with that description uses the remembered category', async () => {

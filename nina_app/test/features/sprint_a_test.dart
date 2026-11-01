@@ -90,6 +90,24 @@ class FakeApi extends FinanceApiService {
     recategorized[id] = category;
     return true;
   }
+
+  final edits = <String, Map<String, Object?>>{};
+
+  @override
+  Future<bool> updateTransaction(String id,
+      {required double amount,
+      required String date,
+      required String note,
+      String? category}) async {
+    edits[id] = {
+      'amount': amount,
+      'date': date,
+      'note': note,
+      'category': category
+    };
+    if (category != null) recategorized[id] = category;
+    return category != null;
+  }
 }
 
 final rows = [
@@ -310,12 +328,36 @@ void main() {
       final api = await pump(tester);
       await tester.tap(find.text('mercado'));
       await tester.pumpAndSettle();
-      expect(find.text('Cambiar categoría'), findsOneWidget);
-      await tester.tap(find.text('Hogar'));
+      expect(find.text('Editar movimiento'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('edit-category-home')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('edit-save')));
       await tester.pumpAndSettle();
       expect(api.recategorized, {'b2': 'home'});
       expect(find.textContaining('La próxima vez que registres "mercado"'),
           findsOneWidget);
+    });
+
+    testWidgets(
+        'HOME-03: editing sends amount and note, and rejects bad amounts',
+        (tester) async {
+      final api = await pump(tester);
+      await tester.tap(find.text('mercado'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('edit-amount')), '0');
+      await tester.tap(find.byKey(const Key('edit-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Escribe un monto mayor a cero.'), findsOneWidget);
+      expect(api.edits, isEmpty);
+
+      await tester.enterText(find.byKey(const Key('edit-amount')), '45,50');
+      await tester.enterText(find.byKey(const Key('edit-note')), 'Metro');
+      await tester.tap(find.byKey(const Key('edit-save')));
+      await tester.pumpAndSettle();
+      expect(api.edits['b2'], containsPair('amount', 45.5));
+      expect(api.edits['b2'], containsPair('note', 'Metro'));
+      expect(api.edits['b2'], containsPair('category', null));
+      expect(find.text('Movimiento actualizado.'), findsOneWidget);
     });
 
     testWidgets('delete asks for confirmation and calls the API',

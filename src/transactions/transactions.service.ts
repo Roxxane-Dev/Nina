@@ -45,6 +45,34 @@ export function validateNewTransaction(input: Partial<NewTransactionInput>, toda
   return { ok: true, value: { type: input.type, amount, category: slug, date, note } }
 }
 
+export type TransactionEdit = { amount?: number; date?: string; description?: string | null }
+
+/** HOME-03: validates the fields of an edit, with the same rules as a new movement. */
+export function validateTransactionEdit(
+  input: { amount?: unknown; date?: unknown; note?: unknown },
+  today: Date,
+): { ok: true; value: TransactionEdit } | { ok: false; error: string } {
+  const value: TransactionEdit = {}
+  if (input.amount !== undefined) {
+    const amount = typeof input.amount === 'number' ? input.amount : Number.NaN
+    if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_AMOUNT) return { ok: false, error: 'amount must be a positive number' }
+    if (Math.round(amount * 100) / 100 !== amount) return { ok: false, error: 'amount allows at most 2 decimals' }
+    value.amount = amount
+  }
+  if (input.date !== undefined) {
+    if (typeof input.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !toLocalDay(input.date)) {
+      return { ok: false, error: 'date must be YYYY-MM-DD' }
+    }
+    if (input.date > isoDate(today)) return { ok: false, error: 'date cannot be in the future' }
+    value.date = input.date
+  }
+  if (input.note !== undefined) {
+    if (typeof input.note !== 'string') return { ok: false, error: 'note must be text' }
+    value.description = input.note.trim().slice(0, MAX_NOTE) || null
+  }
+  return { ok: true, value }
+}
+
 /**
  * Manual create / delete of the user's own transactions (Movimientos).
  * Service-role client: every query is scoped with user_id from the JWT.
@@ -118,6 +146,38 @@ export class TransactionsService implements OnModuleInit {
     }
     const row = (data ?? [])[0] as { description: string | null; type: string } | undefined
     return row ?? null
+  }
+
+  /** HOME-03: false when the row does not exist or is not the user's. */
+  async updateDetails(userId: string, id: string, edit: TransactionEdit): Promise<boolean> {
+    if (!this.db) throw new FinanceDataUnavailableError('no_client')
+    const { data, error } = await this.db
+      .from('transactions')
+      .update(edit)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select('id')
+    if (error) {
+      this.logger.error(`updateDetails failed: ${error.code ?? 'unknown'}`)
+      throw new FinanceDataUnavailableError(error.code)
+    }
+    return (data ?? []).length > 0
+  }
+
+  /** A goal contribution keeps its category (D-015). */
+  async isGoalContribution(userId: string, id: string): Promise<boolean> {
+    if (!this.db) throw new FinanceDataUnavailableError('no_client')
+    const { data, error } = await this.db
+      .from('transactions')
+      .select('goal_id')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (error) {
+      this.logger.error(`isGoalContribution failed: ${error.code ?? 'unknown'}`)
+      throw new FinanceDataUnavailableError(error.code)
+    }
+    return (data as { goal_id?: string | null } | null)?.goal_id != null
   }
 
   /** Returns false when the row does not exist or is not the user's (never reveals which). */
