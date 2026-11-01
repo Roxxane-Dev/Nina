@@ -227,9 +227,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildHero(Overview o) {
     final positive = o.available >= 0;
     final change = o.expensesChange;
-    final changeText = change == 0
-        ? 'Gastos iguales que en ${o.previousLabel}'
-        : '${change > 0 ? '+' : '−'}${formatSoles(change.abs())} en gastos vs. ${o.previousLabel}';
+    // Nothing registered yet (e.g. the 1st of the month): not "in the black".
+    final empty = o.txnCount == 0;
+    final changeText = o.expenses == 0
+        ? 'Sin gastos registrados en ${o.periodLabel}'
+        : change == 0
+            ? 'Gastos iguales que en ${o.previousLabel}'
+            : '${change > 0 ? '+' : '−'}${formatSoles(change.abs())} en gastos vs. ${o.previousLabel}';
     return NinaCard(
       padding: const EdgeInsets.all(22),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -239,8 +243,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 style: NinaText.caps()),
           ),
           NinaPill(
-            label: positive ? 'En positivo' : 'En rojo',
-            tone: positive ? NinaTone.positive : NinaTone.negative,
+            label: empty
+                ? 'Sin movimientos'
+                : positive
+                    ? 'En positivo'
+                    : 'En rojo',
+            tone: empty
+                ? NinaTone.neutral
+                : positive
+                    ? NinaTone.positive
+                    : NinaTone.negative,
           ),
         ]),
         const SizedBox(height: 10),

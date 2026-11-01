@@ -50,8 +50,7 @@ class _ContributionSheetState extends State<ContributionSheet> {
   Future<void> _save() async {
     final v = _parsed();
     if (v == null) {
-      setState(
-          () => _error = 'Escribe un monto mayor a cero, por ejemplo 200.');
+      setState(() => _error = 'Escribe un monto mayor a cero.');
       return;
     }
     setState(() {

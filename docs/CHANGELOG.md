@@ -11,12 +11,13 @@ Cambios con impacto para el usuario o la arquitectura. No registra cada edición
   - "Cómo calculé esto" muestra "− Apartado para metas".
 - **Movimientos:** los avances se ven como "Apartado · <meta>" en color neutro.
 - **Base de datos (solo local):** `transactions.goal_id` con RLS y CHECK (`20261027000000_goal_contributions.sql`).
+- **Mes sin movimientos (recorrido del 2026-11-01):** Inicio dice "Sin movimientos" y "Sin gastos registrados en <mes>". Si el disponible sale negativo solo por lo apartado, Nina responde desde el motor, sin LLM (prompt `chat-v6`).
 - **Verificación:**
   - RLS local: 5/5.
-  - jest 542/542.
-  - Flutter 103/103.
+  - jest 548/548.
+  - Flutter 104/104.
   - API local probada: 400 / 404 / 401 / 201.
-  - Escenario V del chat contra el backend local.
+  - Recorrido en pantalla (`QA_REPORT.md`).
 
 ## 2026-10-27 — Consentimiento de IA, política 2026-10-v2 (SEC-05)
 - "Explicaciones con IA" pasa a ser **"Respuestas con IA"**, con un texto que dice lo que de verdad se envía (el mensaje sin datos personales y, si aplica, las cifras del motor) y que Nina guarda las conversaciones.

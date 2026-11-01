@@ -1,3 +1,31 @@
+# Revisiones visuales
+
+## HOME-02 — Avances en metas (2026-11-01)
+
+**Rama:** `feature/goal-contributions`. **Entorno:** local, app web en el panel a 375×812, cuenta `dev@nina.test`. Se probó el día 1 del mes, sin ingresos registrados en noviembre.
+
+| Flujo | Resultado |
+|---|---|
+| Metas: monto inválido rechazado, "Registrar avance" de S/ 150 | ✅ el progreso pasó de S/ 300 a S/ 450 |
+| Inicio: Apartado y disponible | ✅ |
+| "Cómo calculé esto": línea "− Apartado para metas" | ✅ cuadra con el motor |
+| Movimientos desde "Ver estos movimientos" | ✅ tras arreglos |
+| Chat: "aparté 100 para la bici", confirmar, "¿cuánto me queda?" | ✅ tras arreglos |
+
+| # | Defecto | Estado |
+|---|---|---|
+| H-1 | **El LLM regañaba:** con disponible negativo solo por lo apartado decía "recorta tus gastos" y "gastaste más de lo que ingresaste", con S/ 0 de gastos | Corregido: ese caso se responde desde el motor, sin LLM (`setAsideCausesNegative`). Una regla en el prompt (`chat-v6`) no bastó: de 3 respuestas, 2 seguían mal |
+| H-2 | Movimientos cortaba el nombre del avance ("Apartado · …") | Corregido: el título es la meta y debajo dice "Apartado" |
+| H-3 | El resumen de Movimientos no sumaba (0 − 0 = −250) | Corregido: una línea explica lo apartado |
+| H-4 | "En positivo" y "Gastos iguales que en octubre" con el mes vacío | Corregido: "Sin movimientos" y "Sin gastos registrados en noviembre 2026" |
+| H-5 | El error de monto se cortaba en la hoja | Corregido: mensaje más corto |
+| H-6 | "−S/ 0.00" y "+S/ 0.00" en el resumen | Corregido |
+| H-7 | **Inicio muestra "En rojo" al apartar antes de registrar el sueldo** | Abierto: decisión del founder. Cumple D-009 (disponible negativo = rojo), pero no es un problema real |
+
+**No se revisó en pantalla:** la pastilla "Sin movimientos" (cubierta por un test de widget, porque la cuenta ya tenía avances en noviembre).
+
+---
+
 # QA-01 — Revisión visual de la app
 
 **Fecha:** 2026-10-27 · **Rama:** `feature/chat-conversational`

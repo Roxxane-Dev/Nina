@@ -140,6 +140,22 @@ void main() {
     expect(find.byKey(const Key('audit-view-transactions')), findsNothing);
   });
 
+  testWidgets('the first day of a month is neutral, not "En positivo"',
+      (tester) async {
+    await tester.pumpWidget(_home(_Api({
+      ...overviewJson(count: 0),
+      'income': 0,
+      'expenses': 0,
+      'available': 0,
+      'expensesChange': 0,
+    })));
+    await tester.pumpAndSettle();
+    expect(find.text('Sin movimientos'), findsOneWidget);
+    expect(find.text('En positivo'), findsNothing);
+    expect(find.text('Sin gastos registrados en octubre 2026'), findsOneWidget);
+    expect(find.textContaining('Gastos iguales'), findsNothing);
+  });
+
   testWidgets('an older backend without audit simply hides the link',
       (tester) async {
     await tester.pumpWidget(_home(_Api(overviewJson(withAudit: false))));

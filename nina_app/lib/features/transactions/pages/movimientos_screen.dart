@@ -303,9 +303,13 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
       } else {
         figures
           ..add(_Figure(
-              'Gastos', '−${formatSoles(o.expenses)}', NinaColors.textPrimary))
+              'Gastos',
+              '${o.expenses > 0 ? '−' : ''}${formatSoles(o.expenses)}',
+              NinaColors.textPrimary))
           ..add(_Figure(
-              'Ingresos', '+${formatSoles(o.income)}', NinaColors.success))
+              'Ingresos',
+              '${o.income > 0 ? '+' : ''}${formatSoles(o.income)}',
+              NinaColors.success))
           ..add(_Figure('Disponible', formatSoles(o.available),
               o.available >= 0 ? NinaColors.textPrimary : NinaColors.error));
       }
@@ -330,6 +334,16 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                 children: [for (final f in figures) Expanded(child: f)],
               ),
             ),
+            // HOME-02: without this line the three figures do not add up.
+            if (o != null && _period != _PeriodFilter.all && o.setAside > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 4),
+                child: Text(
+                  'El disponible descuenta ${formatSoles(o.setAside)} apartados para tus metas',
+                  key: const Key('movimientos-set-aside'),
+                  style: NinaText.bodyS(color: NinaColors.textTertiary),
+                ),
+              ),
           ],
         ],
       ),
@@ -568,6 +582,8 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
     return DateFormat("d 'de' MMM yyyy", 'es').format(d).toUpperCase();
   }
 
+  static const _contributionPrefix = 'Apartado · ';
+
   Widget _buildRow(Map<String, dynamic> r) {
     final isIncome = r['type'] == 'income';
     final amount = ((r['amount'] as num?) ?? 0).toDouble();
@@ -584,7 +600,10 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
         child: const Icon(Icons.delete_outline, color: NinaColors.error),
       ),
       child: TransactionRow(
-        title: note?.isNotEmpty == true ? note! : cat,
+        // A contribution is named by its goal, the part a long title would cut.
+        title: note?.isNotEmpty == true
+            ? note!.replaceFirst(_contributionPrefix, '')
+            : cat,
         meta: cat,
         amount: amount,
         isIncome: isIncome,

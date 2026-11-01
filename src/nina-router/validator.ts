@@ -133,6 +133,15 @@ export function validateAnswer(
  * Engine-only answer used when no LLM is available or validation fails twice.
  * Every number comes straight from FACTS.
  */
+/**
+ * HOME-02: the available figure is negative only because of money set aside. Nothing is wrong and
+ * an LLM reads it as overspending, so this case is always answered from the engine template.
+ */
+export function setAsideCausesNegative(facts: FactsPayload): boolean {
+  const f = facts.figures
+  return facts.intent === 'available' && (f.set_aside ?? 0) > 0 && f.available < 0 && f.available + f.set_aside >= 0
+}
+
 export function templatedAnswer(facts: FactsPayload): LlmAnswer {
   const f = facts.figures
   const ctx = facts.context
@@ -156,7 +165,12 @@ export function templatedAnswer(facts: FactsPayload): LlmAnswer {
   } else if (facts.intent === 'income') {
     message = `${prefix}Tus ingresos ${period} suman ${formatSoles(f.income)}.`
   } else if (facts.intent === 'available') {
-    message = f.set_aside
+    message = setAsideCausesNegative(facts)
+      ? `${prefix}${cap(period)} apartaste ${formatSoles(f.set_aside)} para tus metas, y eso es ahorro, no un gasto.` +
+        (f.income > 0
+          ? ` Apartaste más de lo que te quedaba del mes, por eso tu disponible sale en ${formatSoles(f.available)}.`
+          : ` Todavía no registras ingresos este mes, por eso tu disponible sale en ${formatSoles(f.available)}. Si ya te pagaron, cuéntame: "me pagaron 3000".`)
+      : f.set_aside
       ? `${prefix}${cap(period)} ingresaste ${formatSoles(f.income)}, gastaste ${formatSoles(f.expenses)} y apartaste ${formatSoles(f.set_aside)} para tus metas: te quedan ${formatSoles(f.available)}.`
       : `${prefix}${cap(period)} ingresaste ${formatSoles(f.income)} y gastaste ${formatSoles(f.expenses)}: te quedan ${formatSoles(f.available)}.`
   } else if (facts.intent === 'category_spend' && ctx?.categoryLabel) {
