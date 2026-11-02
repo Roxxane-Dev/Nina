@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../core/network/dio_client.dart';
 import '../../domain/models/overview.dart';
@@ -96,6 +97,30 @@ class FinanceApiService {
     return (res.data?['imported'] as num?)?.toInt() ?? 0;
   }
 
+  /// DATA-02: same two steps as a CSV. The password travels only with these calls.
+  Future<CsvPreview> previewPdf(List<int> bytes, String name,
+      {String? password}) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+        '/v1/transactions/import/pdf/preview',
+        data: FormData.fromMap({
+          'file': MultipartFile.fromBytes(bytes, filename: name),
+          if (password != null) 'password': password,
+        }));
+    return CsvPreview.fromJson(res.data ?? const {});
+  }
+
+  Future<int> importPdf(List<int> bytes, String name,
+      {String? password, List<int> skipLines = const []}) async {
+    final res =
+        await _dio.post<Map<String, dynamic>>('/v1/transactions/import/pdf',
+            data: FormData.fromMap({
+              'file': MultipartFile.fromBytes(bytes, filename: name),
+              if (password != null) 'password': password,
+              'skipLines': jsonEncode(skipLines),
+            }));
+    return (res.data?['imported'] as num?)?.toInt() ?? 0;
+  }
+
   /// US-25.
   Future<void> deleteTransaction(String id) async {
     await _dio.delete<void>('/v1/transactions/$id');
@@ -139,7 +164,8 @@ class CsvPreview {
   const CsvPreview(
       {required this.rows,
       required this.skipped,
-      required this.assumedExpenses});
+      required this.assumedExpenses,
+      this.balanceGap});
 
   final List<CsvPreviewRow> rows;
   final List<({int line, String reason})> skipped;
@@ -147,20 +173,29 @@ class CsvPreview {
   /// The file has no sign: every row was read as an expense.
   final bool assumedExpenses;
 
-  factory CsvPreview.fromJson(Map<String, dynamic> j) => CsvPreview(
-        rows: ((j['rows'] as List?) ?? const [])
-            .whereType<Map>()
-            .map((r) => CsvPreviewRow.fromJson(r.cast<String, dynamic>()))
-            .toList(),
-        skipped: ((j['skipped'] as List?) ?? const [])
-            .whereType<Map>()
-            .map((s) => (
-                  line: (s['line'] as num).toInt(),
-                  reason: s['reason'] as String? ?? ''
-                ))
-            .toList(),
-        assumedExpenses: j['assumedExpenses'] == true,
-      );
+  /// DATA-02: what is missing to match the bank's printed balance. Null when it checks out.
+  final double? balanceGap;
+
+  factory CsvPreview.fromJson(Map<String, dynamic> j) {
+    final check = j['reconciliation'];
+    return CsvPreview(
+      rows: ((j['rows'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((r) => CsvPreviewRow.fromJson(r.cast<String, dynamic>()))
+          .toList(),
+      skipped: ((j['skipped'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((s) => (
+                line: (s['line'] as num).toInt(),
+                reason: s['reason'] as String? ?? ''
+              ))
+          .toList(),
+      assumedExpenses: j['assumedExpenses'] == true,
+      balanceGap: check is Map && check['ok'] == false
+          ? (check['difference'] as num?)?.toDouble()
+          : null,
+    );
+  }
 }
 
 /// User-facing message for a failed engine call (no technical jargon).

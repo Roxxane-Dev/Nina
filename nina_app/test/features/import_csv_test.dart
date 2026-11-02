@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nina_app/data/services/finance_api_service.dart';
@@ -71,11 +72,46 @@ class _Api extends FinanceApiService {
   }
 }
 
+/// Locked: fails until it gets the right password.
+class _PdfApi extends FinanceApiService {
+  _PdfApi(this.preview);
+  final CsvPreview preview;
+  final passwords = <String?>[];
+  String? importPassword;
+
+  @override
+  Future<CsvPreview> previewPdf(List<int> bytes, String name,
+      {String? password}) async {
+    passwords.add(password);
+    if (password == 'buena') return preview;
+    throw DioException(
+      requestOptions: RequestOptions(),
+      response: Response(
+          requestOptions: RequestOptions(),
+          statusCode: 400,
+          data: {
+            'code': password == null ? 'password_required' : 'wrong_password'
+          }),
+    );
+  }
+
+  @override
+  Future<int> importPdf(List<int> bytes, String name,
+      {String? password, List<int> skipLines = const []}) async {
+    importPassword = password;
+    return 2;
+  }
+}
+
 Future<void> _pump(WidgetTester tester, _Api api,
     {String? file = 'csv'}) async {
   useTallSurface(tester);
-  await tester.pumpWidget(
-      MaterialApp(home: ImportCsvPage(api: api, pickFile: () async => file)));
+  await tester.pumpWidget(MaterialApp(
+      home: ImportCsvPage(
+          api: api,
+          pickFile: () async => file == null
+              ? null
+              : ImportFile('banco.csv', utf8.encode(file)))));
   await tester.tap(find.byKey(const Key('import-pick')));
   await tester.pumpAndSettle();
 }
@@ -113,6 +149,63 @@ void main() {
     expect(find.textContaining('los leí todos como gastos'), findsOneWidget);
     expect(find.textContaining('1 en dólares no entra'), findsOneWidget);
     expect(find.textContaining('1 fila sin leer (línea 6)'), findsOneWidget);
+  });
+
+  testWidgets('a locked PDF asks for the password, retries and sends it',
+      (tester) async {
+    useTallSurface(tester);
+    final api = _PdfApi(_preview());
+    final asked = <bool>[];
+    await tester.pumpWidget(MaterialApp(
+        home: ImportCsvPage(
+            api: api,
+            pickFile: () async => const ImportFile('eecc.PDF', [1, 2]),
+            askPassword: (_, wrong) async {
+              asked.add(wrong);
+              return asked.length == 1 ? 'mala' : 'buena';
+            })));
+    await tester.tap(find.byKey(const Key('import-pick')));
+    await tester.pumpAndSettle();
+
+    expect(asked, [false, true]);
+    expect(api.passwords, [null, 'mala', 'buena']);
+    expect(find.text('Encontré 2 movimientos nuevos'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('import-confirm')));
+    await tester.pumpAndSettle();
+    expect(api.importPassword, 'buena');
+    expect(find.text('Listo, importé 2 movimientos'), findsOneWidget);
+  });
+
+  testWidgets('cancelling the password goes back without an error',
+      (tester) async {
+    useTallSurface(tester);
+    await tester.pumpWidget(MaterialApp(
+        home: ImportCsvPage(
+            api: _PdfApi(_preview()),
+            pickFile: () async => const ImportFile('eecc.pdf', [1]),
+            askPassword: (_, __) async => null)));
+    await tester.tap(find.byKey(const Key('import-pick')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('import-pick')), findsOneWidget);
+    expect(find.byKey(const Key('import-error')), findsNothing);
+  });
+
+  testWidgets('warns when the statement does not add up, and explains payments',
+      (tester) async {
+    await _pump(
+        tester,
+        _Api(CsvPreview.fromJson({
+          'assumedExpenses': false,
+          'rows': [],
+          'skipped': [
+            {'line': 9, 'reason': 'card_payment'}
+          ],
+          'reconciliation': {'ok': false, 'difference': 190.11},
+        })));
+    expect(find.textContaining('faltan S/ 190.11'), findsOneWidget);
+    expect(
+        find.textContaining('1 pago a tu tarjeta no cuenta'), findsOneWidget);
   });
 
   testWidgets('choosing nothing changes nothing', (tester) async {

@@ -149,7 +149,7 @@ export function parseCsvDate(raw: string): string | null {
 
 const SALARY = /\b(sueldo|haberes|remuneracion|planilla|quincena|nomina)\b/
 
-function categoryFor(description: string, type: CsvRow['type'], rules: CategoryRule[]): string {
+export function categoryForRow(description: string, type: CsvRow['type'], rules: CategoryRule[]): string {
   const remembered = matchCategoryRule(description, rules)
   if (remembered) return remembered
   if (type === 'income') return SALARY.test(fold(description)) ? 'salary' : 'other'
@@ -235,7 +235,7 @@ export function parseCsvStatement(input: string, opts: { today: Date; rules?: Ca
     }
     const type = signed > 0 ? 'income' : 'expense'
     const description = cell(col.description).replace(/\s+/g, ' ').slice(0, MAX_DESCRIPTION)
-    rows.push({ line, date, description, amount: Math.abs(signed), type, category: categoryFor(description, type, rules) })
+    rows.push({ line, date, description, amount: Math.abs(signed), type, category: categoryForRow(description, type, rules) })
   }
   return { ok: true, rows, skipped, assumedExpenses }
 }

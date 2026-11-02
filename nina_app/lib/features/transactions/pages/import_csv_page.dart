@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/design_system.dart';
+import '../../../core/utils/money.dart';
 import '../../../core/utils/transaction_display.dart';
 import '../../../data/services/finance_api_service.dart';
 import '../../../shared/widgets/nina_ui.dart';
@@ -17,24 +19,36 @@ String decodeCsvBytes(List<int> bytes) {
   }
 }
 
-Future<String?> _pickCsv() async {
-  final picked = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['csv', 'txt'],
-      withData: true);
-  final bytes = picked?.files.single.bytes;
-  return bytes == null ? null : decodeCsvBytes(bytes);
+class ImportFile {
+  const ImportFile(this.name, this.bytes);
+  final String name;
+  final List<int> bytes;
+
+  bool get isPdf => name.toLowerCase().endsWith('.pdf');
 }
 
-/// DATA-01: choose a file, review what Nina read, import. The server reads the
-/// file both times; this screen only shows the result and which rows to leave out.
+Future<ImportFile?> _pickFile() async {
+  final picked = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'csv', 'txt'],
+      withData: true);
+  final file = picked?.files.single;
+  return file?.bytes == null ? null : ImportFile(file!.name, file.bytes!);
+}
+
+/// DATA-01 and DATA-02: choose a file, review what Nina read, import. The server
+/// reads the file both times; this screen only shows the result and which rows
+/// to leave out. A PDF's password stays in this screen's memory, never on disk.
 class ImportCsvPage extends StatefulWidget {
-  const ImportCsvPage({super.key, this.api, this.pickFile});
+  const ImportCsvPage({super.key, this.api, this.pickFile, this.askPassword});
 
   final FinanceApiService? api;
 
-  /// Returns the file's text, or null if nothing was chosen. Injectable for tests.
-  final Future<String?> Function()? pickFile;
+  /// Returns the chosen file, or null if nothing was chosen. Injectable for tests.
+  final Future<ImportFile?> Function()? pickFile;
+
+  /// Asks for a PDF's password. Injectable for tests.
+  final Future<String?> Function(BuildContext context, bool wrong)? askPassword;
 
   @override
   State<ImportCsvPage> createState() => _ImportCsvPageState();
@@ -42,7 +56,8 @@ class ImportCsvPage extends StatefulWidget {
 
 class _ImportCsvPageState extends State<ImportCsvPage> {
   late final FinanceApiService _api = widget.api ?? FinanceApiService.instance;
-  String? _csv;
+  ImportFile? _file;
+  String? _password;
   CsvPreview? _preview;
   final _excluded = <int>{};
   int? _imported;
@@ -59,15 +74,20 @@ class _ImportCsvPageState extends State<ImportCsvPage> {
       _error = null;
     });
     try {
-      final csv = await (widget.pickFile ?? _pickCsv)();
-      if (csv == null) {
+      final file = await (widget.pickFile ?? _pickFile)();
+      if (file == null) {
         if (mounted) setState(() => _busy = false);
         return;
       }
-      final preview = await _api.previewCsv(csv);
+      _password = null;
+      final preview = await _readWithPassword(file);
       if (!mounted) return;
+      if (preview == null) {
+        setState(() => _busy = false);
+        return;
+      }
       setState(() {
-        _csv = csv;
+        _file = file;
         _preview = preview;
         _excluded.clear();
         _busy = false;
@@ -82,13 +102,67 @@ class _ImportCsvPageState extends State<ImportCsvPage> {
     }
   }
 
+  /// Null when the user gave up on the password.
+  Future<CsvPreview?> _readWithPassword(ImportFile file) async {
+    if (!file.isPdf) return _api.previewCsv(decodeCsvBytes(file.bytes));
+    while (true) {
+      try {
+        return await _api.previewPdf(file.bytes, file.name,
+            password: _password);
+      } on DioException catch (e) {
+        final body = e.response?.data;
+        final code = body is Map ? body['code'] : null;
+        if (code != 'password_required' && code != 'wrong_password') rethrow;
+        if (!mounted) return null;
+        final ask = widget.askPassword ?? _askPassword;
+        _password = await ask(context, code == 'wrong_password');
+        if (_password == null) return null;
+      }
+    }
+  }
+
+  static Future<String?> _askPassword(BuildContext context, bool wrong) {
+    final field = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Este PDF tiene contraseña'),
+        content: TextField(
+          key: const Key('import-password'),
+          controller: field,
+          obscureText: true,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: 'Contraseña del estado de cuenta',
+            errorText: wrong ? 'Esa no fue. Prueba otra vez.' : null,
+            helperText: 'Solo la uso para abrir el archivo. No la guardo.',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, field.text),
+              child: const Text('Abrir')),
+        ],
+      ),
+    );
+  }
+
   Future<void> _import() async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final count = await _api.importCsv(_csv!, skipLines: _excluded.toList());
+      final file = _file!;
+      final skip = _excluded.toList();
+      final count = file.isPdf
+          ? await _api.importPdf(file.bytes, file.name,
+              password: _password, skipLines: skip)
+          : await _api.importCsv(decodeCsvBytes(file.bytes), skipLines: skip);
+      _password = null;
       if (mounted) {
         setState(() {
           _imported = count;
@@ -108,12 +182,18 @@ class _ImportCsvPageState extends State<ImportCsvPage> {
   String? _skippedText(CsvPreview p) {
     if (p.skipped.isEmpty) return null;
     final usd = p.skipped.where((s) => s.reason == 'usd').length;
-    final other = p.skipped.length - usd;
+    final payments = p.skipped.where((s) => s.reason == 'card_payment').length;
+    final unread = p.skipped
+        .where((s) => s.reason != 'usd' && s.reason != 'card_payment')
+        .toList();
+    final other = unread.length;
     return [
+      if (payments > 0)
+        '$payments ${payments == 1 ? 'pago a tu tarjeta no cuenta' : 'pagos a tu tarjeta no cuentan'} como gasto: es tu plata cambiando de lugar.',
       if (usd > 0)
         '$usd en dólares no ${usd == 1 ? 'entra' : 'entran'}: por ahora importo solo soles.',
       if (other > 0)
-        '$other ${other == 1 ? 'fila' : 'filas'} sin leer (${other == 1 ? 'línea' : 'líneas'} ${p.skipped.where((s) => s.reason != 'usd').map((s) => s.line).take(8).join(', ')}).',
+        '$other ${other == 1 ? 'fila' : 'filas'} sin leer (${other == 1 ? 'línea' : 'líneas'} ${unread.map((s) => s.line).take(8).join(', ')}).',
     ].join(' ');
   }
 
@@ -145,16 +225,16 @@ class _ImportCsvPageState extends State<ImportCsvPage> {
         );
 
   Widget _start() => ListView(padding: const EdgeInsets.all(24), children: [
-        Text('Sube el CSV de tu banco', style: NinaText.displayM()),
+        Text('Sube tu estado de cuenta', style: NinaText.displayM()),
         const SizedBox(height: 8),
         Text(
-            'Descárgalo desde tu banca por internet. Te muestro lo que leí antes de guardar nada.',
+            'PDF de tarjeta BCP o CSV de tu banco. Te muestro lo que leí antes de guardar nada.',
             style: NinaText.bodyM()),
         const SizedBox(height: 14),
         const NinaNote(
             icon: Icons.lock_outline,
             text:
-                'El archivo no pasa por IA. Nina lee fecha, descripción y monto, y no guarda el archivo.'),
+                'El archivo no pasa por IA ni se guarda. Nina solo lee fecha, descripción y monto.'),
         const SizedBox(height: 20),
         NinaButton(
           key: const Key('import-pick'),
@@ -191,6 +271,15 @@ class _ImportCsvPageState extends State<ImportCsvPage> {
                     tone: NinaTone.warning,
                     text:
                         'El archivo no distingue entradas de salidas, así que los leí todos como gastos. Revísalo antes de importar.'),
+              ],
+              if (p.balanceGap != null) ...[
+                const SizedBox(height: 12),
+                NinaNote(
+                    key: const Key('import-balance-gap'),
+                    icon: Icons.warning_amber_rounded,
+                    tone: NinaTone.warning,
+                    text:
+                        'Esto no cuadra con tu estado de cuenta: faltan ${formatSoles(p.balanceGap!.abs())}. Puede que me haya saltado algo, así que revísalo antes de importar.'),
               ],
               if (skipped != null) ...[
                 const SizedBox(height: 12),

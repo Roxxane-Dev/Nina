@@ -12,7 +12,10 @@ import {
   Request,
   UseFilters,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
 import type { Request as ExpressRequest } from 'express'
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard'
 import type { SupabaseUser } from '../auth/auth.service'
@@ -23,14 +26,29 @@ import {
   duplicateLines,
   normalizeCategorySlug,
   parseCsvStatement,
+  parseStatement,
   type CsvRow,
 } from '../../packages/finance-engine/src'
+import { extractPdfLines, MAX_PDF_BYTES, type PdfTextError } from '../statements/pdf-text'
 import { CategoryRulesService } from '../category-rules/category-rules.service'
 import { SpacesService } from '../spaces/spaces.service'
 import { AccountsService } from '../accounts/accounts.service'
 import { TransactionsService, validateNewTransaction, validateTransactionEdit, type NewTransactionInput } from './transactions.service'
 
 type AuthedRequest = ExpressRequest & { user: SupabaseUser }
+
+type UploadedPdf = { buffer: Buffer }
+
+/** `code` lets the app ask for the password instead of showing an error. */
+const PDF_ERRORS: Record<PdfTextError | 'unsupported', string> = {
+  too_large: 'El PDF es muy grande.',
+  password_required: 'Este PDF tiene contraseña.',
+  wrong_password: 'Esa contraseña no abre el PDF.',
+  too_many_pages: 'El PDF tiene demasiadas páginas.',
+  no_text: 'Este PDF es una imagen escaneada y todavía no puedo leerlo. Descarga el estado de cuenta original desde tu banca.',
+  unreadable: 'No pude abrir este PDF.',
+  unsupported: 'Todavía no sé leer este estado de cuenta. Por ahora leo tarjetas del BCP.',
+}
 
 const CSV_ERRORS = {
   empty: 'El archivo está vacío.',
@@ -79,6 +97,55 @@ export class TransactionsController {
     const days = parsed.rows.map((r) => r.date).sort()
     const existing = days.length ? await this.transactions.existingBetween(userId, days[0], days[days.length - 1]) : []
     return { ...parsed, duplicates: duplicateLines(parsed.rows, existing) }
+  }
+
+  /** DATA-02: same two steps as a CSV. The PDF and its password stay in memory for this request only. */
+  private async readPdf(userId: string, file: UploadedPdf | undefined, password: unknown) {
+    if (!file?.buffer?.length || file.buffer.subarray(0, 4).toString('latin1') !== '%PDF') {
+      throw new BadRequestException('Falta el PDF.')
+    }
+    const text = await extractPdfLines(new Uint8Array(file.buffer), typeof password === 'string' && password ? password : undefined)
+    if (!text.ok) throw new BadRequestException({ statusCode: 400, code: text.error, message: PDF_ERRORS[text.error] })
+    const statement = parseStatement(text.lines, { today: this.transactions.today(), rules: await this.rules.listForUser(userId) })
+    if (!statement) throw new BadRequestException({ statusCode: 400, code: 'unsupported', message: PDF_ERRORS.unsupported })
+    const days = statement.rows.map((r) => r.date).sort()
+    const existing = days.length ? await this.transactions.existingBetween(userId, days[0], days[days.length - 1]) : []
+    return { ...statement, duplicates: duplicateLines(statement.rows, existing) }
+  }
+
+  @Post('import/pdf/preview')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_PDF_BYTES } }))
+  async previewPdf(@Request() req: AuthedRequest, @UploadedFile() file: UploadedPdf | undefined, @Body() body: { password?: unknown }) {
+    const s = await this.readPdf(req.user.id, file, body?.password)
+    return {
+      product: s.product,
+      period: s.period,
+      reconciliation: s.reconciliation,
+      rows: s.rows.map((r: CsvRow) => ({ ...r, categoryLabel: categoryLabel(r.category), duplicate: s.duplicates.has(r.line) })),
+      skipped: s.skipped,
+      assumedExpenses: false,
+    }
+  }
+
+  @Post('import/pdf')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_PDF_BYTES } }))
+  async commitPdf(
+    @Request() req: AuthedRequest,
+    @UploadedFile() file: UploadedPdf | undefined,
+    @Body() body: { password?: unknown; skipLines?: unknown },
+  ) {
+    const s = await this.readPdf(req.user.id, file, body?.password)
+    let skip = new Set<unknown>()
+    try {
+      const parsed: unknown = JSON.parse(typeof body?.skipLines === 'string' ? body.skipLines : '[]')
+      if (Array.isArray(parsed)) skip = new Set(parsed)
+    } catch {
+      throw new BadRequestException('invalid skipLines')
+    }
+    const fresh = s.rows.filter((r: CsvRow) => !s.duplicates.has(r.line) && !skip.has(r.line))
+    await this.transactions.insertImported(req.user.id, fresh, undefined, 'pdf')
+    return { imported: fresh.length, duplicates: s.duplicates.size }
   }
 
   /** DATA-01: what the file holds. Nothing is saved. */

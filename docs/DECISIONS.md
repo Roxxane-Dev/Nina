@@ -4,6 +4,21 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-020 · Lector de EECC por banco, sin IA y con cuadre (DATA-02)
+**Fecha:** 2026-11-01 (plan aprobado por el founder)
+**Decisión:**
+- Un lector determinista por producto bancario. El primero es la tarjeta del BCP. Los EECC traen datos personales, así que no van a un LLM.
+- El PDF y su contraseña solo existen en memoria durante la solicitud. Nada se guarda ni va a los logs.
+- Se comprueba saldo anterior + movimientos contra el pago total. Si no cuadra, Nina avisa con la diferencia, pero deja importar.
+- `PAGO` es plata de la cuenta a la tarjeta: ni gasto ni ingreso. Importarlo contaría doble.
+- `DEVOLUCION` entra como ingreso, porque el motor no tiene reembolsos negativos. Esto puede inflar un poco los ingresos.
+- Intereses, comisiones y membresía entran como gasto en Deudas.
+- La fecha es la de consumo, no la de proceso. El año sale del cierre del ciclo.
+- Dólares y PDFs escaneados quedan fuera.
+
+**Por qué el cuadre:** una imagen de la página 1 mostró que los movimientos de esa página no daban el pago total; la diferencia coincide con membresía, intereses y comisiones. Sin el cuadre, esa diferencia pasaría inadvertida.
+**Consecuencias:** si el banco cambia el formato, el lector puede fallar; el cuadre lo detecta. Los fixtures de prueba son inventados: ningún dato real del founder va al repo.
+
 ## D-019 · Revisión de Finzenn antes de migrar, y exportar sin borrar
 **Fecha:** 2026-11-01 (exportar aprobado por el founder; borrar la cuenta, no)
 **Revisión de producción (solo lectura):**

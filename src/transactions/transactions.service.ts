@@ -176,7 +176,7 @@ export class TransactionsService implements OnModuleInit {
   }
 
   /** DATA-01: one insert, so a failed import leaves nothing behind. */
-  async insertImported(userId: string, rows: CsvRow[], accountId?: string): Promise<void> {
+  async insertImported(userId: string, rows: CsvRow[], accountId?: string, source: 'csv' | 'pdf' = 'csv'): Promise<void> {
     if (!rows.length) return
     if (!this.db) throw new FinanceDataUnavailableError('no_client')
     const { error } = await this.db.from('transactions').insert(
@@ -187,7 +187,7 @@ export class TransactionsService implements OnModuleInit {
         category: r.category,
         description: r.description || null,
         date: r.date,
-        source_table: 'csv',
+        source_table: source,
         space_id: 'personal',
         ...(accountId ? { account_id: accountId } : {}),
       })),

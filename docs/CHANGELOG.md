@@ -2,6 +2,12 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-11-01 — EECC en PDF de tarjeta BCP (DATA-02)
+- La pantalla de importar acepta el PDF del estado de cuenta, con o sin contraseña. El PDF y la contraseña solo viven en memoria durante la solicitud.
+- Los pagos a la tarjeta no cuentan como gasto ni ingreso.
+- Nina comprueba el saldo anterior más lo leído contra el pago total, y avisa si no cuadra.
+- `scripts/pdf-check.js` prueba un PDF real en local sin mostrar datos personales.
+
 ## 2026-11-01 — Importar CSV (DATA-01)
 - Movimientos e Inicio de primeros pasos permiten subir el CSV del banco. Nina muestra lo que leyó antes de guardar.
 - Entiende `;` o `,`, títulos sobre la cabecera, `1.234,56` o `1,234.56`, y columnas de monto o de cargo y abono.
