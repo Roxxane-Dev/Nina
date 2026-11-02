@@ -27,6 +27,8 @@ import { createAdminClient } from '../common/supabase.client'
 import { FinanceDataUnavailableError } from './errors'
 import { toEngineTransactions, type TransactionRow } from './map-transactions'
 
+export const TRANSACTIONS_PAGE_SIZE = 1000
+
 @Injectable()
 export class FinanceEngineService implements OnModuleInit {
   private readonly logger = new Logger(FinanceEngineService.name)
@@ -48,18 +50,26 @@ export class FinanceEngineService implements OnModuleInit {
 
   async loadTransactions(userId: string): Promise<EngineTransaction[]> {
     if (!this.db) return []
-    const { data, error } = await this.db
-      .from('transactions')
-      .select('id, type, amount, category, description, date, goal_id')
-      .eq('user_id', userId)
-      .order('date', { ascending: false })
-      .limit(2000)
-    if (error) {
-      // A failed read is an infrastructure problem, never "the user has no data".
-      this.logger.error(`loadTransactions failed: ${error.code ?? 'unknown'}`)
-      throw new FinanceDataUnavailableError(error.code)
+    // PostgREST caps a response at 1000 rows without saying so, and a partial history means wrong
+    // figures. Every row is read, page by page; id keeps the pages stable.
+    const rows: TransactionRow[] = []
+    for (let from = 0; ; from += TRANSACTIONS_PAGE_SIZE) {
+      const { data, error } = await this.db
+        .from('transactions')
+        .select('id, type, amount, category, description, date, goal_id')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .order('id')
+        .range(from, from + TRANSACTIONS_PAGE_SIZE - 1)
+      if (error) {
+        // A failed read is an infrastructure problem, never "the user has no data".
+        this.logger.error(`loadTransactions failed: ${error.code ?? 'unknown'}`)
+        throw new FinanceDataUnavailableError(error.code)
+      }
+      rows.push(...((data ?? []) as TransactionRow[]))
+      if ((data ?? []).length < TRANSACTIONS_PAGE_SIZE) break
     }
-    const { txs, dropped } = toEngineTransactions((data ?? []) as TransactionRow[])
+    const { txs, dropped } = toEngineTransactions(rows)
     if (dropped > 0) this.logger.warn(`loadTransactions: dropped ${dropped} row(s) with invalid date or amount`)
     return txs
   }

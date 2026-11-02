@@ -41,7 +41,7 @@ const ROWS = [
 ]
 
 function fakeDb(result: { data: unknown[] | null; error: { code: string; message: string } | null }) {
-  const chain = { select: () => chain, eq: () => chain, order: () => chain, limit: async () => result }
+  const chain = { select: () => chain, eq: () => chain, order: () => chain, range: async () => result }
   return { from: () => chain }
 }
 

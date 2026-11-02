@@ -193,14 +193,21 @@ export class SpacesService implements OnModuleInit {
 
   /** Every row of the space, from any member (engine shape, with authorId). */
   async loadSpaceTransactions(spaceId: string): Promise<{ txs: EngineTransaction[]; rows: TransactionRow[] }> {
-    const { data, error } = await this.client()
-      .from('transactions')
-      .select('id, user_id, type, amount, category, description, date, shared_space_id')
-      .eq('shared_space_id', spaceId)
-      .order('date', { ascending: false })
-      .limit(2000)
-    if (error) this.fail('loadSpaceTransactions', error)
-    const rows = (data ?? []) as Array<TransactionRow & { user_id: string }>
+    // Page by page: PostgREST caps a response, and a partial history means wrong figures.
+    const rows: Array<TransactionRow & { user_id: string }> = []
+    const pageSize = 1000
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await this.client()
+        .from('transactions')
+        .select('id, user_id, type, amount, category, description, date, shared_space_id')
+        .eq('shared_space_id', spaceId)
+        .order('date', { ascending: false })
+        .order('id')
+        .range(from, from + pageSize - 1)
+      if (error) this.fail('loadSpaceTransactions', error)
+      rows.push(...((data ?? []) as Array<TransactionRow & { user_id: string }>))
+      if ((data ?? []).length < pageSize) break
+    }
     const { txs } = toEngineTransactions(rows)
     const author = new Map(rows.map((r) => [String(r.id), r.user_id]))
     return { txs: txs.map((t) => ({ ...t, authorId: author.get(t.id), sharedSpaceId: spaceId })), rows }

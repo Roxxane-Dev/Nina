@@ -7,6 +7,7 @@ Cambios con impacto para el usuario o la arquitectura. No registra cada edición
 - Entiende `;` o `,`, títulos sobre la cabecera, `1.234,56` o `1,234.56`, y columnas de monto o de cargo y abono.
 - Subir el mismo archivo dos veces no duplica. Las filas en dólares no se importan por ahora.
 - El archivo no pasa por IA ni se guarda. No requiere migración.
+- **Bug corregido:** el motor solo leía 1,000 movimientos por usuario o espacio, porque Supabase corta cada respuesta sin avisar. Con un CSV grande, Inicio y el chat habrían calculado mal. Ahora lee todo el historial por páginas.
 
 ## 2026-11-01 — Producción migrada (Finzenn)
 - Se aplicaron las 12 migraciones pendientes en una transacción: 7 tablas nuevas, 3 columnas en `transactions` y 4 categorías del sistema.

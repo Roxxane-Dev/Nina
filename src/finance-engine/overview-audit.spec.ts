@@ -8,7 +8,7 @@ const ROWS = [
 ]
 
 function setup() {
-  const chain: any = { select: () => chain, eq: () => chain, order: () => chain, limit: async () => ({ data: ROWS, error: null }) }
+  const chain: any = { select: () => chain, eq: () => chain, order: () => chain, range: async () => ({ data: ROWS, error: null }) }
   const engine = new FinanceEngineService({ get: () => undefined } as never)
   ;(engine as unknown as { db: unknown }).db = { from: () => chain }
   return new FinanceEngineController(engine)
