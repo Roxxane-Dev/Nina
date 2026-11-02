@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   CATEGORY_LABELS_ES,
+  type CsvRow,
   isoDate,
   localToday,
   normalizeCategorySlug,
@@ -146,6 +147,55 @@ export class TransactionsService implements OnModuleInit {
     }
     const row = (data ?? [])[0] as { description: string | null; type: string } | undefined
     return row ?? null
+  }
+
+  /** DATA-01: what is already registered in the days of the file, to spot duplicates. */
+  async existingBetween(userId: string, from: string, to: string) {
+    if (!this.db) throw new FinanceDataUnavailableError('no_client')
+    const out: Array<{ date: string; amount: number; type: string; description: string | null }> = []
+    const pageSize = 1000
+    for (let start = 0; ; start += pageSize) {
+      const { data, error } = await this.db
+        .from('transactions')
+        .select('id, date, amount, type, description')
+        .eq('user_id', userId)
+        .gte('date', from)
+        .lte('date', `${to}T23:59:59.999Z`)
+        .order('id')
+        .range(start, start + pageSize - 1)
+      if (error) {
+        this.logger.error(`existingBetween failed: ${error.code ?? 'unknown'}`)
+        throw new FinanceDataUnavailableError(error.code)
+      }
+      for (const r of (data ?? []) as Array<{ date: string; amount: number | string; type: string; description: string | null }>) {
+        const day = toLocalDay(r.date)
+        if (day) out.push({ date: isoDate(day), amount: Number(r.amount), type: r.type, description: r.description })
+      }
+      if ((data ?? []).length < pageSize) return out
+    }
+  }
+
+  /** DATA-01: one insert, so a failed import leaves nothing behind. */
+  async insertImported(userId: string, rows: CsvRow[], accountId?: string): Promise<void> {
+    if (!rows.length) return
+    if (!this.db) throw new FinanceDataUnavailableError('no_client')
+    const { error } = await this.db.from('transactions').insert(
+      rows.map((r) => ({
+        user_id: userId,
+        type: r.type,
+        amount: r.amount,
+        category: r.category,
+        description: r.description || null,
+        date: r.date,
+        source_table: 'csv',
+        space_id: 'personal',
+        ...(accountId ? { account_id: accountId } : {}),
+      })),
+    )
+    if (error) {
+      this.logger.error(`insertImported failed: ${error.code ?? 'unknown'}`)
+      throw new FinanceDataUnavailableError(error.code)
+    }
   }
 
   /** HOME-03: false when the row does not exist or is not the user's. */

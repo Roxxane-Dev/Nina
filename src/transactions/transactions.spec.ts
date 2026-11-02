@@ -118,3 +118,70 @@ describe('HOME-03: editing a movement', () => {
     await expect(t.ctrl.update(req('ana'), 't1', { amount: -1 })).rejects.toBeInstanceOf(BadRequestException)
   })
 })
+
+describe('DATA-01: import a bank CSV', () => {
+  const ANA = 'ana'
+  const CSV = 'Fecha,Descripcion,Monto\n02/10/2026,TAMBO,-12.50\n03/10/2026,UBER,-18\n'
+
+  function setup(rules: unknown[] = []) {
+    const db = new FakeSupabase()
+    const svc = new TransactionsService({ get: () => undefined } as never)
+    ;(svc as unknown as { db: unknown }).db = db
+    const ruleSvc = { listForUser: jest.fn().mockResolvedValue(rules) }
+    const accounts = { assertOwned: jest.fn().mockRejectedValue(new NotFoundException()) }
+    const ctrl = new TransactionsController(svc, ruleSvc as never, {} as never, accounts as never)
+    return { db, ctrl, accounts }
+  }
+  const req = (id = ANA) => ({ user: { id } }) as never
+
+  it('the preview saves nothing', async () => {
+    const t = setup()
+    const out = await t.ctrl.previewImport(req(), { csv: CSV })
+    expect(out.rows).toHaveLength(2)
+    expect(out.rows[1]).toEqual(expect.objectContaining({ description: 'UBER', categoryLabel: 'Transporte', duplicate: false }))
+    expect(t.db.rows('transactions')).toEqual([])
+  })
+
+  it('imports for the JWT user, marked as csv, and leaves out the chosen lines', async () => {
+    const t = setup()
+    expect(await t.ctrl.commitImport(req(), { csv: CSV, skipLines: [3] })).toEqual({ imported: 1, duplicates: 0 })
+    expect(t.db.rows('transactions')).toEqual([
+      expect.objectContaining({ user_id: ANA, amount: 12.5, type: 'expense', source_table: 'csv', space_id: 'personal', date: '2026-10-02' }),
+    ])
+  })
+
+  it('the same file twice adds nothing, and the preview says so', async () => {
+    const t = setup()
+    await t.ctrl.commitImport(req(), { csv: CSV })
+    expect((await t.ctrl.previewImport(req(), { csv: CSV })).rows.every((r) => r.duplicate)).toBe(true)
+    expect(await t.ctrl.commitImport(req(), { csv: CSV })).toEqual({ imported: 0, duplicates: 2 })
+    expect(t.db.rows('transactions')).toHaveLength(2)
+  })
+
+  it("another user's identical movements are not duplicates", async () => {
+    const t = setup()
+    await t.ctrl.commitImport(req('beto'), { csv: CSV })
+    expect((await t.ctrl.commitImport(req(), { csv: CSV })).imported).toBe(2)
+  })
+
+  it('never trusts rows sent by the client: only the file counts', async () => {
+    const t = setup()
+    await t.ctrl.commitImport(req(), { csv: CSV, rows: [{ amount: 999999 }], user_id: 'beto' } as never)
+    expect(t.db.rows('transactions').map((r) => r.amount)).toEqual([12.5, 18])
+    expect(t.db.rows('transactions').every((r) => r.user_id === ANA)).toBe(true)
+  })
+
+  it("someone else's account is rejected before anything is saved", async () => {
+    const t = setup()
+    await expect(
+      t.ctrl.commitImport(req(), { csv: CSV, accountId: '00000000-0000-4000-8000-000000000001' }),
+    ).rejects.toBeInstanceOf(NotFoundException)
+    expect(t.db.rows('transactions')).toEqual([])
+  })
+
+  it('a file it cannot read is 400 with a clear message', async () => {
+    const t = setup()
+    await expect(t.ctrl.previewImport(req(), { csv: 'hola,mundo' })).rejects.toThrow('No encontré las columnas')
+    await expect(t.ctrl.previewImport(req(), {})).rejects.toBeInstanceOf(BadRequestException)
+  })
+})

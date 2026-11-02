@@ -2,6 +2,12 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-11-01 — Importar CSV (DATA-01)
+- Movimientos e Inicio de primeros pasos permiten subir el CSV del banco. Nina muestra lo que leyó antes de guardar.
+- Entiende `;` o `,`, títulos sobre la cabecera, `1.234,56` o `1,234.56`, y columnas de monto o de cargo y abono.
+- Subir el mismo archivo dos veces no duplica. Las filas en dólares no se importan por ahora.
+- El archivo no pasa por IA ni se guarda. No requiere migración.
+
 ## 2026-11-01 — Producción migrada (Finzenn)
 - Se aplicaron las 12 migraciones pendientes en una transacción: 7 tablas nuevas, 3 columnas en `transactions` y 4 categorías del sistema.
 - Se conservaron 3 usuarios, 7 movimientos, 1 meta y 44 mensajes.

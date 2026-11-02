@@ -429,7 +429,11 @@ class _SetupPageState extends State<SetupPage> {
           Expanded(
               child: Text('Importar desde CSV',
                   style: NinaText.bodySStrong(color: NinaColors.textTertiary))),
-          const NinaPill(label: 'Pronto'),
+          TextButton(
+            key: const Key('setup-import-csv'),
+            onPressed: () => context.push('/import'),
+            child: const Text('Importar'),
+          ),
         ]),
       ];
 

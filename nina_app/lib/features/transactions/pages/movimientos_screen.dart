@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/design_system.dart';
@@ -289,7 +290,18 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Movimientos', style: NinaText.displayM()),
+          Row(children: [
+            Expanded(child: Text('Movimientos', style: NinaText.displayM())),
+            NinaCircleButton(
+              key: const Key('movimientos-import'),
+              icon: Icons.upload_outlined,
+              tooltip: 'Importar CSV',
+              onTap: () async {
+                await context.push('/import');
+                if (mounted) _load();
+              },
+            ),
+          ]),
           if (figures.isNotEmpty) ...[
             const SizedBox(height: 10),
             Container(

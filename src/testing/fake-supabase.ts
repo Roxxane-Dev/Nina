@@ -79,6 +79,16 @@ class Query implements PromiseLike<Result> {
     this.orderBy = { col, asc: opts.ascending !== false }
     return this
   }
+  gte(col: string, val: unknown) {
+    this.filters.push((r) => String(r[col]) >= String(val))
+    return this
+  }
+
+  lte(col: string, val: unknown) {
+    this.filters.push((r) => String(r[col]) <= String(val))
+    return this
+  }
+
   range(from: number, to: number) {
     this.rangeBounds = [from, to]
     return this

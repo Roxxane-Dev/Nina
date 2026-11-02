@@ -15,6 +15,7 @@ import '../../features/spaces/pages/space_tab_page.dart';
 import '../../features/spaces/pages/spaces_page.dart';
 import '../../features/privacy/consent_gate.dart';
 import '../../features/privacy/privacy_page.dart';
+import '../../features/transactions/pages/import_csv_page.dart';
 import '../../features/accounts/accounts_page.dart';
 import '../../features/home/pages/home_screen.dart';
 import '../../features/transactions/pages/movimientos_screen.dart';
@@ -79,6 +80,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
       // Full-screen routes (outside the shell)
       GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
       GoRoute(path: '/spaces', builder: (_, __) => const SpacesPage()),
+      GoRoute(path: '/import', builder: (_, __) => const ImportCsvPage()),
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyPage()),
       GoRoute(path: '/accounts', builder: (_, __) => const AccountsPage()),
       GoRoute(

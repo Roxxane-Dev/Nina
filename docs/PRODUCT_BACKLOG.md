@@ -85,7 +85,7 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
-| DATA-01 | Importar CSV | P2 | Todo (stretch del MVP; hoy solo "Pronto" en primeros pasos) |
+| DATA-01 | Importar CSV | P2 | Done (sin verlo en pantalla ni probarlo con un archivo real de banco) |
 | DATA-02 | Importar extractos en PDF | P3 | Todo (noviembre) |
 | DATA-03 | Conexiones bancarias | P3 | Todo (V2) |
 

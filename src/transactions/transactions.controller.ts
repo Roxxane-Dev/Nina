@@ -17,13 +17,26 @@ import type { Request as ExpressRequest } from 'express'
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard'
 import type { SupabaseUser } from '../auth/auth.service'
 import { ApiExceptionFilter } from '../common/api-exception.filter'
-import { CATEGORY_LABELS_ES, categoryLabel, normalizeCategorySlug } from '../../packages/finance-engine/src'
+import {
+  CATEGORY_LABELS_ES,
+  categoryLabel,
+  duplicateLines,
+  normalizeCategorySlug,
+  parseCsvStatement,
+  type CsvRow,
+} from '../../packages/finance-engine/src'
 import { CategoryRulesService } from '../category-rules/category-rules.service'
 import { SpacesService } from '../spaces/spaces.service'
 import { AccountsService } from '../accounts/accounts.service'
 import { TransactionsService, validateNewTransaction, validateTransactionEdit, type NewTransactionInput } from './transactions.service'
 
 type AuthedRequest = ExpressRequest & { user: SupabaseUser }
+
+const CSV_ERRORS = {
+  empty: 'El archivo está vacío.',
+  no_header: 'No encontré las columnas de fecha y monto. ¿Es el CSV de tu banco?',
+  too_large: 'El archivo es muy grande: prueba con un periodo más corto.',
+}
 
 /** Movimientos: manual entry (US-26), category correction (US-24) and delete (US-25). userId always from the JWT. */
 @UseGuards(SupabaseAuthGuard)
@@ -56,6 +69,49 @@ export class TransactionsController {
       accountId = body.accountId
     }
     return this.transactions.create(req.user.id, v.value, spaceId, accountId)
+  }
+
+  /** Reads the file and marks what is already registered. Both steps below use it: the server never trusts rows from the client. */
+  private async readCsv(userId: string, csv: unknown) {
+    if (typeof csv !== 'string') throw new BadRequestException('Falta el archivo.')
+    const parsed = parseCsvStatement(csv, { today: this.transactions.today(), rules: await this.rules.listForUser(userId) })
+    if (!parsed.ok) throw new BadRequestException(CSV_ERRORS[parsed.error])
+    const days = parsed.rows.map((r) => r.date).sort()
+    const existing = days.length ? await this.transactions.existingBetween(userId, days[0], days[days.length - 1]) : []
+    return { ...parsed, duplicates: duplicateLines(parsed.rows, existing) }
+  }
+
+  /** DATA-01: what the file holds. Nothing is saved. */
+  @Post('import/preview')
+  @HttpCode(200)
+  async previewImport(@Request() req: AuthedRequest, @Body() body: { csv?: unknown }) {
+    const { rows, skipped, assumedExpenses, duplicates } = await this.readCsv(req.user.id, body?.csv)
+    return {
+      rows: rows.map((r: CsvRow) => ({ ...r, categoryLabel: categoryLabel(r.category), duplicate: duplicates.has(r.line) })),
+      skipped,
+      assumedExpenses,
+    }
+  }
+
+  /** DATA-01: saves the file's new rows, minus the lines the user left out. */
+  @Post('import')
+  async commitImport(
+    @Request() req: AuthedRequest,
+    @Body() body: { csv?: unknown; skipLines?: unknown; accountId?: unknown },
+  ) {
+    const skip = Array.isArray(body?.skipLines) ? new Set(body.skipLines) : new Set()
+    let accountId: string | undefined
+    if (body?.accountId !== undefined && body.accountId !== null) {
+      if (typeof body.accountId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.accountId)) {
+        throw new BadRequestException('invalid accountId')
+      }
+      await this.accounts.assertOwned(req.user.id, body.accountId)
+      accountId = body.accountId
+    }
+    const { rows, duplicates } = await this.readCsv(req.user.id, body?.csv)
+    const fresh = rows.filter((r: CsvRow) => !duplicates.has(r.line) && !skip.has(r.line))
+    await this.transactions.insertImported(req.user.id, fresh, accountId)
+    return { imported: fresh.length, duplicates: duplicates.size }
   }
 
   /**

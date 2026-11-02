@@ -1,5 +1,6 @@
 import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
+import type { NestExpressApplication } from '@nestjs/platform-express'
 import { Logger } from '@nestjs/common'
 import { AppModule } from './app.module'
 import { ConfigService } from '@nestjs/config'
@@ -11,9 +12,11 @@ async function bootstrap() {
 
   logger.log('[BOOT] Starting Nina OS backend...')
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['log', 'error', 'warn', 'debug'],
   })
+  // A bank CSV (DATA-01) is larger than Express's 100 KB default; matches CSV_MAX_CHARS with room for JSON.
+  app.useBodyParser('json', { limit: '2mb' })
 
   // CORS: same CORS_ALLOWED_ORIGINS allowlist as the WebSocket. Empty = no browser origin in
   // production; in development loopback origins (localhost, any port) are allowed.
