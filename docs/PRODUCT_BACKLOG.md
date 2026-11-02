@@ -96,7 +96,9 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | SEC-01 | Aplicar las migraciones pendientes en producción | P0 | Blocked | Lo aplica el founder con `PROD-MIGRATION-RUNBOOK.md`. |
 | SEC-02 | Revisar y hacer merge de las ramas pendientes (calm-mode-final, log-hygiene, remove-unwired-behavioral, prod-runbook, local-seed-verify) | P1 | Needs Verification | Revisión del founder. |
 | SEC-03 | Rotar las claves pendientes (weekly-log) | P0 | Needs Verification | Confirmar con el founder. |
-| SEC-04 | Exportar y borrar mis datos | P2 | Todo (noviembre) |
+| SEC-04 | Exportar mis datos | P2 | Done | D-019: `GET /v1/me/export` y botón en Privacidad. Falta verlo en pantalla. |
+| SEC-06 | Borrar mi cuenta | P2 | Blocked | Sin aprobar (D-019). Antes hay que definir qué pasa con espacios compartidos y dar cascada a `budgets`. |
+| SEC-07 | Trigger de registro también en local | P3 | Todo | `on_auth_user_created` solo existe en producción. |
 | SEC-05 | El texto del consentimiento de IA debe decir que también se envía el mensaje del usuario (sin datos personales), no solo cifras | P0 | Done | D-014: texto aprobado, política `2026-10-v2` e IA solo con consentimiento vigente. Tests en `consents.spec.ts` y `consent_test.dart`; revisado en pantalla. Falta que el founder confirme la configuración de entrenamiento en OpenAI. |
 
 ## 9. Pruebas y confiabilidad

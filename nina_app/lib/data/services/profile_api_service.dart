@@ -47,6 +47,12 @@ class ProfileApiService {
   final Dio? _injected;
   Dio get _dio => _injected ?? DioClient.instance.dio;
 
+  /// SEC-04: everything Nina keeps about the user, as the API returns it.
+  Future<Map<String, dynamic>> exportData() async {
+    final res = await _dio.get<Map<String, dynamic>>('/v1/me/export');
+    return res.data ?? const {};
+  }
+
   Future<ConsentState> getConsents() async {
     final res = await _dio.get<Map<String, dynamic>>('/v1/consents');
     return ConsentState.fromJson(res.data ?? const {});

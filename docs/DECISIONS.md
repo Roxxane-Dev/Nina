@@ -4,6 +4,25 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-019 · Revisión de Finzenn antes de migrar, y exportar sin borrar
+**Fecha:** 2026-11-01 (exportar aprobado por el founder; borrar la cuenta, no)
+**Revisión de producción (solo lectura):**
+- Las 110 columnas de producción coinciden con las locales en nombre, tipo y nulabilidad. Faltan 7 tablas y 3 columnas de `transactions`, que traen las migraciones.
+- Hay datos: 3 usuarios, 7 movimientos, 1 meta, 44 mensajes y 9 categorías del sistema. No hay filas huérfanas.
+- Faltan 4 categorías (`subscriptions`, `debt`, `salary`, `freelance`); `20260109` las agrega y deja las demás.
+
+**Decisión:** migración `20261103000000_relational_hardening.sql`:
+- `goals.user_id` y `messages.user_id` pasan a ser llaves foráneas con cascada.
+- Índices para las lecturas por usuario.
+- Nadie puede llamar `handle_new_user` por la API, y las funciones tienen `search_path` fijo.
+
+**Exportar (SEC-04):** `GET /v1/me/export` y botón en Privacidad. Devuelve solo filas del usuario, sin embeddings ni datos de otros miembros de un espacio. Si una tabla falla, falla todo: una exportación incompleta no pasa por completa.
+**Borrar cuenta:** no se implementa. Sigue pendiente de decisión.
+
+**Consecuencias:**
+- El Supabase local no tiene el trigger `on_auth_user_created` de producción, porque la base solo copió `public`. Las pruebas lo crean dentro de una transacción.
+- `budgets.user_id` no tiene cascada: borrar un usuario con presupuestos fallará. Importará cuando exista borrar cuenta.
+
 ## D-018 · Avisos de Nina y producción sin backup
 **Fecha:** 2026-11-01 (decidido por el founder)
 **Decisión de avisos:** Nina muestra avisos con su voz (fin de semana, suscripciones, Navidad, ingreso faltante, pagos que se vienen, categoría movida, metas). Reemplaza la regla anterior de "sin disparadores proactivos extra".

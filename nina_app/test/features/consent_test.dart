@@ -3,13 +3,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nina_app/features/privacy/consent_form.dart';
 import 'package:nina_app/data/services/profile_api_service.dart';
 import 'package:nina_app/features/privacy/consent_gate.dart';
+import 'package:nina_app/features/privacy/privacy_page.dart';
 import 'package:nina_app/features/profile/pages/profile_page.dart';
+
+import '../support/test_view.dart';
 
 class FakeProfileApi extends ProfileApiService {
   FakeProfileApi(this.state) : super(dio: null);
   ConsentState state;
   final saved = <Map<String, bool>>[];
   String? name;
+  bool exportFails = false;
+
+  @override
+  Future<Map<String, dynamic>> exportData() async {
+    if (exportFails) throw Exception('offline');
+    return {
+      'formatVersion': 1,
+      'tables': {'transactions': []}
+    };
+  }
 
   @override
   Future<ConsentState> getConsents() async => state;
@@ -117,6 +130,45 @@ void main() {
         MaterialApp(home: ConsentGate(api: api, child: const Text('APP'))));
     await tester.pumpAndSettle();
     expect(find.text('APP'), findsOneWidget);
+  });
+
+  testWidgets('SEC-04: exports the data as a JSON file named by day',
+      (tester) async {
+    useTallSurface(tester);
+    final api = FakeProfileApi(const ConsentState(
+        answered: true,
+        dataProcessing: true,
+        aiProcessing: false,
+        analytics: false));
+    final saved = <String, String>{};
+    await tester.pumpWidget(MaterialApp(
+        home: PrivacyPage(
+            api: api, saveFile: (name, json) async => saved[name] = json)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('privacy-export')));
+    await tester.pumpAndSettle();
+    expect(saved.keys.single,
+        matches(RegExp(r'^nina-mis-datos-\d{4}-\d{2}-\d{2}\.json$')));
+    expect(saved.values.single, contains('"transactions"'));
+    expect(find.text('Eliminar mi cuenta'), findsNothing);
+  });
+
+  testWidgets('a failed export says so', (tester) async {
+    useTallSurface(tester);
+    final api = FakeProfileApi(const ConsentState(
+        answered: true,
+        dataProcessing: true,
+        aiProcessing: false,
+        analytics: false))
+      ..exportFails = true;
+    await tester.pumpWidget(
+        MaterialApp(home: PrivacyPage(api: api, saveFile: (_, __) async {})));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('privacy-export')));
+    await tester.pumpAndSettle();
+    expect(find.text('No pude exportar tus datos. Inténtalo de nuevo.'),
+        findsOneWidget);
   });
 
   testWidgets('US-40: Más shows only working options and edits the name',

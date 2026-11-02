@@ -27,7 +27,7 @@ Tested on: a fresh local Postgres 17 built from the production snapshot (`docs/s
 | 5 | `20260106000000_accounts.sql` | New table `accounts`; new column `transactions.account_id`; replaces the insert/update policies on `transactions` so a movement can only point to the author's own account and to a space the author belongs to. | Same lock note as step 3. Clients that insert with an `account_id` that is not theirs are now rejected (by design). |
 | 6 | `20260107000000_drop_legacy_transaction_insert_policy.sql` | Drops the policy "Users can insert their personal and shared transactions." on `transactions`. | **Couple-based inserts from a user session stop working** (the service role is unaffected). Reading couple rows keeps working. Step 7 restores them safely. |
 | 7 | `20260108000000_require_couple_membership_on_transaction_write.sql` | Replaces the INSERT and UPDATE policies on `transactions` so `couple_id` must be null or belong to a couple the author is part of. | Couple members can insert couple rows from their own session again; non-members cannot. Tested locally with `supabase/tests/couple_insert_rls.sql` (6 of 6 pass; the same test fails without the migration). If you decide couples are retired, skip step 7 and remove its block and the verification check "1b". |
-| 8 | `20260109000000_system_categories.sql` | Inserts the 13 system categories (food, transport, home, services, health, education, entertainment, shopping, subscriptions, debt, salary, freelance, other) into `public.categories` with `on conflict do nothing`. | Nothing existing: the production table is empty (checked: 0 rows). Without these rows, registering any movement from the chat fails with "Category ... not found and no fallback" (found when testing the app). Query 2.9 below shows the current rows. |
+| 8 | `20260109000000_system_categories.sql` | Inserts the 13 system categories (food, transport, home, services, health, education, entertainment, shopping, subscriptions, debt, salary, freelance, other) into `public.categories` with `on conflict do nothing`. | Nothing existing. On 2026-11-01 the table had 9 system rows; `on conflict do nothing` keeps them and adds the 4 missing ones. Without these rows, registering any movement from the chat fails with "Category ... not found and no fallback" (found when testing the app). Query 2.9 below shows the current rows. |
 
 Why step 6 exists: policies of the same command are OR-ed. With the old policy still there, a user could insert `shared_space_id = <someone else's space>` or `account_id = <someone else's account>` as long as `user_id` was theirs, bypassing the checks from steps 3 and 5. The local RLS tests (`spaces_rls.sql`, `accounts_rls.sql`) failed until the policy was dropped and pass after.
 
@@ -622,8 +622,10 @@ create policy "Users can insert their personal and shared transactions."
 ## 8. Replay result (local)
 Section 4's SQL, extracted from this file with the last line changed to `commit;`, was applied to a fresh local database containing only the production snapshot baseline (`supabase db reset --version 20260101000000 --no-seed`, local Docker). Results are recorded in `docs/OVERNIGHT-LOG.md` (task 7).
 
-## 9. Later migrations: goals and nudges (`20261027000000`, `20261101000000`, `20261102000000`)
+## 9. Later migrations: goals, nudges and hardening (`20261027000000`, `20261101000000`, `20261102000000`, `20261103000000`)
 Not part of the section 4 transaction. Apply them, in that order, after sections 1–8, as one script in the SQL Editor.
+
+`20261103000000` (D-019) adds foreign keys on `goals.user_id` and `messages.user_id`, three indexes, and locks down `handle_new_user`. Checked on 2026-11-01: production has no orphan rows, so the keys validate. Sign-up was tested locally with the real `supabase_auth_admin` role. Apply it last.
 
 `20261102000000` (NOTIF-01) adds the table `nudge_dismissals` with RLS, and the API reads it. Apply it in the same script, after the other two.
 

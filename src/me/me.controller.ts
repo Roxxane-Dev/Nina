@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Logger, OnModuleInit, Patch, Request, UseFilters, UseGuards } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Get, Header, Logger, OnModuleInit, Patch, Request, UseFilters, UseGuards } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Request as ExpressRequest } from 'express'
@@ -7,6 +7,7 @@ import type { SupabaseUser } from '../auth/auth.service'
 import { ApiExceptionFilter } from '../common/api-exception.filter'
 import { createAdminClient } from '../common/supabase.client'
 import { FinanceDataUnavailableError } from '../finance-engine/errors'
+import { DataExportService } from './data-export.service'
 
 type AuthedRequest = ExpressRequest & { user: SupabaseUser }
 
@@ -24,7 +25,10 @@ export class MeController implements OnModuleInit {
   private readonly logger = new Logger(MeController.name)
   private db?: SupabaseClient
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly dataExport: DataExportService,
+  ) {}
 
   onModuleInit(): void {
     const url = this.config.get<string>('SUPABASE_URL')
@@ -41,6 +45,13 @@ export class MeController implements OnModuleInit {
       throw new FinanceDataUnavailableError(error.code)
     }
     return { email: req.user.email ?? null, fullName: (data?.full_name as string | null) ?? null, currency: 'PEN' }
+  }
+
+  /** SEC-04: every row Nina keeps about the caller, as JSON. */
+  @Get('export')
+  @Header('Cache-Control', 'no-store')
+  async export(@Request() req: AuthedRequest) {
+    return this.dataExport.collect(req.user.id)
   }
 
   @Patch()

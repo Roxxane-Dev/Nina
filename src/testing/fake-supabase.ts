@@ -36,6 +36,7 @@ class Query implements PromiseLike<Result> {
   private payload: Row | Row[] | null = null
   private upsertOpts: { onConflict?: string; ignoreDuplicates?: boolean } = {}
   private orderBy: { col: string; asc: boolean } | null = null
+  private rangeBounds: [number, number] | null = null
   private max: number | null = null
   private mode: 'many' | 'single' | 'maybe' = 'many'
   private returning = false
@@ -78,6 +79,11 @@ class Query implements PromiseLike<Result> {
     this.orderBy = { col, asc: opts.ascending !== false }
     return this
   }
+  range(from: number, to: number) {
+    this.rangeBounds = [from, to]
+    return this
+  }
+
   limit(n: number) {
     this.max = n
     return this
@@ -130,6 +136,7 @@ class Query implements PromiseLike<Result> {
         const { col, asc } = this.orderBy
         out = [...out].sort((a, b) => (String(a[col]) < String(b[col]) ? -1 : 1) * (asc ? 1 : -1))
       }
+      if (this.rangeBounds) out = out.slice(this.rangeBounds[0], this.rangeBounds[1] + 1)
       if (this.max != null) out = out.slice(0, this.max)
     }
 

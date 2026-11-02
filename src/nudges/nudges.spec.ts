@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common'
 import { GUARDS_METADATA } from '@nestjs/common/constants'
-import type { EngineTransaction } from '../../packages/finance-engine/src'
+import { isoDate, localToday, type EngineTransaction } from '../../packages/finance-engine/src'
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard'
 import { FakeSupabase } from '../testing/fake-supabase'
 import { NudgesController } from './nudges.controller'
@@ -8,7 +8,8 @@ import { NudgesService } from './nudges.service'
 
 const ANA = 'user-ana'
 const BETO = 'user-beto'
-const today = new Date().toISOString().slice(0, 10)
+// Lima's calendar day, the one the controller uses: UTC is already tomorrow after 7 p.m.
+const today = isoDate(localToday(new Date()))
 const tx = (amount: number, categorySlug: string): EngineTransaction => ({
   id: `t-${categorySlug}`,
   postedAt: new Date(`${today}T00:00:00Z`),
