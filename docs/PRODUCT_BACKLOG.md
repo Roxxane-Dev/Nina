@@ -66,8 +66,8 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | ID | Título | Prioridad | Estado | Evidencia / siguiente acción |
 |---|---|---|---|---|
 | HOME-01 | Saludo "Hey, <nombre>" | P2 | Done | `home_screen.dart`. |
-| HOME-02 | Registrar avances en una meta ("aparté S/ 200 para Japón") | P1 | Done | D-015; rama `feature/goal-contributions`. Falta aplicar la migración en producción (runbook §9). |
-| HOME-04 | Retirar plata de una meta | P2 | Done | D-017. Falta aplicar la migración en producción (runbook §9). |
+| HOME-02 | Registrar avances en una meta ("aparté S/ 200 para Japón") | P1 | Done | D-015. Migración aplicada en producción. |
+| HOME-04 | Retirar plata de una meta | P2 | Done | D-017. Aplicado en producción. |
 | HOME-05 | Retirar de una meta desde el chat ("saqué 200 de Japón") | P3 | Todo | Hoy solo desde Metas. |
 | HOME-03 | Editar un movimiento (monto, descripción, fecha) | P1 | Done | `PATCH /v1/transactions/:id` y hoja "Editar movimiento". Un avance no cambia de categoría. Falta revisarlo en pantalla. |
 | NAV-01 | Filtros de Movimientos compactos (una fila + hoja) | P1 | Done | `movimientos_screen.dart`; tests del subagente. |
@@ -93,7 +93,7 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 
 | ID | Título | Prioridad | Estado | Siguiente acción |
 |---|---|---|---|---|
-| SEC-01 | Aplicar las migraciones pendientes en producción | P0 | Blocked | Lo aplica el founder con `PROD-MIGRATION-RUNBOOK.md`. |
+| SEC-01 | Aplicar las migraciones pendientes en producción | P0 | Done | Aplicadas en Finzenn el 2026-11-01 (D-019): 20 tablas, 147 columnas, RLS activa en todas y datos intactos. |
 | SEC-02 | Revisar y hacer merge de las ramas pendientes (calm-mode-final, log-hygiene, remove-unwired-behavioral, prod-runbook, local-seed-verify) | P1 | Needs Verification | Revisión del founder. |
 | SEC-03 | Rotar las claves pendientes (weekly-log) | P0 | Needs Verification | Confirmar con el founder. |
 | SEC-04 | Exportar mis datos | P2 | Done | D-019: `GET /v1/me/export` y botón en Privacidad. Falta verlo en pantalla. |

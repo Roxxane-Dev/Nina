@@ -2,6 +2,12 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-11-01 — Producción migrada (Finzenn)
+- Se aplicaron las 12 migraciones pendientes en una transacción: 7 tablas nuevas, 3 columnas en `transactions` y 4 categorías del sistema.
+- Se conservaron 3 usuarios, 7 movimientos, 1 meta y 44 mensajes.
+- Se cerró la entrada legada que dejaba insertar movimientos en espacios o cuentas ajenas.
+- `GET /v1/me/export` y "Exportar mis datos" en Privacidad.
+
 ## 2026-11-01 — Avisos de Nina (NOTIF-01)
 - Campana en Inicio con avisos: fin de semana, suscripciones, Navidad, ingreso faltante, pagos que se vienen, categoría movida y metas.
 - Los textos usan cifras del motor, sin LLM. Con sobregasto real, Nina no bromea.

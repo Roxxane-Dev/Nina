@@ -7,7 +7,7 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 ## D-019 · Revisión de Finzenn antes de migrar, y exportar sin borrar
 **Fecha:** 2026-11-01 (exportar aprobado por el founder; borrar la cuenta, no)
 **Revisión de producción (solo lectura):**
-- Las 110 columnas de producción coinciden con las locales en nombre, tipo y nulabilidad. Faltan 7 tablas y 3 columnas de `transactions`, que traen las migraciones.
+- Las 108 columnas de producción coinciden con las locales en nombre, tipo y nulabilidad. Faltan 7 tablas y 3 columnas de `transactions`, que traen las migraciones.
 - Hay datos: 3 usuarios, 7 movimientos, 1 meta, 44 mensajes y 9 categorías del sistema. No hay filas huérfanas.
 - Faltan 4 categorías (`subscriptions`, `debt`, `salary`, `freelance`); `20260109` las agrega y deja las demás.
 
@@ -18,6 +18,8 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 **Exportar (SEC-04):** `GET /v1/me/export` y botón en Privacidad. Devuelve solo filas del usuario, sin embeddings ni datos de otros miembros de un espacio. Si una tabla falla, falla todo: una exportación incompleta no pasa por completa.
 **Borrar cuenta:** no se implementa. Sigue pendiente de decisión.
+
+**Aplicado en Finzenn el 2026-11-01:** con el OK del founder, primero un ensayo con `ROLLBACK` y luego con `COMMIT`, en una sola transacción. Se ejecutó por SQL, así que no queda registrado en el historial de migraciones de Supabase.
 
 **Consecuencias:**
 - El Supabase local no tiene el trigger `on_auth_user_created` de producción, porque la base solo copió `public`. Las pruebas lo crean dentro de una transacción.

@@ -1,6 +1,6 @@
 # Production migration runbook
 
-Status: **draft for the founder. Nothing in this document has been executed against production.** I (Claude) never connect to production; you run these steps yourself in the Supabase SQL Editor of the production project, after reading them.
+Status: **applied to production (project Finzenn) on 2026-11-01.** With the founder's explicit go-ahead, Claude ran sections 4 and 9 as one transaction through the Supabase connection: a dry run with `rollback`, a check that nothing stayed, then `commit`. There was no backup (D-018). The run is not in Supabase's migration history, so never use `supabase db push`, which would try to replay everything. Future migrations go through the same review.
 
 Scope: migrations `20260102` to `20260107` in `supabase/migrations/`, plus the couple_id check `20260108` (step 7) and the system categories `20260109` (step 8), also in `supabase/migrations/`.
 
