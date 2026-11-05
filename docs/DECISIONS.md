@@ -4,6 +4,17 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-022 · Simulador de compras sobre el pronóstico (INS-06), reemplaza D-010
+**Fecha:** 2026-11-05
+**Decisión:**
+- "¿Me alcanza para…?" y "¿qué pasa si compro… en N cuotas?" restan la compra del cierre estimado del mes (D-021). No es una proyección aparte.
+- Al contado sale todo este mes. En cuotas sale una cuota (costo / N) y se dice que no incluye intereses, porque Nina no conoce la tasa de la tarjeta.
+- **Veredicto:** entra; entra justo (te queda menos de una semana de gasto típico); o no entra.
+- También dice a cuántos meses de tu ahorro real equivale. Ese ritmo sale de `savingsPace`, la misma función que usan los planes de meta.
+- Sin historia suficiente para proyectar, vuelve a lo de antes: lo que queda del mes y las metas.
+
+**Consecuencias:** el resultado depende del pronóstico y hereda sus límites. Siempre termina con "la decisión es tuya".
+
 ## D-021 · Pronóstico de fin de mes explicable (INS-03), reemplaza D-007
 **Fecha:** 2026-11-05 (grupo 2 aprobado por el founder)
 **Decisión:**
@@ -159,7 +170,7 @@ La política sube a `2026-10-v2`: todos vuelven a ver el consentimiento, sin nad
 **Por qué:** antes caían en "No entendí". Usar el LLM para conversación abierta es un cambio del flujo de datos hacia el LLM, que según CLAUDE.md requiere aprobación.
 **Consecuencias:** respuestas confiables pero con variedad limitada. Abrir un camino LLM para conversación sin cifras (con validador que rechace números) está en el backlog como CI-01, bloqueado por decisión del founder.
 
-## D-010 · "¿Me alcanza?" no simula la compra
+## D-010 · "¿Me alcanza?" no simula la compra (reemplazada por D-022)
 **Fecha:** 2026-10-26
 **Decisión:** con el precio, Nina muestra lo que queda del mes (motor) y las metas activas del usuario; no calcula "te quedarían S/ X" después de la compra.
 **Por qué:** el simulador what-if está fuera del alcance de octubre (CLAUDE.md). Restar el precio sería una segunda fuente de cálculo fuera del motor.

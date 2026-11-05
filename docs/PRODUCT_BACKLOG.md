@@ -55,11 +55,11 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | ID | Título | Prioridad | Estado | Siguiente acción |
 |---|---|---|---|---|
 | INS-01 | Próximos compromisos (pagos recurrentes conocidos) | P1 | Done | Tarjeta "Próximos pagos" en Inicio (30 días) y `GET /v1/outlook`. |
-| INS-02 | Tendencia de gasto vs. mes anterior en el chat | P2 | Done (parcial) | Ya está en las respuestas de resumen. Falta una tarjeta propia. |
+| INS-02 | Puntaje de salud explicable | P2 | Done | Lo no medido no resta; pantalla en Perfil y chat. |
 | INS-03 | Saldo proyectado a fin de mes | P2 | Done | D-021: Inicio y chat, con supuestos visibles y sin LLM. |
 | INS-04 | Componente reutilizable de insight en la app | P2 | Todo | Título, observación, cifras, comparación, confianza y acción. |
 | INS-05 | Avance de metas en el chat ("¿cómo voy con Japón?") | P2 | Done | `GoalProgressHandler`, determinista, cifras de `goalPlanView`. |
-| INS-06 | "Te quedarían S/ X" después de una compra | P2 | Blocked | Es what-if: noviembre (D-010). |
+| INS-06 | "Te quedarían S/ X" después de una compra | P2 | Done | D-022: en el chat, al contado o en cuotas, sobre el cierre estimado. Sin pantalla propia todavía. |
 
 ## 5. Inicio y navegación
 

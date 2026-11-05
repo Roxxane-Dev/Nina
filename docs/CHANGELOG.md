@@ -8,6 +8,8 @@ Cambios con impacto para el usuario o la arquitectura. No registra cada edición
 - **Próximos pagos:** muestra los fijos de los próximos 30 días.
 - **Chat:** "¿cuánta plata voy a tener a fin de mes?" responde con el mismo cálculo.
 - **Motor `engine-v1.3.0`:** corrige el ingreso esperado, el gasto diario y el día de los pagos mensuales (D-021).
+- **Puntaje de salud explicable:** cada parte dice qué midió. Lo que no se puede medir (como el colchón sin saldos) no resta. Con menos de 2 meses no hay puntaje. Está en Perfil y en el chat.
+- **Simulador (D-022):** "¿me alcanza para…?" y "¿qué pasa si compro… en N cuotas?" muestran cómo cerrarías el mes, un veredicto y a cuántos meses de tu ahorro equivale. Si falta registrar el ingreso del mes, lo dice en vez de asustar.
 
 ## 2026-11-01 — EECC en PDF de tarjeta BCP (DATA-02)
 - La pantalla de importar acepta el PDF del estado de cuenta, con o sin contraseña. El PDF y la contraseña solo viven en memoria durante la solicitud.

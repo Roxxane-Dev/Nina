@@ -1,4 +1,5 @@
-import { signedFlows, trailingFullMonths } from './aggregates'
+import { signedFlows } from './aggregates'
+import { savingsPace } from './simulation'
 import { isoDate } from './period'
 import { monthLabelEs } from './periods'
 import { ENGINE_VERSION } from './version'
@@ -206,7 +207,7 @@ export function buildGoalPlanFacts(input: {
   const txs = signedFlows(input.txs)
   const target = goal.currency === 'USD' ? round(goal.amount * rate) : round(goal.amount)
 
-  const months = trailingFullMonths(txs, asOf, 3).filter((mo) => mo.count > 0)
+  const paceData = savingsPace(txs, asOf)
   const hasHistory = txs.length > 0
   const figures: Record<string, number> = { target }
   if (goal.currency === 'USD') {
@@ -214,16 +215,15 @@ export function buildGoalPlanFacts(input: {
     figures.usd_pen_rate = rate
   }
 
-  let savingsPace: number | null = null
-  if (months.length) {
-    const avgIncome = months.reduce((s, mo) => s + mo.income, 0) / months.length
-    const avgExpenses = months.reduce((s, mo) => s + mo.expenses, 0) / months.length
-    savingsPace = avgIncome - avgExpenses
-    figures.avg_income = round(avgIncome)
-    figures.avg_expenses = round(avgExpenses)
-    figures.avg_monthly_savings = round(savingsPace)
-    figures.months_used = months.length
-    if (savingsPace > 0) figures.months_at_current_pace = Math.ceil(target / savingsPace)
+  let pace: number | null = null
+  const monthsUsed = paceData?.months ?? 0
+  if (paceData) {
+    pace = paceData.pace
+    figures.avg_income = round(paceData.income)
+    figures.avg_expenses = round(paceData.expenses)
+    figures.avg_monthly_savings = round(pace)
+    figures.months_used = monthsUsed
+    if (pace > 0) figures.months_at_current_pace = Math.ceil(target / pace)
   }
 
   let deadlineLabel: string | undefined
@@ -233,16 +233,16 @@ export function buildGoalPlanFacts(input: {
     deadlineLabel = monthLabelEs(goal.deadline.year, goal.deadline.month)
     figures.months_left = monthsLeft
     figures.required_per_month = round(perMonth)
-    if (months.length && figures.avg_income > 0) {
+    if (monthsUsed && figures.avg_income > 0) {
       figures.required_pct_of_income = Math.round((perMonth / figures.avg_income) * 100)
     }
-    if (savingsPace !== null) {
+    if (pace !== null) {
       // Positive = per-month shortfall; negative = per-month room to spare.
-      figures.gap_per_month = round(perMonth - savingsPace)
+      figures.gap_per_month = round(perMonth - pace)
     }
   }
 
-  const confidence: Confidence = months.length >= 3 ? 'high' : months.length === 2 ? 'medium' : months.length === 1 ? 'low' : 'insufficient'
+  const confidence: Confidence = monthsUsed >= 3 ? 'high' : monthsUsed === 2 ? 'medium' : monthsUsed === 1 ? 'low' : 'insufficient'
   const end = goal.deadline ? new Date(Date.UTC(goal.deadline.year, goal.deadline.month + 1, 0)) : asOf
 
   return {
@@ -250,7 +250,7 @@ export function buildGoalPlanFacts(input: {
     period: { from: isoDate(asOf), to: isoDate(end) },
     currency: 'PEN',
     figures,
-    txnCount: months.reduce((s, mo) => s + mo.count, 0),
+    txnCount: paceData?.count ?? 0,
     confidence,
     evidenceTxnIds: [],
     engineVersion: ENGINE_VERSION,

@@ -328,9 +328,9 @@ describe('multi-turn conversation (signed context)', () => {
     expect(r.grounded?.intent).not.toBe('goal_plan')
   })
 
-  it('(b) shoes: asks the price, then answers with the engine available figure and the price, never available − price', async () => {
+  it('(b) shoes: asks the price, then simulates the purchase on the month-end outlook (D-022)', async () => {
     const goal: GoalRow = { id: 'g1', name: 'Viaje a Japón', target_amount: 26250, current_amount: 0, deadline: '2028-01-31', status: 'active' }
-    const { chat, listActive } = setup(undefined, true, { goals: [goal] })
+    const { chat, listActive, router } = setup(undefined, true, { goals: [goal] })
     const ask = await chat.handleMessage('user-1', 'Quiero comprarme unas zapatillas')
     expect(ask.reply).toContain('unas zapatillas')
     expect(ask.reply).toContain('¿Cuánto cuestan?')
@@ -339,16 +339,11 @@ describe('multi-turn conversation (signed context)', () => {
 
     const r = await chat.handleMessage('user-1', 'Cuestan 350 soles', undefined, 'local', ask.context)
     expect(listActive).toHaveBeenCalledWith('user-1')
-    expect(r.reply).toContain('S/ 350.00')
-    expect(r.reply).toContain('te quedan S/ 4,500.00') // engine available for October (4500 − 0)
+    expect(r.reply).toContain('Zapatillas a S/ 350.00.')
+    expect(r.reply).toMatch(/Si las compras al contado, cerrarías octubre 2026 con unos S\/ [\d,.]+ en vez de S\/ [\d,.]+\./)
     expect(r.reply).toContain('«Viaje a Japón»')
-    expect(r.card).toBeDefined()
-    expect(r.card?.highlight?.amount).toBe(4500)
-    expect(r.grounded?.intent).toBe('available')
-    expect(r.grounded?.usedLlm).toBe(false)
-    // No simulation: the difference is never computed or shown.
-    expect(r.reply).not.toMatch(/4,?150/)
-    expect(solesIn(r.reply)).not.toContain(4150)
+    expect(r.reply).toContain('La decisión es tuya.')
+    expect(router.explainFacts).not.toHaveBeenCalled()
     expect(r.needsConfirmation).toBe(false)
   })
 

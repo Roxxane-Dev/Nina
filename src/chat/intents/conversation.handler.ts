@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { localToday, resolveQuestion, type FactsPayload } from '../../../packages/finance-engine/src'
+import { localToday, resolveQuestion, type FactsPayload, savingsPace, simulatePurchase } from '../../../packages/finance-engine/src'
 import { formatSoles } from '../../common/money'
 import { FinanceEngineService } from '../../finance-engine/finance-engine.service'
 import { GoalService } from '../../goals/goal.service'
@@ -30,7 +30,7 @@ const STOP = new Set(['pero', 'y', 'que', 'si', 'o', 'porque', 'no', 'para', 'co
 
 /** "comprarme unas zapatillas pero…" → "unas zapatillas". */
 function purchaseItem(message: string): string | undefined {
-  const m = fold(message).match(/\b(?:comprar(?:me)?|me alcanza para|vale la pena comprar)\s+(.+)/)
+  const m = fold(message).match(/\b(?:comprar(?:me)?|compro|me alcanza para|vale la pena comprar)\s+(.+)/)
   if (!m) return undefined
   const words: string[] = []
   for (const w of m[1].replace(/[¿?¡!.,]/g, ' ').split(/\s+/).filter(Boolean)) {
@@ -42,9 +42,16 @@ function purchaseItem(message: string): string | undefined {
   return item && !/^(eso|esto|algo|nada)$/.test(item) ? item : undefined
 }
 
+/** "en 6 cuotas" → 6; "6 cuotas de 500" → { n: 6, each: 500 }. */
+function installmentsIn(message: string): { n: number; each: number | null } | null {
+  const m = fold(message).match(/\b(\d{1,2})\s*cuotas(?:\s+de\s+(?:s\/\.?\s*)?(\d+(?:[.,]\d{1,2})?))?/)
+  if (!m) return null
+  return { n: Number(m[1]), each: m[2] ? Number(m[2].replace(',', '.')) : null }
+}
+
 /** The price in a follow-up ("cuestan 350 soles", "S/ 89.90", "como 200"). */
 function priceIn(message: string): number | null {
-  const m = message.replace(/\b20\d\d\b/g, ' ').match(/(\d{1,3}(?:[.,]\d{3})+|\d+)(?:[.,](\d{1,2}))?\s*(mil|k)?/i)
+  const m = message.replace(/\b\d{1,2}\s*cuotas(?:\s+de)?/gi, ' ').replace(/\b20\d\d\b/g, ' ').match(/(\d{1,3}(?:[.,]\d{3})+|\d+)(?:[.,](\d{1,2}))?\s*(mil|k)?/i)
   if (!m) return null
   let value = parseFloat(m[1].replace(/[.,]/g, '') + (m[2] ? `.${m[2]}` : ''))
   if (m[3]) value *= 1000
@@ -125,8 +132,10 @@ export class ConversationHandler implements ChatIntentHandler {
 
     if ((PURCHASE.test(text) || ctx.question.intent === 'whatif') && ctx.question.intent !== 'goal_plan') {
       const item = purchaseItem(ctx.message)
-      const price = hasAmount(ctx.message) ? priceIn(ctx.message) : null
-      if (price) return this.affordability(ctx, item, price)
+      const cuotas = installmentsIn(ctx.message)
+      // "6 cuotas de 500" names the installment: the price is the total.
+      const price = cuotas?.each ? cuotas.n * cuotas.each : hasAmount(ctx.message) ? priceIn(ctx.message) : null
+      if (price) return this.affordability(ctx, item, price, cuotas?.n ?? 0)
       const plural = item ? /s$/.test(item.split(' ').pop() ?? '') : false
       const plans = conv?.goalTopic ? ` sin frenar tu ahorro para ${conv.goalTopic}` : ' sin desordenar tus planes'
       return {
@@ -228,6 +237,64 @@ export class ConversationHandler implements ChatIntentHandler {
     }
   }
 
+  private async simulated(
+    ctx: ChatContext,
+    item: string | undefined,
+    price: number,
+    installments: number,
+    asOf: Date,
+  ): Promise<HandlerResult | null> {
+    const [{ outlook }, txs, goals] = await Promise.all([
+      this.engine.outlook(ctx.userId, asOf),
+      this.engine.loadTransactions(ctx.userId),
+      this.goals.listActive(ctx.userId).catch(() => []),
+    ])
+    if (!outlook) return null
+    const pace = savingsPace(txs, asOf)
+    const s = simulatePurchase(outlook, { cost: price, installments }, pace?.pace ?? null)
+    const what = item ? item.replace(/^(un|una|unos|unas|esta|este|estas|estos)\s+/, '') : 'eso'
+    const plural = /s$/.test(what.split(' ').pop() ?? '')
+    const lines = [ctx.calm ? `${capitalize(what)} a ${formatSoles(price)}.` : `${capitalize(what)} a ${formatSoles(price)}. Hagamos reality check 👀`]
+    lines.push(
+      s.installments > 0
+        ? `En ${s.installments} cuotas de ${formatSoles(s.monthlyPayment)} (sin contar los intereses de tu tarjeta), este mes cerrarías con unos ${formatSoles(s.projectedAfter)} en vez de ${formatSoles(s.projectedBefore)}.`
+        : `Si ${plural ? 'las' : 'la'} compras al contado, cerrarías ${outlook.monthLabel} con unos ${formatSoles(s.projectedAfter)} en vez de ${formatSoles(s.projectedBefore)}.`,
+    )
+    if (outlook.overdueIncome > 0) {
+      // A verdict built on a month missing its usual income would scare for no reason.
+      lines.push(
+        `Ojo: no estoy contando tu ingreso de siempre (unos ${formatSoles(outlook.overdueIncome)}) porque aún no está registrado. Si ya te pagaron, cuéntamelo y lo recalculo.`,
+      )
+    } else {
+      lines.push(
+        s.verdict === 'fits'
+          ? `${plural ? 'Entran' : 'Entra'} sin drama.`
+          : s.verdict === 'tight'
+            ? `${plural ? 'Entran' : 'Entra'}, pero justo: te quedaría menos de una semana de tu gasto típico de margen.`
+            : 'Este mes no entra: cerrarías en rojo. Si la quieres, quizá conviene esperar al próximo ingreso.',
+      )
+    }
+    if (s.monthsOfSavings !== null) {
+      const paceText = formatSoles(Math.round(pace!.pace * 100) / 100)
+      lines.push(
+        s.monthsOfSavings < 1
+          ? `A tu ritmo de ahorro (${paceText} al mes), es menos de un mes de ahorro.`
+          : `A tu ritmo de ahorro (${paceText} al mes), equivale a ${s.monthsOfSavings} ${s.monthsOfSavings === 1 ? 'mes' : 'meses'} de ahorro.`,
+      )
+    }
+    const goal = goals.map((g) => goalPlanView(g, txs, asOf)).find((v) => v.remaining > 0 && v.plan.requiredPerMonth)
+    if (goal) lines.push(`Y no te olvides de tu meta «${goal.name}»: para llegar apartas ${formatSoles(goal.plan.requiredPerMonth!)} al mes.`)
+    lines.push('La decisión es tuya.')
+    return {
+      outcome: 'ok',
+      llmUsed: false,
+      validationPassed: true,
+      reply: reply(lines.join(' '), {
+        followUps: [`Gasté ${price} en ${what}`, `Quiero juntar ${price} soles para ${what}`, '¿Cuánta plata voy a tener a fin de mes?'],
+      }),
+    }
+  }
+
   private async saveMore(ctx: ChatContext): Promise<HandlerResult> {
     const q = resolveQuestion('¿en qué gasto más este mes?', ctx.asOf)
     const { facts } = await this.engine.factsForResolved(ctx.userId, q, ctx.asOf)
@@ -244,15 +311,20 @@ export class ConversationHandler implements ChatIntentHandler {
     }
   }
 
-  /** "¿Me alcanza?": what is left this month and the user's saved goals. No simulation, no subtraction. */
-  private async affordability(ctx: ChatContext, item: string | undefined, price: number): Promise<HandlerResult> {
+  /**
+   * "¿Me alcanza?" / "¿qué pasa si compro…?" (INS-06): the purchase on top of the month-end outlook,
+   * computed by the engine. With too little history to project, what is left this month and the goals.
+   */
+  private async affordability(ctx: ChatContext, item: string | undefined, price: number, installments = 0): Promise<HandlerResult> {
     const asOf = ctx.asOf ?? localToday(new Date())
+    const simulated = await this.simulated(ctx, item, price, installments, asOf)
+    if (simulated) return simulated
     const q = resolveQuestion('¿cuánto me queda este mes?', asOf)
     const [{ facts }, goals] = await Promise.all([
       this.engine.factsForResolved(ctx.userId, q, asOf),
       this.goals.listActive(ctx.userId).catch(() => []),
     ])
-    const what = item ? `${item.replace(/^(unas?|unos?|esta|este|estas|estos)\s+/, '')}` : 'eso'
+    const what = item ? `${item.replace(/^(un|una|unos|unas|esta|este|estas|estos)\s+/, '')}` : 'eso'
     if (!facts.context?.hasHistory) {
       return {
         outcome: 'no_data',

@@ -160,16 +160,6 @@ export type WhatIfPurchase = {
   monthlyInstallment: number
 }
 
-export type SimulationVerdict = 'fits' | 'tight' | 'compromises'
-
-export type SimulationResult = {
-  cashFlow: number[]
-  projectedSavingsAfter: number
-  minProjectedBalance: number
-  goalDelayMonths: number
-  verdict: SimulationVerdict
-  engineVersion: string
-}
 
 export type FactsIntent =
   | 'spending_summary'
