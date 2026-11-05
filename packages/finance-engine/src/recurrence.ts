@@ -1,5 +1,5 @@
 import { median, stdev } from './stats'
-import { daysBetween } from './period'
+import { addMonths, daysBetween } from './period'
 import { isSetAside, signedFlows } from './aggregates'
 import { SUBSCRIPTION_SLUGS, type DetectedRecurring, type EngineTransaction } from './types'
 
@@ -41,7 +41,9 @@ export function detectRecurrence(txs: EngineTransaction[], asOf: Date): Detected
     const minOcc = freq === 'annual' ? 2 : 3
     if (clustered.length < minOcc) continue
     const lastSeen = clustered[clustered.length - 1].postedAt
-    const next = new Date(lastSeen.getTime() + medInt * 86_400_000)
+    // A monthly payment keeps its day of the month (rent on the 5th), it does not drift by 30 or 31 days.
+    let next = freq === 'monthly' ? addMonths(lastSeen, 1) : new Date(lastSeen.getTime() + medInt * 86_400_000)
+    while (freq === 'monthly' && next < asOf) next = addMonths(next, 1)
     const amtCv = medAmt === 0 ? 0 : stdev(clustered.map((t) => -t.amount)) / medAmt
     const intCv = medInt === 0 ? 1 : stdev(intervals) / medInt
     const confidence = Math.max(

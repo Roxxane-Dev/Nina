@@ -4,6 +4,23 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 
 ---
 
+## D-021 · Pronóstico de fin de mes explicable (INS-03), reemplaza D-007
+**Fecha:** 2026-11-05 (grupo 2 aprobado por el founder)
+**Decisión:**
+- "Si sigues así, cerrarías el mes con S/ X" = disponible de hoy + ingreso que suele llegar − pagos fijos que se vienen − gasto del día a día × días que faltan.
+- Sale de `computeForecast` (la única proyección del motor), que ahora expone sus términos. Se muestra con todos los supuestos en Inicio y en el chat.
+- Nunca pasa por el LLM: el chat lo responde desde el motor.
+- Solo este mes, y solo con al menos dos meses de historia.
+
+**Lo que se corrigió del pronóstico existente** (cambia sus salidas, por eso el motor pasa a `engine-v1.3.0`):
+- El ingreso esperado promediaba los últimos 3 depósitos sueltos; ahora es el ingreso mensual típico de los últimos meses completos.
+- El gasto diario era una mediana. Como la mayoría de días no hay movimientos, salía S/ 0; ahora es el promedio de los días con historia.
+- Si el día habitual del ingreso pasó hace más de 3 días y no se registró, no se cuenta y se dice.
+- Los pagos mensuales recurrentes mantienen su día del mes (el 5 sigue siendo 5).
+- El chat ya no le pasa al LLM `projected_end`, que no era el cierre del mes.
+
+**Consecuencias:** el pronóstico depende de lo registrado. Con pocos datos puede quedar optimista, por eso dice "es una estimación, no una promesa".
+
 ## D-020 · Lector de EECC por banco, sin IA y con cuadre (DATA-02)
 **Fecha:** 2026-11-01 (plan aprobado por el founder)
 **Decisión:**

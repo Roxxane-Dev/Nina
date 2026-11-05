@@ -94,11 +94,10 @@ export function buildFactsPayload(input: {
     figures.health_score = input.score.score
     for (const c of input.score.components) figures[`score_${c.key}`] = round(c.subScore)
   }
-  if ((intent === 'forecast' || intent === 'available') && input.forecast) {
-    figures.projected_end = input.forecast.projectedEndOfPeriod
-    if (input.forecast.availableBeforeIncome != null) {
-      figures.available_before_income = input.forecast.availableBeforeIncome
-    }
+  // Only a real bank balance gives a figure that means what it says; the month-end projection is
+  // answered deterministically from buildMonthOutlook, never through the LLM.
+  if ((intent === 'forecast' || intent === 'available') && input.forecast?.availableBeforeIncome != null) {
+    figures.available_before_income = input.forecast.availableBeforeIncome
   }
   if (intent === 'subscriptions' && input.recurring?.length) {
     figures.recurring_count = input.recurring.length

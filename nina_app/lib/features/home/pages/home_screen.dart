@@ -14,6 +14,7 @@ import '../../../shared/widgets/add_transaction_sheet.dart';
 import '../../../data/services/nudges_api_service.dart';
 import '../../../shared/widgets/nina_ui.dart';
 import '../widgets/nudges_sheet.dart';
+import '../widgets/outlook_card.dart';
 import '../../transactions/widgets/transaction_row.dart';
 import '../widgets/audit_sheet.dart';
 
@@ -56,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final NudgesApiService _nudgesApi =
       widget.nudgesApi ?? NudgesApiService.instance;
   List<Nudge> _nudges = const [];
+  Outlook? _outlook;
   late Future<_HomeData> _dataFuture;
   StreamSubscription<Object?>? _changes;
   NinaUserProfile? _profile;
@@ -67,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _dataFuture = _loadData();
     _loadNudges();
+    _loadOutlook();
     _refreshProfile();
     final watch = widget.watchChanges ??
         SupabaseFinanceRepository.instance.watchTransactions;
@@ -91,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _dataFuture = _loadData();
       });
       _loadNudges();
+      _loadOutlook();
     }
   }
 
@@ -168,8 +172,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   children.addAll([
                     _buildPeriodSelector(),
                     _buildHero(data.overview),
+                    if (_period == OverviewPeriod.current &&
+                        _outlook?.outlook != null)
+                      OutlookCard(outlook: _outlook!.outlook!),
                     _buildAskNina(),
                     _buildQuickActions(),
+                    if (_period == OverviewPeriod.current &&
+                        (_outlook?.upcoming.isNotEmpty ?? false))
+                      UpcomingCard(payments: _outlook!.upcoming),
                     _buildCategories(data.overview),
                     _buildRecent(data.recent),
                   ]);
@@ -190,6 +200,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  /// Like nudges: a failure just hides the cards.
+  Future<void> _loadOutlook() async {
+    try {
+      final o = await _api.getOutlook();
+      if (mounted) setState(() => _outlook = o);
+    } catch (_) {
+      if (mounted) setState(() => _outlook = null);
+    }
   }
 
   /// Nudges are a nice-to-have: if they fail, Home simply shows none.

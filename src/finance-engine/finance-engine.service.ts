@@ -22,6 +22,8 @@ import {
   type EngineTransaction,
   type FactsIntent,
   type FactsPayload,
+  buildMonthOutlook,
+  upcomingPayments,
 } from '../../packages/finance-engine/src'
 import { createAdminClient } from '../common/supabase.client'
 import { FinanceDataUnavailableError } from './errors'
@@ -131,6 +133,12 @@ export class FinanceEngineService implements OnModuleInit {
   }
 
   /** Overview for a period param ('current' | 'previous' | 'YYYY-MM'); null when the param is invalid. */
+  /** INS-01 / INS-03: where the month is heading, and the fixed payments coming up. */
+  async outlook(userId: string, asOf = localToday(new Date())) {
+    const txs = await this.loadTransactions(userId)
+    return { outlook: buildMonthOutlook(txs, asOf), upcoming: upcomingPayments(txs, asOf) }
+  }
+
   async overview(userId: string, period?: string, asOf = localToday(new Date())): Promise<Overview | null> {
     const range = parsePeriodParam(period, asOf)
     if (!range) return null

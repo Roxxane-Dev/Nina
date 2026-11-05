@@ -392,14 +392,12 @@ describe('multi-turn conversation (signed context)', () => {
     expect(router.explainFacts).not.toHaveBeenCalled()
   })
 
-  it('(f) a forecast question says projections are not ready and shows only what is known', async () => {
+  it('(f) a forecast question projects only this month, with its assumptions and without the LLM', async () => {
     const { chat, router } = setup(undefined, true, conversational)
     const r = await chat.handleMessage('user-1', '¿cuánta plata voy a tener el próximo mes?')
-    expect(r.reply.startsWith('Todavía no te proyecto')).toBe(true)
-    expect(r.grounded?.intent).toBe('available')
-    // Only this month's engine figures (income 4500, expenses 0, available 4500): nothing projected.
-    for (const n of solesIn(r.reply)) expect([0, 4500]).toContain(n)
-    expect(r.card?.highlight?.amount).toBe(4500)
+    expect(r.reply.startsWith('Por ahora proyecto solo el cierre de este mes. Si sigues como vas, cerrarías octubre 2026')).toBe(true)
+    expect(r.reply).toContain('Así lo calculo:')
+    expect(r.reply).toContain('Es una estimación con lo que registraste, no una promesa.')
     expect(router.explainFacts).not.toHaveBeenCalled()
   })
 

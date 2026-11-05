@@ -82,6 +82,12 @@ class FinanceApiService {
     return res.data?['remembered'] == true;
   }
 
+  /// INS-01 / INS-03: where the month is heading, and fixed payments coming up.
+  Future<Outlook> getOutlook() async {
+    final res = await _dio.get<Map<String, dynamic>>('/v1/outlook');
+    return Outlook.fromJson(res.data ?? const {});
+  }
+
   /// DATA-01: what the file holds; the server saves nothing here.
   Future<CsvPreview> previewCsv(String csv) async {
     final res = await _dio.post<Map<String, dynamic>>(
@@ -125,6 +131,78 @@ class FinanceApiService {
   Future<void> deleteTransaction(String id) async {
     await _dio.delete<void>('/v1/transactions/$id');
   }
+}
+
+/// Computed by the engine (buildMonthOutlook); the app only shows it.
+class MonthOutlook {
+  const MonthOutlook({
+    required this.monthLabel,
+    required this.availableNow,
+    required this.expectedIncome,
+    required this.incomeDay,
+    required this.overdueIncome,
+    required this.recurringUntilEnd,
+    required this.dailySpend,
+    required this.daysLeft,
+    required this.discretionaryUntilEnd,
+    required this.projected,
+  });
+
+  final String monthLabel;
+  final double availableNow;
+  final double expectedIncome;
+  final int? incomeDay;
+  final double overdueIncome;
+  final double recurringUntilEnd;
+  final double dailySpend;
+  final int daysLeft;
+  final double discretionaryUntilEnd;
+  final double projected;
+
+  static double _d(Object? v) => (v as num?)?.toDouble() ?? 0;
+
+  factory MonthOutlook.fromJson(Map<String, dynamic> j) => MonthOutlook(
+        monthLabel: j['monthLabel'] as String? ?? '',
+        availableNow: _d(j['availableNow']),
+        expectedIncome: _d(j['expectedIncome']),
+        incomeDay: (j['incomeDay'] as num?)?.toInt(),
+        overdueIncome: _d(j['overdueIncome']),
+        recurringUntilEnd: _d(j['recurringUntilEnd']),
+        dailySpend: _d(j['dailySpend']),
+        daysLeft: (j['daysLeft'] as num?)?.toInt() ?? 0,
+        discretionaryUntilEnd: _d(j['discretionaryUntilEnd']),
+        projected: _d(j['projected']),
+      );
+}
+
+class UpcomingPayment {
+  const UpcomingPayment(
+      {required this.name, required this.amount, required this.date});
+  final String name;
+  final double amount;
+  final String date;
+}
+
+class Outlook {
+  const Outlook({required this.outlook, required this.upcoming});
+
+  /// Null when the history is too short to project honestly.
+  final MonthOutlook? outlook;
+  final List<UpcomingPayment> upcoming;
+
+  factory Outlook.fromJson(Map<String, dynamic> j) => Outlook(
+        outlook: j['outlook'] is Map
+            ? MonthOutlook.fromJson(
+                (j['outlook'] as Map).cast<String, dynamic>())
+            : null,
+        upcoming: ((j['upcoming'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((u) => UpcomingPayment(
+                name: u['name'] as String? ?? '',
+                amount: (u['amount'] as num?)?.toDouble() ?? 0,
+                date: u['date'] as String? ?? ''))
+            .toList(),
+      );
 }
 
 class CsvPreviewRow {

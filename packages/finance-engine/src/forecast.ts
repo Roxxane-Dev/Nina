@@ -1,4 +1,4 @@
-import { isGoalWithdrawal, isSetAside, signedFlows } from './aggregates'
+import { isGoalWithdrawal, isSetAside, signedFlows, trailingFullMonths } from './aggregates'
 import { percentile } from './stats'
 import { addMonths, daysBetween, endOfMonth, isoDate, startOfMonth } from './period'
 import { ENGINE_VERSION } from './version'
@@ -54,7 +54,11 @@ export function computeForecast(
       .reduce((s, t) => s + -t.amount, 0)
     dailyAmounts.push(spent)
   }
-  const dailyDiscretionary = percentile(dailyAmounts, 0.5)
+  // Most days have nothing registered, so a median would say "S/ 0 a day". The mean over the
+  // days actually covered by the history is the typical pace.
+  const firstDay = signedFlows(txs).reduce<Date | null>((min, t) => (!min || t.postedAt < min ? t.postedAt : min), null)
+  const coveredDays = firstDay ? Math.min(60, Math.max(1, daysBetween(firstDay, asOf) + 1)) : 60
+  const dailyDiscretionary = dailyAmounts.slice(0, coveredDays).reduce((s, n) => s + n, 0) / coveredDays
 
   const monthsOfHistory = new Set(
     txs.map((t) => `${t.postedAt.getUTCFullYear()}-${t.postedAt.getUTCMonth()}`),
@@ -71,9 +75,9 @@ export function computeForecast(
       t.postedAt <= asOf &&
       (incomeDate == null || Math.abs(t.postedAt.getUTCDate() - incomeDate) <= 3),
   )
-  const expectedIncome = incomes.length
-    ? incomes.slice(-3).reduce((s, t) => s + t.amount, 0) / Math.min(3, incomes.length)
-    : 0
+  // A month's income, not the average of the last three deposits (a side job would drag it down).
+  const incomeMonths = trailingFullMonths(txs, asOf, 3).filter((m) => m.income > 0)
+  const expectedIncome = incomeMonths.length ? incomeMonths.reduce((s, m) => s + m.income, 0) / incomeMonths.length : 0
 
   const recurringDue = (opts?.recurring ?? [])
     .filter((r) => r.nextExpected >= asOf && r.nextExpected <= addMonths(horizon, 1))
@@ -90,9 +94,11 @@ export function computeForecast(
   const days = Math.max(0, daysBetween(asOf, horizon))
   const discSpend = dailyDiscretionary * days
 
-  const willReceive = !receivedThisCycle && incomeDate != null && (
-    asOf.getUTCDate() <= incomeDate || horizon >= new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), incomeDate))
-  )
+  // Income is expected only up to a few days past its usual day; later than that it is overdue
+  // (probably not registered yet) and the projection says so instead of counting on it.
+  const INCOME_GRACE_DAYS = 3
+  const incomeOverdue = !receivedThisCycle && incomeDate != null && asOf.getUTCDate() > incomeDate + INCOME_GRACE_DAYS
+  const willReceive = !receivedThisCycle && incomeDate != null && !incomeOverdue
 
   const incomeTerm = willReceive ? expectedIncome : 0
   const projected = (hasAnchor ? liquid : 0) + incomeTerm - recUntilHorizon - discSpend
@@ -122,6 +128,14 @@ export function computeForecast(
     confidence,
     dailyDiscretionary: roundish(dailyDiscretionary),
     recurringDue,
+    parts: {
+      expectedIncome: roundish(incomeTerm),
+      recurringUntilEnd: roundish(recUntilHorizon),
+      discretionaryUntilEnd: roundish(discSpend),
+      daysLeft: days,
+      incomeOverdue,
+      overdueIncome: incomeOverdue ? roundish(expectedIncome) : 0,
+    },
     engineVersion: ENGINE_VERSION,
   }
 }

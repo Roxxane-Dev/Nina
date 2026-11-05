@@ -2,6 +2,13 @@
 
 Cambios con impacto para el usuario o la arquitectura. No registra cada edición.
 
+## 2026-11-05 — Grupo 2: metas, próximos pagos y pronóstico
+- **Chat:** responde "¿cómo voy con Japón?" con el avance, lo que falta y el ritmo mensual, y lista todas las metas si preguntas por todas.
+- **Inicio:** "Si sigues así, cerrarías el mes con S/ X". Al tocarlo muestra cómo se calculó.
+- **Próximos pagos:** muestra los fijos de los próximos 30 días.
+- **Chat:** "¿cuánta plata voy a tener a fin de mes?" responde con el mismo cálculo.
+- **Motor `engine-v1.3.0`:** corrige el ingreso esperado, el gasto diario y el día de los pagos mensuales (D-021).
+
 ## 2026-11-01 — EECC en PDF de tarjeta BCP (DATA-02)
 - La pantalla de importar acepta el PDF del estado de cuenta, con o sin contraseña. El PDF y la contraseña solo viven en memoria durante la solicitud.
 - Los pagos a la tarjeta no cuentan como gasto ni ingreso.

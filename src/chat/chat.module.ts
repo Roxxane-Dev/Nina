@@ -16,6 +16,7 @@ import { ConfirmationTokens, confirmationSecret } from './confirmation-token'
 import { ContextTokens } from './conversation-context'
 import { ConfirmationHandler } from './intents/confirmation.handler'
 import { ConversationHandler } from './intents/conversation.handler'
+import { GoalProgressHandler } from './intents/goal-progress.handler'
 import { GeneralHandler } from './intents/general.handler'
 import { GoalPlanHandler } from './intents/goal-plan.handler'
 import { BalanceQueryHandler, SpendingQueryHandler } from './intents/query.handlers'
@@ -46,6 +47,7 @@ import {
     QueryResponder,
     ConfirmationHandler,
     ConversationHandler,
+    GoalProgressHandler,
     GoalPlanHandler,
     RegisterIncomeHandler,
     RegisterGoalHandler,

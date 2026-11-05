@@ -10,6 +10,7 @@ import { ConfirmationHandler } from './intents/confirmation.handler'
 import { ConversationHandler } from './intents/conversation.handler'
 import { GeneralHandler } from './intents/general.handler'
 import { GoalPlanHandler } from './intents/goal-plan.handler'
+import { GoalProgressHandler } from './intents/goal-progress.handler'
 import type { ChatContext, ChatIntentHandler, HandlerResult } from './intents/handler'
 import { BalanceQueryHandler, SpendingQueryHandler } from './intents/query.handlers'
 import {
@@ -71,9 +72,11 @@ export class ChatService {
     private readonly consents: ConsentsService,
     @Optional() conversation?: ConversationHandler,
     @Optional() private readonly contextTokens?: ContextTokens,
+    @Optional() goalProgress?: GoalProgressHandler,
   ) {
     this.handlers = [
       confirmation,
+      ...(goalProgress ? [goalProgress] : []),
       ...(conversation ? [conversation] : []),
       goalPlan,
       registerIncome,

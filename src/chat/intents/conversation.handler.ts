@@ -7,6 +7,7 @@ import { goalPlanView } from '../../goals/goal-plans'
 import { templatedAnswer } from '../../nina-router/validator'
 import { buildCard, suggestedFollowUps } from '../answer-card'
 import { reply } from '../chat-reply'
+import { outlookText } from '../outlook-text'
 import { hasAmount } from '../conversation-context'
 import type { ChatContext, ChatIntentHandler, HandlerResult } from './handler'
 import { QueryResponder } from './query-responder'
@@ -150,11 +151,23 @@ export class ConversationHandler implements ChatIntentHandler {
       return result
     }
 
-    // Projections are not ready yet (forecast is out of this release): say so, then show what is known.
+    // INS-03: the month-end projection, with its assumptions. Only this month; never invented.
     if (ctx.question.intent === 'forecast') {
+      const { outlook } = await this.engine.outlook(ctx.userId, ctx.asOf)
+      if (outlook) {
+        const later = ctx.question.period?.future ? 'Por ahora proyecto solo el cierre de este mes. ' : ''
+        return {
+          outcome: 'ok',
+          llmUsed: false,
+          validationPassed: true,
+          reply: reply(`${later}${outlookText(outlook)}`, {
+            followUps: ['¿En qué gasto más?', '¿Cuánto me queda este mes?', 'Quiero ahorrar para algo'],
+          }),
+        }
+      }
       const result = await this.answer(ctx, '¿cuánto me queda este mes?', true)
       if (!result) return null
-      result.reply.reply = `Todavía no te proyecto el próximo mes: prefiero no inventarte un número. Lo que sí sé con tus datos: ${lowerFirst(result.reply.reply)}`
+      result.reply.reply = `Para proyectar sin inventar necesito al menos dos meses de movimientos. Lo que sí sé con tus datos: ${lowerFirst(result.reply.reply)}`
       result.reply.followUps = ['¿En qué gasto más?', '¿Cuánto gasté este mes?', 'Quiero ahorrar para algo']
       return result
     }

@@ -47,3 +47,22 @@ export function matchGoal(goalText: string, goals: GoalRef[]): GoalMatch {
   if (hits.length === 1) return { goal: hits[0] }
   return hits.length ? { ambiguous: hits } : { none: true }
 }
+
+export type GoalProgressQuestion = { all: boolean; goalText: string; mentionsGoal: boolean }
+
+const PROGRESS = /\b(?:c[oó]mo\s+(?:voy|va|van|ando|llevo)|cu[aá]nto\s+(?:llevo|tengo|he\s+juntado|he\s+ahorrado|me\s+falta)|avance|progreso)\b/
+const ALL_GOALS = /\bmis\s+metas\b/
+const PROGRESS_TARGET = /\b(?:con|en|para|de)\s+(.+)$/
+
+/** INS-05: "¿cómo voy con Japón?" Null for anything else, including plans ("¿cómo alcanzo…?"). */
+export function parseGoalProgressQuestion(message: string): GoalProgressQuestion | null {
+  const text = message.trim().toLowerCase().replace(/[¿?¡!.]/g, '').replace(/\s+/g, ' ')
+  if (!PROGRESS.test(text) || /\d/.test(text)) return null
+  const mentionsGoal = /\bmetas?\b/.test(text)
+  if (ALL_GOALS.test(text)) return { all: true, goalText: '', mentionsGoal: true }
+  const after = text.replace(PROGRESS, ' ').trim()
+  const m = PROGRESS_TARGET.exec(after)
+  if (!m) return null
+  const goalText = m[1].replace(/^(?:mi\s+)?meta\s+(?:de(?:l)?\s+)?/, '').replace(/\s+/g, ' ').trim()
+  return goalText ? { all: false, goalText, mentionsGoal } : null
+}

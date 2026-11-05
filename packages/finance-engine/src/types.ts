@@ -133,6 +133,16 @@ export type ForecastResult = {
   confidence: Confidence
   dailyDiscretionary: number
   recurringDue: Array<{ merchant: string; amount: number; date: string }>
+  /** The terms of a net_flow projection, so it can be explained (INS-03). */
+  parts: {
+    expectedIncome: number
+    recurringUntilEnd: number
+    discretionaryUntilEnd: number
+    daysLeft: number
+    /** The usual income day passed and nothing came in: it is not counted, and the user is told. */
+    incomeOverdue: boolean
+    overdueIncome: number
+  }
   engineVersion: string
 }
 

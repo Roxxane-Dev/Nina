@@ -27,6 +27,8 @@ export type GoalView = {
   currentAmount: number
   /** Part of currentAmount registered as contributions, net of withdrawals. */
   contributed: number
+  /** current / target, 0–100, rounded. */
+  progressPct: number
   /** target − current, never negative: what is still left to save. */
   remaining: number
   deadline: string | null
@@ -87,6 +89,7 @@ export function goalPlanView(
     targetAmount,
     currentAmount,
     contributed,
+    progressPct: targetAmount > 0 ? Math.min(100, Math.round((currentAmount / targetAmount) * 100)) : 0,
     remaining,
     deadline: row.deadline ? row.deadline.slice(0, 10) : null,
     deadlineLabel,

@@ -47,6 +47,11 @@ export class FinanceEngineController {
     return bundle.score
   }
 
+  @Get('outlook')
+  async outlook(@Request() req: AuthedRequest) {
+    return this.engine.outlook(req.user.id)
+  }
+
   @Get('forecast')
   async forecast(@Request() req: AuthedRequest) {
     const bundle = await this.engine.computeBundle(req.user.id)
