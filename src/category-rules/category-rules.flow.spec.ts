@@ -54,13 +54,13 @@ describe('US-24: correct a category and remember it', () => {
 
   it('the next registration with that description uses the remembered category', async () => {
     const { svc: rules } = fakeRules()
-    await rules.remember('u1', 'tambo', 'food')
+    await rules.remember('u1', 'kiosko', 'food')
     const expenses = new ExpensesService({ get: () => undefined } as never, rules)
-    const conf = await expenses.buildPendingFromMessage('gasté 45 en tambo', 'u1')
+    const conf = await expenses.buildPendingFromMessage('gasté 45 en kiosko', 'u1')
     expect(conf?.items[0]).toEqual(expect.objectContaining({ category_slug: 'food', category_name: 'Comida' }))
     expect(conf?.text).toContain('• S/ 45.00 en Comida') // and no hard-coded "$"
 
-    const other = await expenses.buildPendingFromMessage('gasté 45 en tambo', 'u2')
+    const other = await expenses.buildPendingFromMessage('gasté 45 en kiosko', 'u2')
     expect(other?.items[0].category_slug).toBe('other') // rules are per user
   })
 })

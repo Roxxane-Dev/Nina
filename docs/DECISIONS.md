@@ -11,12 +11,17 @@ Registro corto de decisiones que cambian cómo se construye Nina. Las más nueva
 - El PDF y su contraseña solo existen en memoria durante la solicitud. Nada se guarda ni va a los logs.
 - Se comprueba saldo anterior + movimientos contra el pago total. Si no cuadra, Nina avisa con la diferencia, pero deja importar.
 - `PAGO` es plata de la cuenta a la tarjeta: ni gasto ni ingreso. Importarlo contaría doble.
-- `DEVOLUCION` entra como ingreso, porque el motor no tiene reembolsos negativos. Esto puede inflar un poco los ingresos.
+- Una devolución que tiene su cobro en el mismo estado de cuenta ("COMISION ANUAL POR MEMBRESIA" y "DEVOLUCION MEMBRESIA") se cancela: no entra ninguno de los dos. Una devolución sin su cobro entra como ingreso, porque el motor no maneja reembolsos negativos.
 - Intereses, comisiones y membresía entran como gasto en Deudas.
 - La fecha es la de consumo, no la de proceso. El año sale del cierre del ciclo.
 - Dólares y PDFs escaneados quedan fuera.
 
 **Por qué el cuadre:** una imagen de la página 1 mostró que los movimientos de esa página no daban el pago total; la diferencia coincide con membresía, intereses y comisiones. Sin el cuadre, esa diferencia pasaría inadvertida.
+**Verificado el 2026-11-04 con un EECC real de 3 páginas (en local, sin subirlo):**
+- Cuadra exacto contra el monto total facturado: 22 movimientos, 3 pagos a la tarjeta fuera y una membresía cancelada.
+- La cabecera "Tipo de / Operación" ocupa dos líneas.
+- La página 2 trae intereses y seguro sin fecha, y el detalle de cuotas va después del total.
+
 **Consecuencias:** si el banco cambia el formato, el lector puede fallar; el cuadre lo detecta. Los fixtures de prueba son inventados: ningún dato real del founder va al repo.
 
 ## D-019 · Revisión de Finzenn antes de migrar, y exportar sin borrar

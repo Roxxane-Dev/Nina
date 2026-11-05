@@ -121,3 +121,87 @@ describe('parseStatement: BCP card (DATA-02)', () => {
     expect(parseStatement([{ text: 'Una factura cualquiera' }], { today })).toBeNull()
   })
 })
+
+describe('parseStatement: BCP card, layout of the real 3-page PDF (synthetic data)', () => {
+  // Structure checked against a real statement on 2026-11-04; every name and amount here is invented.
+  const REAL = `
+Pag 1  de 3
+Estado de Cuenta Tarjeta VISA
+Fecha de Facturación  Del  Al (día de cierre)
+PRUEBA SA  PERSONA X  1234-56XX-XXXX-7890  11/08/26  10/09/26
+Pagos
+Pago mínimo S/  Pago total S/  En caso pague pasada la fecha se cobra 0.0% del pago mínimo (en soles min
+10.00  245.00
+Pago mínimo US$  Pago total US$
+0.00  0.00
+Fecha de  Fecha de  Descripción  Tipo de  Soles  Dólares
+proceso  consumo  Operación
+SALDO ANTERIOR  500.00
+PERSONA X  123456XXXXXX0000
+11Ago  11Ago  TELE0000000001  PAGOSERVIC  30.00
+17Ago  16Ago  PAGO BANCA MOVIL  PAGO  400.00-
+20Ago  19Ago  DLC*RAPPI PERU  LIMA  PE  CONSUMO  45.00
+22Ago  21Ago  TIENDA DESCONOCIDA  LIMA  PE  CONSUMO  50.00
+PERSONA X  123456XXXXXX9999
+10Set  10Set  DEVOLUCION MEMBRESIA  DEVOLUCION  100.00-
+¿Cómo calcular tu pago mínimo?
+FECHA DE COBRO DE MEMBRESIA: 10/09/2027 - MONTO S/ 100.00 - PERIODO Del 01/09/2026 al 31/08/2027
+Pag 2  de 3
+Fecha de  Fecha de  Descripción  Tipo de  Soles  Dólares
+proceso  consumo  Operación
+INTERESES  12.00
+COMISION POR USO DE CANALES
+SUB TOTAL  137.00
+ENVIO FISICO DE ESTADO DE  CUENTA
+GASTO MENSUAL POR SEGURO DE  DESGRAVAMEN  8.00
+COMISION ANUAL POR MEMBRESIA  100.00
+MONTO TOTAL FACTURADO  245.00
+DETALLE PLAN CUOTAS SOLES
+20Ago  20Ago  PREPAGO CREDITO E  999.99
+Saldo Total  245.00
+`
+  const r = parseStatement(lines(REAL), { today })!
+
+  it('is recognized although "Tipo de / Operación" spans two lines', () => {
+    expect(r).not.toBeNull()
+    expect(r.period).toEqual({ from: '2026-08-11', to: '2026-09-10' })
+  })
+
+  it('reads page 2 charges with the cycle close as their date, and ignores the subtotal', () => {
+    expect(r.rows.filter((x) => x.category === 'debt').map((x) => [x.description, x.amount, x.date])).toEqual([
+      ['INTERESES', 12, '2026-09-10'],
+      ['GASTO MENSUAL POR SEGURO DE DESGRAVAMEN', 8, '2026-09-10'],
+    ])
+    expect(r.rows.some((x) => /SUB TOTAL|COMISION POR USO/.test(x.description))).toBe(false)
+  })
+
+  it('a charge refunded in the same statement cancels out instead of showing up as income', () => {
+    expect(r.rows.some((x) => x.type === 'income')).toBe(false)
+    expect(r.rows.some((x) => /MEMBRESIA/.test(x.description))).toBe(false)
+    expect(r.skipped.filter((s) => s.reason === 'refunded')).toHaveLength(2)
+  })
+
+  it('the installment plan detail after the total is informative, not a movement', () => {
+    expect(r.rows.some((x) => /PREPAGO/.test(x.description))).toBe(false)
+  })
+
+  it('checks out against MONTO TOTAL FACTURADO', () => {
+    expect(r.reconciliation).toEqual({ ok: true, expected: 245, stated: 245, difference: 0 })
+  })
+
+  it('knows common Peruvian merchants', () => {
+    expect(r.rows.find((x) => x.description === 'DLC*RAPPI PERU')?.category).toBe('food')
+  })
+
+  it('a stray "en dólares" label is not the dollar column', () => {
+    const withCells = lines(REAL).map((l) =>
+      l.text === 'Fecha de  Fecha de  Descripción  Tipo de  Soles  Dólares'
+        ? { ...l, cells: [{ x: 410, text: 'Tipo de' }, { x: 471, text: 'Soles' }, { x: 524, text: 'Dólares' }] }
+        : /^(11Ago|20Ago|22Ago)/.test(l.text)
+          ? { ...l, cells: [{ x: 47, text: l.text.slice(0, 5) }, { x: 490, text: l.text.split(/\s+/).pop()! }] }
+          : l,
+    )
+    withCells.unshift({ text: 'en dólares', cells: [{ x: 300, text: 'en dólares' }] })
+    expect(parseStatement(withCells, { today })!.rows.length).toBe(r.rows.length)
+  })
+})

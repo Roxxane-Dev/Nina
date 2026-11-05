@@ -86,7 +86,7 @@ Prioridad: **P0** crítico · **P1** alto · **P2** medio · **P3** futuro.
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
 | DATA-01 | Importar CSV | P2 | Done (sin verlo en pantalla ni probarlo con un archivo real de banco) |
-| DATA-02 | Importar EECC en PDF | P2 | Needs Verification | Tarjeta BCP (D-020). Falta probar con el PDF real: el formato salió de una imagen de la página 1. |
+| DATA-02 | Importar EECC en PDF | P2 | Done | Tarjeta BCP (D-020). Verificado con un EECC real de 3 páginas: cuadre exacto. Falta verlo en pantalla. |
 | DATA-03 | Conexiones bancarias | P3 | Todo (V2) |
 
 ## 8. Seguridad y privacidad

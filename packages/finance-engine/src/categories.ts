@@ -21,14 +21,16 @@ export const CATEGORY_LABELS_ES: Record<string, string> = {
 
 /** Words a user may write (or that older rows contain) → canonical slug. */
 const ALIASES: Record<string, string[]> = {
-  food: ['food', 'comida', 'comidas', 'almuerzo', 'almuerzos', 'cena', 'desayuno', 'restaurante', 'restaurantes', 'mercado', 'supermercado', 'delivery', 'cafe', 'café', 'snacks', 'menu', 'menú'],
+  food: ['food', 'comida', 'comidas', 'almuerzo', 'almuerzos', 'cena', 'desayuno', 'restaurante', 'restaurantes', 'mercado', 'supermercado', 'delivery', 'cafe', 'café', 'snacks', 'menu', 'menú',
+    // Peruvian merchants as they appear on statements (DATA-02)
+    'rappi', 'pedidosya', 'wong', 'tottus', 'vivanda', 'vea', 'tambo', 'oxxo', 'mass', 'starbucks', 'mcdonalds', 'kfc', 'bembos', 'pizza', 'chifa', 'polleria', 'panaderia'],
   transport: ['transport', 'transporte', 'taxi', 'taxis', 'uber', 'cabify', 'didi', 'pasaje', 'pasajes', 'bus', 'combi', 'metro', 'gasolina', 'combustible', 'estacionamiento'],
   home: ['home', 'hogar', 'casa', 'alquiler', 'renta', 'hogar/renta'],
   services: ['services', 'servicios', 'luz', 'agua', 'internet', 'gas', 'telefono', 'teléfono', 'celular', 'cable'],
-  health: ['health', 'salud', 'farmacia', 'medicinas', 'doctor', 'clinica', 'clínica', 'seguro'],
+  health: ['health', 'salud', 'farmacia', 'medicinas', 'doctor', 'clinica', 'clínica', 'seguro', 'inkafarma', 'mifarma', 'boticas', 'dental', 'laboratorio'],
   education: ['education', 'educacion', 'educación', 'curso', 'cursos', 'universidad', 'colegio', 'libros'],
   entertainment: ['entertainment', 'entretenimiento', 'ocio', 'cine', 'salidas', 'fiesta', 'bar', 'juegos'],
-  shopping: ['shopping', 'compras', 'ropa', 'zapatillas', 'tienda'],
+  shopping: ['shopping', 'compras', 'ropa', 'zapatillas', 'tienda', 'oechsle', 'saga', 'falabella', 'ripley', 'todomoda', 'perfumeria', 'zara', 'promart', 'sodimac', 'miniso'],
   subscriptions: ['subscriptions', 'subscription', 'suscripciones', 'suscripcion', 'suscripción', 'netflix', 'spotify', 'streaming'],
   debt: ['debt', 'deuda', 'deudas', 'prestamo', 'préstamo', 'tarjeta', 'cuota', 'cuotas'],
   salary: ['salary', 'sueldo', 'salario', 'quincena', 'planilla'],

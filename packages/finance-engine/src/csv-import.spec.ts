@@ -45,7 +45,7 @@ describe('parseCsvStatement (DATA-01)', () => {
     expect(r.assumedExpenses).toBe(false)
     expect(r.rows).toEqual([
       { line: 5, date: '2026-10-01', description: 'PAGO DE HABERES', amount: 3500, type: 'income', category: 'salary' },
-      { line: 6, date: '2026-10-03', description: 'TAMBO', amount: 12.5, type: 'expense', category: 'other' },
+      { line: 6, date: '2026-10-03', description: 'TAMBO', amount: 12.5, type: 'expense', category: 'food' },
     ])
   })
 

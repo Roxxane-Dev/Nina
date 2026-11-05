@@ -183,11 +183,17 @@ class _ImportCsvPageState extends State<ImportCsvPage> {
     if (p.skipped.isEmpty) return null;
     final usd = p.skipped.where((s) => s.reason == 'usd').length;
     final payments = p.skipped.where((s) => s.reason == 'card_payment').length;
+    final refunded = p.skipped.where((s) => s.reason == 'refunded').length ~/ 2;
     final unread = p.skipped
-        .where((s) => s.reason != 'usd' && s.reason != 'card_payment')
+        .where((s) =>
+            s.reason != 'usd' &&
+            s.reason != 'card_payment' &&
+            s.reason != 'refunded')
         .toList();
     final other = unread.length;
     return [
+      if (refunded > 0)
+        '${refunded == 1 ? 'Un cobro que el banco te devolvió no cuenta' : '$refunded cobros que el banco te devolvió no cuentan'}: se cancelan entre sí.',
       if (payments > 0)
         '$payments ${payments == 1 ? 'pago a tu tarjeta no cuenta' : 'pagos a tu tarjeta no cuentan'} como gasto: es tu plata cambiando de lugar.',
       if (usd > 0)

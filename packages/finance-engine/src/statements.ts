@@ -9,7 +9,7 @@ import type { CategoryRule } from './categories'
 
 export type StatementLine = { text: string; cells?: Array<{ x: number; text: string }> }
 
-export type StatementSkipReason = CsvSkipReason | 'card_payment' | 'unknown_operation'
+export type StatementSkipReason = CsvSkipReason | 'card_payment' | 'unknown_operation' | 'refunded'
 
 export type StatementReconciliation = { ok: boolean; expected: number; stated: number; difference: number }
 
@@ -54,10 +54,18 @@ const parseShortDate = (raw: string): Date | null => {
 const CYCLE = /(\d{2}\/\d{2}\/\d{2})\s+(\d{2}\/\d{2}\/\d{2})/
 const OPENING = /SALDO ANTERIOR\s+([\d,]+\.\d{2})(-?)/i
 const ROW = /^(\d{2})([A-Za-z]{3})\s+(\d{2})([A-Za-z]{3})\s+(.+?)\s+([A-Z]{4,})\s+([\d,]+\.\d{2})(-?)\s*$/
-const DEBT_LIKE = /interes|comision|membresia|seguro|mora|penalidad/i
+const DEBT_LIKE = /interes|comision|membresia|seguro|desgravamen|mora|penalidad/i
+/** Page 2 lists the cycle's charges with no dates: "INTERESES  15.79". */
+const CHARGE = /^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ0-9 .,*/()-]+?)\s{2,}([\d,]+\.\d{2})(-?)$/
+const NOT_A_CHARGE = /^(sub ?total|total|monto total|saldo)/i
+/** Where the cycle's movements end: the bank's own total, then the informative installment plan. */
+const MOVEMENTS_END = /^(monto total facturado|detalle plan cuotas)/i
 
-/** "Pago total S/" sits above its value, as the second of the amounts on the next line. */
+/** "MONTO TOTAL FACTURADO" when printed; otherwise "Pago total S/", which sits above its value. */
 function closingBalance(lines: StatementLine[]): number | null {
+  const billed = lines.find((l) => /^monto total facturado/i.test(l.text.trim()))
+  const billedAmount = billed?.text.match(/\d[\d,]*\.\d{2}/g)
+  if (billedAmount?.length) return parseCsvAmount(billedAmount[billedAmount.length - 1])
   const at = lines.findIndex((l) => /pago total s\//i.test(l.text))
   if (at < 0) return null
   for (const l of lines.slice(at + 1, at + 4)) {
@@ -75,14 +83,35 @@ function closingBalance(lines: StatementLine[]): number | null {
 const DOLLARS_MARGIN = 10
 function dollarsFromX(lines: StatementLine[]): number | null {
   for (const l of lines) {
-    const dollars = l.cells?.find((c) => /d[oó]lares/i.test(c.text) && c.text.length <= 12)
+    const dollars = l.cells?.find((c) => /^d[oó]lares$/i.test(c.text.trim()))
     if (dollars) return dollars.x - DOLLARS_MARGIN
   }
   return null
 }
 
+// The real header spreads "Tipo de / Operación" over two lines, so it is not used to recognize the statement.
 const isBcpCard = (lines: StatementLine[]) =>
-  lines.some((l) => /estado de cuenta tarjeta/i.test(l.text)) && lines.some((l) => /tipo de operaci/i.test(l.text))
+  lines.some((l) => /estado de cuenta tarjeta/i.test(l.text)) && lines.some((l) => OPENING.test(l.text))
+
+/**
+ * A charge the bank refunded in the same statement ("COMISION ANUAL POR MEMBRESIA" 170.00 and
+ * "DEVOLUCION MEMBRESIA" 170.00-) cancels out: importing both would show a refund as income.
+ */
+function cancelRefunds(rows: CsvRow[], skipped: StatementResult['skipped']): CsvRow[] {
+  const words = (s: string) => new Set(s.toLowerCase().split(/[^a-záéíóúñ]+/).filter((w) => w.length >= 5 && w !== 'devolucion'))
+  const gone = new Set<number>()
+  for (const refund of rows.filter((r) => r.type === 'income')) {
+    const key = words(refund.description)
+    const charge = rows.find(
+      (r) => r.type === 'expense' && !gone.has(r.line) && r.amount === refund.amount && [...words(r.description)].some((w) => key.has(w)),
+    )
+    if (!charge) continue
+    gone.add(charge.line)
+    gone.add(refund.line)
+  }
+  for (const line of [...gone].sort((a, b) => a - b)) skipped.push({ line, reason: 'refunded' })
+  return rows.filter((r) => !gone.has(r.line))
+}
 
 function parseBcpCard(lines: StatementLine[], today: Date, rules: CategoryRule[]): StatementResult {
   const cycleAt = lines.findIndex((l) => CYCLE.test(l.text))
@@ -94,19 +123,39 @@ function parseBcpCard(lines: StatementLine[], today: Date, rules: CategoryRule[]
 
   let opening: number | null = null
   let net = 0
+  let ended = false
   const rows: CsvRow[] = []
   const skipped: StatementResult['skipped'] = []
+  const cycleDay = isoDate(closesOn)
 
   lines.forEach((l, index) => {
     const line = index + 1
-    const open = OPENING.exec(l.text)
+    const text = l.text.trim()
+    if (ended || MOVEMENTS_END.test(text)) {
+      ended = true
+      return
+    }
+    const open = OPENING.exec(text)
     if (open && opening === null) {
       const n = parseCsvAmount(open[1])
       opening = n === null ? null : open[2] ? -n : n
       return
     }
-    const m = ROW.exec(l.text.trim())
-    if (!m) return
+    if (opening === null) return
+    const m = ROW.exec(text)
+    if (!m) {
+      const charge = CHARGE.exec(text)
+      if (!charge || NOT_A_CHARGE.test(charge[1])) return
+      const amount = parseCsvAmount(charge[2])
+      if (amount === null) return
+      const last = l.cells?.[l.cells.length - 1]
+      if (dollarsX !== null && last && last.x >= dollarsX) return skipped.push({ line, reason: 'usd' }) && undefined
+      net += charge[3] ? -amount : amount
+      if (charge[3]) return skipped.push({ line, reason: 'unknown_operation' }) && undefined
+      const description = charge[1].replace(/\s+/g, ' ').trim().slice(0, 140)
+      rows.push({ line, date: cycleDay, description, amount, type: 'expense', category: DEBT_LIKE.test(description) ? 'debt' : categoryForRow(description, 'expense', rules) })
+      return
+    }
     const [, , , day, month, rest, operation, rawAmount, minus] = m
     const amount = parseCsvAmount(rawAmount)
     const date = dayInCycle(day, month, closesOn)
@@ -127,7 +176,7 @@ function parseBcpCard(lines: StatementLine[], today: Date, rules: CategoryRule[]
   return {
     product: 'Tarjeta BCP',
     period: from && to ? { from: isoDate(from), to: isoDate(to) } : null,
-    rows,
+    rows: cancelRefunds(rows, skipped),
     skipped,
     reconciliation: reconcile(opening, net, closingBalance(lines)),
   }

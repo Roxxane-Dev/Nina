@@ -199,7 +199,9 @@ void main() {
           'assumedExpenses': false,
           'rows': [],
           'skipped': [
-            {'line': 9, 'reason': 'card_payment'}
+            {'line': 9, 'reason': 'card_payment'},
+            {'line': 12, 'reason': 'refunded'},
+            {'line': 30, 'reason': 'refunded'}
           ],
           'reconciliation': {'ok': false, 'difference': 190.11},
         })));
