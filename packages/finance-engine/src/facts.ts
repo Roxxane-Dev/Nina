@@ -90,9 +90,9 @@ export function buildFactsPayload(input: {
     if (incomeItems.length) items.splice(0, items.length, ...incomeItems)
   }
 
-  if (intent === 'score' && input.score) {
+  if (intent === 'score' && input.score?.sufficient) {
     figures.health_score = input.score.score
-    for (const c of input.score.components) figures[`score_${c.key}`] = round(c.subScore)
+    for (const c of input.score.components) if (c.measured) figures[`score_${c.key}`] = round(c.subScore)
   }
   // Only a real bank balance gives a figure that means what it says; the month-end projection is
   // answered deterministically from buildMonthOutlook, never through the LLM.

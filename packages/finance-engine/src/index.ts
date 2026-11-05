@@ -22,3 +22,5 @@ export { buildNudges, contributedInMonth, MAX_NUDGES, type Nudge, type NudgeActi
 export { CSV_MAX_CHARS, CSV_MAX_ROWS, duplicateLines, parseCsvAmount, parseCsvDate, parseCsvStatement, type CsvParseResult, type CsvRow, type CsvSkipReason } from './csv-import'
 export { parseStatement, reconcile, type StatementLine, type StatementReconciliation, type StatementResult, type StatementSkipReason } from './statements'
 export { buildMonthOutlook, upcomingPayments, UPCOMING_DAYS, type MonthOutlook, type UpcomingPayment } from './outlook'
+export { MIN_SCORE_MONTHS } from './score'
+export { solesText } from './money'

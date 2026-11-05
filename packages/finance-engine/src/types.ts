@@ -66,13 +66,20 @@ export type ScoreComponent = {
   label: string
   weight: number
   subScore: number
+  /** False when there was no data to measure it: it then weighs 0 and the others share its weight. */
+  measured: boolean
+  /** What was measured, in plain words, written by the engine. */
+  explanation: string
   inputs: Record<string, number>
   evidenceTxnIds: string[]
 }
 
 export type HealthScoreResult = {
+  /** 0 when `sufficient` is false: there is no score to show. */
   score: number
-  label: 'Frágil' | 'En construcción' | 'Estable' | 'Sólida'
+  sufficient: boolean
+  monthsUsed: number
+  label: 'Frágil' | 'En construcción' | 'Estable' | 'Sólida' | 'Sin datos suficientes'
   components: ScoreComponent[]
   engineVersion: string
   periodFrom: string

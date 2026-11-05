@@ -9,6 +9,7 @@ import { categoryLabel } from './categories'
 import { isoDate } from './period'
 import { monthLabelEs, monthRange } from './periods'
 import { detectRecurrence } from './recurrence'
+import { solesText } from './money'
 import type { EngineTransaction } from './types'
 
 export type NudgeAction =
@@ -45,8 +46,7 @@ const GOAL_IDLE_FROM_DAY = 10
 const DAY_MS = 86_400_000
 
 const round = (n: number) => Math.round(n * 100) / 100
-const soles = (n: number) =>
-  `${n < 0 ? '-' : ''}S/ ${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const soles = solesText
 const titleCase = (s: string) => s.toLowerCase().replace(/(^|\s)(\S)/g, (_, sp: string, c: string) => sp + c.toUpperCase())
 
 /** The goal received a contribution in the month of `asOf`. */

@@ -82,6 +82,12 @@ class FinanceApiService {
     return res.data?['remembered'] == true;
   }
 
+  /// INS-02: the explainable health score.
+  Future<HealthScore> getScore() async {
+    final res = await _dio.get<Map<String, dynamic>>('/v1/score');
+    return HealthScore.fromJson(res.data ?? const {});
+  }
+
   /// INS-01 / INS-03: where the month is heading, and fixed payments coming up.
   Future<Outlook> getOutlook() async {
     final res = await _dio.get<Map<String, dynamic>>('/v1/outlook');
@@ -131,6 +137,54 @@ class FinanceApiService {
   Future<void> deleteTransaction(String id) async {
     await _dio.delete<void>('/v1/transactions/$id');
   }
+}
+
+/// Computed by the engine (computeHealthScore); the app only shows it.
+class ScorePart {
+  const ScorePart(
+      {required this.key,
+      required this.label,
+      required this.subScore,
+      required this.weight,
+      required this.measured,
+      required this.explanation});
+  final String key;
+  final String label;
+  final double subScore;
+  final double weight;
+  final bool measured;
+  final String explanation;
+}
+
+class HealthScore {
+  const HealthScore(
+      {required this.score,
+      required this.sufficient,
+      required this.monthsUsed,
+      required this.label,
+      required this.components});
+  final int score;
+  final bool sufficient;
+  final int monthsUsed;
+  final String label;
+  final List<ScorePart> components;
+
+  factory HealthScore.fromJson(Map<String, dynamic> j) => HealthScore(
+        score: (j['score'] as num?)?.toInt() ?? 0,
+        sufficient: j['sufficient'] == true,
+        monthsUsed: (j['monthsUsed'] as num?)?.toInt() ?? 0,
+        label: j['label'] as String? ?? '',
+        components: ((j['components'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((c) => ScorePart(
+                key: c['key'] as String? ?? '',
+                label: c['label'] as String? ?? '',
+                subScore: (c['subScore'] as num?)?.toDouble() ?? 0,
+                weight: (c['weight'] as num?)?.toDouble() ?? 0,
+                measured: c['measured'] == true,
+                explanation: c['explanation'] as String? ?? ''))
+            .toList(),
+      );
 }
 
 /// Computed by the engine (buildMonthOutlook); the app only shows it.

@@ -166,6 +166,17 @@ class _ProfilePageState extends State<ProfilePage> {
             NinaCard(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: _Row(
+                key: const Key('more-score'),
+                icon: Icons.favorite_border,
+                title: 'Tu salud financiera',
+                subtitle: 'Tu puntaje y qué lo mueve',
+                onTap: () => context.push('/score'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            NinaCard(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: _Row(
                 key: const Key('more-privacy'),
                 icon: Icons.verified_user_outlined,
                 title: 'Privacidad y permisos',

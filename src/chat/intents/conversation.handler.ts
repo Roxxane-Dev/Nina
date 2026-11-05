@@ -8,6 +8,7 @@ import { templatedAnswer } from '../../nina-router/validator'
 import { buildCard, suggestedFollowUps } from '../answer-card'
 import { reply } from '../chat-reply'
 import { outlookText } from '../outlook-text'
+import { scoreText } from '../score-text'
 import { hasAmount } from '../conversation-context'
 import type { ChatContext, ChatIntentHandler, HandlerResult } from './handler'
 import { QueryResponder } from './query-responder'
@@ -149,6 +150,17 @@ export class ConversationHandler implements ChatIntentHandler {
         `Con lo que registraste en Nina: ${lowerFirst(result.reply.reply)} Si aún tienes pagos pendientes este mes (alquiler, luz, una cuota), réstalos de ahí antes de darte un gusto.`
       result.reply.followUps = ['¿En qué gasto más?', '¿Me alcanza para algo?', 'Muéstrame mis últimos gastos']
       return result
+    }
+
+    // INS-02: the score and why, from the engine. Never through the LLM.
+    if (ctx.question.intent === 'score') {
+      const { score } = await this.engine.computeBundle(ctx.userId, ctx.asOf)
+      return {
+        outcome: 'ok',
+        llmUsed: false,
+        validationPassed: true,
+        reply: reply(scoreText(score), { followUps: ['¿En qué gasto más?', '¿Cuánto me queda este mes?'] }),
+      }
     }
 
     // INS-03: the month-end projection, with its assumptions. Only this month; never invented.
